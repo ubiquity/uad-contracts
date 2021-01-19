@@ -27,5 +27,13 @@
   "bugs": {
     "url": "https://github.com/ubiquity/stabilitas-bonding/issues"
   },
-  "homepage": "https://github.com/ubiquity/stabilitas-bonding#readme"
+  "homepage": "https://github.com/ubiquity/stabilitas-bonding#readme",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "chai": "^4.2.0",
+    "ethereum-waffle": "^3.2.1",
+    "ethers": "^5.0.26",
+    "hardhat": "^2.0.8"
+  }
 }
