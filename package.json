@@ -1,0 +1,31 @@
+{
+  "name": "stabilitas-bonding",
+  "version": "1.0.0",
+  "description": "Bonding system for the Universal Digital Dollar",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx hardhat test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ubiquity/stabilitas-bonding.git"
+  },
+  "keywords": [
+    "stablecoin",
+    "erc20",
+    "ethereum",
+    "defi",
+    "ubiquity",
+    "dao",
+    "dollar",
+    "decentralization",
+    "token",
+    "algorithmic"
+  ],
+  "author": "Ubiquity DAO",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ubiquity/stabilitas-bonding/issues"
+  },
+  "homepage": "https://github.com/ubiquity/stabilitas-bonding#readme"
+}
