@@ -17,6 +17,11 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+        ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
+        TREASURY_PRIV_KEY: ${{ secrets.TREASURY_PRIV_KEY }}
+        SECOND_ACC_PRIV_KEY: ${{ secrets.SECOND_ACC_PRIV_KEY }}
+
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-node@v1
