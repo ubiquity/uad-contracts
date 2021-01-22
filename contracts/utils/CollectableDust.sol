@@ -25,6 +25,7 @@ abstract contract CollectableDust is ICollectableDust {
             "collectable-dust::token-is-part-of-the-protocol"
         );
         _protocolTokens.add(_token);
+        emit ProtocolTokenAdded(_token);
     }
 
     function _removeProtocolToken(address _token) internal {
@@ -33,6 +34,7 @@ abstract contract CollectableDust is ICollectableDust {
             "collectable-dust::token-not-part-of-the-protocol"
         );
         _protocolTokens.remove(_token);
+        emit ProtocolTokenRemoved(_token);
     }
 
     function _sendDust(
