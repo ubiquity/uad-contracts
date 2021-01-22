@@ -14,9 +14,10 @@ describe("Bonding", () => {
   let secondAccount;
   let sablier;
   let USDC;
+  let DAI;
 
   beforeEach(async () => {
-    ({ sablier, USDC } = await getNamedAccounts());
+    ({ sablier, USDC, DAI } = await getNamedAccounts());
     [treasury, secondAccount] = await ethers.getSigners();
 
     await deploy("Bonding", { from: treasury.address, args: [sablier] });
@@ -87,20 +88,49 @@ describe("Bonding", () => {
       .connect(treasury)
       .sendDust(
         treasury.address,
-        "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-        ethers.utils.parseUnits("100", "gwei")
+        await bonding.ETH_ADDRESS(),
+        ethers.utils.parseUnits("50", "gwei")
       );
   });
 
+  it("Should emit DustSent event (CollectableDust)", async () => {
+    await expect(
+      bonding
+        .connect(treasury)
+        .sendDust(
+          treasury.address,
+          await bonding.ETH_ADDRESS(),
+          ethers.utils.parseUnits("50", "gwei")
+        )
+    )
+      .to.emit(bonding, "DustSent")
+      .withArgs(
+        treasury.address,
+        await bonding.ETH_ADDRESS(),
+        ethers.utils.parseUnits("50", "gwei")
+      );
+  });
   it("Should revert when another account tries to remove dust from the contract (CollectableDust)", async () => {
     await expect(
       bonding
         .connect(secondAccount)
         .sendDust(
           treasury.address,
-          "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+          await bonding.ETH_ADDRESS(),
           ethers.utils.parseUnits("100", "gwei")
         )
     ).to.be.revertedWith("caller is not the owner");
+  });
+
+  it("Should emit ProtocolTokenAdded event (CollectableDust)", async () => {
+    await expect(bonding.connect(treasury).addProtocolToken(DAI))
+      .to.emit(bonding, "ProtocolTokenAdded")
+      .withArgs(DAI);
+  });
+
+  it("Should emit ProtocolTokenRemoved event (CollectableDust)", async () => {
+    await expect(bonding.connect(treasury).removeProtocolToken(DAI))
+      .to.emit(bonding, "ProtocolTokenRemoved")
+      .withArgs(DAI);
   });
 });
