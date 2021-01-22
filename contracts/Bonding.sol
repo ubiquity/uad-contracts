@@ -22,6 +22,14 @@ contract Bonding is Ownable, CollectableDust {
     }
 
     /// Collectable Dust
+    function addProtocolToken(address _token) external override onlyOwner {
+        _addProtocolToken(_token);
+    }
+
+    function removeProtocolToken(address _token) external override onlyOwner {
+        _removeProtocolToken(_token);
+    }
+
     function sendDust(
         address _to,
         address _token,
@@ -29,4 +37,7 @@ contract Bonding is Ownable, CollectableDust {
     ) external override onlyOwner {
         _sendDust(_to, _token, _amount);
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 }
