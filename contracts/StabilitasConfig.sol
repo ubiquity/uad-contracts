@@ -20,6 +20,7 @@ contract StabilitasConfig is AccessControl {
     address public comparisonTokenAddress; //USDC
     address public couponCalculatorAddress;
     address public dollarCalculatorAddress;
+    address public bondingShareAddress;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -84,6 +85,13 @@ contract StabilitasConfig is AccessControl {
         _excessDollarDistributors[
             debtCouponManagerAddress
         ] = excessCouponDistributor;
+    }
+
+    function setBondingShareAddress(address _bondingShareAddress)
+        external
+        onlyAdmin
+    {
+        bondingShareAddress = _bondingShareAddress;
     }
 
     function getExcessDollarsDistributor(address debtCouponManagerAddress)

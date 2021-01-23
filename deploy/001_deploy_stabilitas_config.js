@@ -10,4 +10,10 @@ module.exports = async ({ deployments }) => {
     log: true,
     deterministicDeployment: true,
   });
+
+  const stabilitasConfig = await ethers.getContract("StabilitasConfig");
+  const bondingShare = await ethers.getContract("BondingShare");
+  await stabilitasConfig
+    .connect(admin)
+    .setBondingShareAddress(bondingShare.address);
 };
