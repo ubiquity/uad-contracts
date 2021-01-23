@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "npx hardhat test",
-    "solhint": "npx solhint 'contracts/**/*.sol' --fix",
+    "solhint": "find . -type f -name '*.sol' -not -path './node_modules/*' -exec npx solhint --fix {} ';'",
     "eslint": "npx eslint . --ext js --fix",
     "format": "npx prettier --write .",
     "lint": "yarn solhint && yarn eslint && yarn format"
