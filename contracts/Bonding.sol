@@ -17,8 +17,8 @@ contract Bonding is CollectableDust {
     uint256 public constant TARGET_PRICE = 1000000; // USDC has 6 decimals
     // Initially set at $1,000,000 to avoid interference with growth.
     uint256 public maxBondingPrice = 1000000000000000000000000;
-    uint256 public bondingDiscountMultiplier = 0;
     ISablier public sablier;
+    uint256 public bondingDiscountMultiplier = 0;
     uint256 public rewardsBalance;
     uint256 public redeemStreamTime = 604800; // 1 week in seconds
 
@@ -29,6 +29,11 @@ contract Bonding is CollectableDust {
         );
         _;
     }
+
+    event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
+    event SablierUpdated(address _sablier);
+    event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
+    event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
 
     constructor(address _config, address _sablier) CollectableDust() {
         config = StabilitasConfig(_config);
@@ -63,8 +68,17 @@ contract Bonding is CollectableDust {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
+    function setMaxBondingPrice(uint256 _maxBondingPrice)
+        external
+        onlyBondingManager
+    {
+        maxBondingPrice = _maxBondingPrice;
+        emit MaxBondingPriceUpdated(_maxBondingPrice);
+    }
+
     function setSablier(address _sablier) external onlyBondingManager {
         sablier = ISablier(_sablier);
+        emit SablierUpdated(_sablier);
     }
 
     function setBondingDiscountMultiplier(uint256 _bondingDiscountMultiplier)
@@ -72,5 +86,14 @@ contract Bonding is CollectableDust {
         onlyBondingManager
     {
         bondingDiscountMultiplier = _bondingDiscountMultiplier;
+        emit BondingDiscountMultiplierUpdated(_bondingDiscountMultiplier);
+    }
+
+    function setRedeemStreamTime(uint256 _redeemStreamTime)
+        external
+        onlyBondingManager
+    {
+        redeemStreamTime = _redeemStreamTime;
+        emit RedeemStreamTimeUpdated(_redeemStreamTime);
     }
 }

@@ -1,6 +1,7 @@
 const { expect, use } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
 const { ethers, deployments, waffle, getNamedAccounts } = require("hardhat");
+const { BigNumber } = require("ethers");
 
 const provider = waffle.provider;
 const { deploy } = deployments;
@@ -41,6 +42,12 @@ describe("Bonding", () => {
   it("admin should be able to update the Sablier address", async () => {
     await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
     expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
+  });
+
+  it("Should emit the SablierUpdated event", async () => {
+    await expect(bonding.connect(admin).setSablier(DAI))
+      .to.emit(bonding, "SablierUpdated")
+      .withArgs(DAI);
   });
 
   it("Should revert when another account tries to update the Sablier address", async () => {
@@ -137,5 +144,83 @@ describe("Bonding", () => {
     await expect(bonding.connect(admin).removeProtocolToken(DAI))
       .to.emit(bonding, "ProtocolTokenRemoved")
       .withArgs(DAI);
+  });
+
+  it("Admin should be able to update the maxBondingPrice", async () => {
+    await bonding
+      .connect(admin)
+      .setMaxBondingPrice(ethers.constants.MaxUint256);
+    expect(await bonding.maxBondingPrice()).to.equal(
+      ethers.constants.MaxUint256
+    );
+  });
+
+  it("Should revert when unauthorized accounts try to update the maxBondingPrice", async () => {
+    await expect(
+      bonding
+        .connect(secondAccount)
+        .setMaxBondingPrice(ethers.constants.MaxUint256)
+    ).to.be.revertedWith("Caller is not a bonding manager");
+  });
+
+  it("Should emit the MaxBondingPriceUpdated event", async () => {
+    await expect(
+      bonding.connect(admin).setMaxBondingPrice(ethers.constants.MaxUint256)
+    )
+      .to.emit(bonding, "MaxBondingPriceUpdated")
+      .withArgs(ethers.constants.MaxUint256);
+  });
+
+  it("Admin should be able to update the bondingDiscountMultiplier", async () => {
+    await bonding
+      .connect(admin)
+      .setBondingDiscountMultiplier(ethers.BigNumber.from(2));
+    expect(await bonding.bondingDiscountMultiplier()).to.equal(
+      ethers.BigNumber.from(2)
+    );
+  });
+
+  it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
+    await expect(
+      bonding
+        .connect(secondAccount)
+        .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
+    ).to.be.revertedWith("Caller is not a bonding manager");
+  });
+
+  it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
+    await expect(
+      bonding
+        .connect(admin)
+        .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
+    )
+      .to.emit(bonding, "BondingDiscountMultiplierUpdated")
+      .withArgs(BigNumber.from(2));
+  });
+
+  it("Admin should be able to update the redeemStreamTime", async () => {
+    await bonding
+      .connect(admin)
+      .setRedeemStreamTime(ethers.BigNumber.from(86400));
+
+    expect(await bonding.redeemStreamTime()).to.equal(
+      ethers.BigNumber.from(86400)
+    );
+  });
+
+  it("Should revert when unauthorized accounts try to update the redeemStreamTime", async () => {
+    await expect(
+      bonding
+        .connect(secondAccount)
+        .setRedeemStreamTime(ethers.BigNumber.from(0))
+    ).to.be.revertedWith("Caller is not a bonding manager");
+  });
+
+  it("Should emit the RedeemStreamTimeUpdated event", async () => {
+    await expect(
+      bonding.connect(admin).setRedeemStreamTime(ethers.BigNumber.from(0))
+    )
+      .to.emit(bonding, "RedeemStreamTimeUpdated")
+      .withArgs(ethers.BigNumber.from(0));
   });
 });
