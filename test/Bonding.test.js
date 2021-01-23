@@ -49,7 +49,7 @@ describe("Bonding", () => {
     ).to.be.revertedWith("Caller is not a bonding manager");
   });
 
-  it("Owner should be able to add protocol token (CollectableDust)", async () => {
+  it("Admin should be able to add protocol token (CollectableDust)", async () => {
     await bonding.connect(admin).addProtocolToken(USDC);
   });
 
@@ -71,7 +71,7 @@ describe("Bonding", () => {
     ).to.be.revertedWith("Caller is not a bonding manager");
   });
 
-  it("Owner should be able to remove protocol token (CollectableDust)", async () => {
+  it("Admin should be able to remove protocol token (CollectableDust)", async () => {
     await bonding.connect(admin).removeProtocolToken(USDC);
   });
 
@@ -81,7 +81,7 @@ describe("Bonding", () => {
     ).to.be.revertedWith("collectable-dust::token-not-part-of-the-protocol");
   });
 
-  it("Owner should be able to send dust from the contract (CollectableDust)", async () => {
+  it("Admin should be able to send dust from the contract (CollectableDust)", async () => {
     // Send ETH to the Bonding contract
     await secondAccount.sendTransaction({
       to: bonding.address,
