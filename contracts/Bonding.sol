@@ -7,10 +7,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./StabilitasConfig.sol";
 import "./interfaces/ISablier.sol";
+import "./interfaces/IUniswapOracle.sol";
 import "./utils/CollectableDust.sol";
 
 contract Bonding is CollectableDust {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     StabilitasConfig public config;
 
@@ -95,5 +97,28 @@ contract Bonding is CollectableDust {
     {
         redeemStreamTime = _redeemStreamTime;
         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+    }
+
+    function bondTokens(uint256 _amount) public {
+        IUniswapOracle(config.twapOracleAddress()).update(
+            config.stabilitasTokenAddress(),
+            config.comparisonTokenAddress()
+        );
+        uint256 currentPrice =
+            IUniswapOracle(config.twapOracleAddress()).consult(
+                config.stabilitasTokenAddress(),
+                TARGET_PRICE,
+                config.comparisonTokenAddress()
+            );
+        require(
+            currentPrice < maxBondingPrice,
+            "Bonding: Current price is too high"
+        );
+        IERC20(config.stabilitasTokenAddress()).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _amount
+        );
+        // _bond(_amount);
     }
 }
