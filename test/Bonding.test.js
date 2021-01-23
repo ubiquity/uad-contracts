@@ -8,9 +8,9 @@ const { solidity } = waffle;
 use(solidity);
 
 describe("Bonding", () => {
-  let Bonding;
   let bonding;
-  let treasury;
+  let config;
+  let admin;
   let secondAccount;
   let sablier;
   let USDC;
@@ -18,61 +18,48 @@ describe("Bonding", () => {
 
   beforeEach(async () => {
     ({ sablier, USDC, DAI } = await getNamedAccounts());
-    [treasury, secondAccount] = await ethers.getSigners();
+    [admin, secondAccount] = await ethers.getSigners();
 
-    await deploy("Bonding", { from: treasury.address, args: [sablier] });
-    Bonding = await deployments.get("Bonding");
+    const Config = await deploy("StabilitasConfig", {
+      from: admin.address,
+      args: [admin.address, sablier],
+    });
+    config = new ethers.Contract(Config.address, Config.abi, provider);
+
+    await deploy("Bonding", { from: admin.address, args: [config.address] });
+    const Bonding = await deployments.get("Bonding");
     bonding = new ethers.Contract(Bonding.address, Bonding.abi, provider);
   });
 
-  it("Owner should be the treasury", async () => {
-    expect(await bonding.owner()).to.equal(treasury.address);
-  });
-
-  it("Should return the current Sablier address", async () => {
-    expect(await bonding.sablier()).to.equal(sablier);
-  });
-
-  it("Treasury should be able to update the Sablier address", async () => {
-    await bonding.connect(treasury).setSablier(ethers.constants.AddressZero);
-    expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
-  });
-
-  it("Should revert when another account tries to update the Sablier address", async () => {
-    await expect(
-      bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
-    ).to.be.revertedWith("caller is not the owner");
-  });
-
   it("Owner should be able to add protocol token (CollectableDust)", async () => {
-    await bonding.connect(treasury).addProtocolToken(USDC);
+    await bonding.connect(admin).addProtocolToken(USDC);
   });
 
   it("Should revert when another account tries to add protocol token (CollectableDust)", async () => {
     await expect(
       bonding.connect(secondAccount).addProtocolToken(USDC)
-    ).to.be.revertedWith("caller is not the owner");
+    ).to.be.revertedWith("Caller is not a bonding manager");
   });
 
   it("Should revert when trying to add an already existing protocol token (CollectableDust)", async () => {
     await expect(
-      bonding.connect(treasury).addProtocolToken(USDC)
+      bonding.connect(admin).addProtocolToken(USDC)
     ).to.be.revertedWith("collectable-dust::token-is-part-of-the-protocol");
   });
 
   it("Should revert when another account tries to remove a protocol token (CollectableDust)", async () => {
     await expect(
       bonding.connect(secondAccount).removeProtocolToken(USDC)
-    ).to.be.revertedWith("caller is not the owner");
+    ).to.be.revertedWith("Caller is not a bonding manager");
   });
 
   it("Owner should be able to remove protocol token (CollectableDust)", async () => {
-    await bonding.connect(treasury).removeProtocolToken(USDC);
+    await bonding.connect(admin).removeProtocolToken(USDC);
   });
 
   it("Should revert when trying to remove token that is not a part of the protocol (CollectableDust)", async () => {
     await expect(
-      bonding.connect(treasury).removeProtocolToken(USDC)
+      bonding.connect(admin).removeProtocolToken(USDC)
     ).to.be.revertedWith("collectable-dust::token-not-part-of-the-protocol");
   });
 
@@ -83,11 +70,11 @@ describe("Bonding", () => {
       value: ethers.utils.parseUnits("100", "gwei"),
     });
 
-    // Send dust back to the treasury
+    // Send dust back to the admin
     await bonding
-      .connect(treasury)
+      .connect(admin)
       .sendDust(
-        treasury.address,
+        admin.address,
         await bonding.ETH_ADDRESS(),
         ethers.utils.parseUnits("50", "gwei")
       );
@@ -96,16 +83,16 @@ describe("Bonding", () => {
   it("Should emit DustSent event (CollectableDust)", async () => {
     await expect(
       bonding
-        .connect(treasury)
+        .connect(admin)
         .sendDust(
-          treasury.address,
+          admin.address,
           await bonding.ETH_ADDRESS(),
           ethers.utils.parseUnits("50", "gwei")
         )
     )
       .to.emit(bonding, "DustSent")
       .withArgs(
-        treasury.address,
+        admin.address,
         await bonding.ETH_ADDRESS(),
         ethers.utils.parseUnits("50", "gwei")
       );
@@ -115,21 +102,21 @@ describe("Bonding", () => {
       bonding
         .connect(secondAccount)
         .sendDust(
-          treasury.address,
+          admin.address,
           await bonding.ETH_ADDRESS(),
           ethers.utils.parseUnits("100", "gwei")
         )
-    ).to.be.revertedWith("caller is not the owner");
+    ).to.be.revertedWith("Caller is not a bonding manager");
   });
 
   it("Should emit ProtocolTokenAdded event (CollectableDust)", async () => {
-    await expect(bonding.connect(treasury).addProtocolToken(DAI))
+    await expect(bonding.connect(admin).addProtocolToken(DAI))
       .to.emit(bonding, "ProtocolTokenAdded")
       .withArgs(DAI);
   });
 
   it("Should emit ProtocolTokenRemoved event (CollectableDust)", async () => {
-    await expect(bonding.connect(treasury).removeProtocolToken(DAI))
+    await expect(bonding.connect(admin).removeProtocolToken(DAI))
       .to.emit(bonding, "ProtocolTokenRemoved")
       .withArgs(DAI);
   });

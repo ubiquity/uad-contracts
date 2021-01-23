@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 /// contracts use to check permissions
 contract StabilitasConfig is AccessControl {
     bytes32 public constant COUPON_MANAGER_ROLE = keccak256("COUPON_MANAGER");
+    bytes32 public constant BONDING_MANAGER_ROLE = keccak256("BONDING_MANAGER");
 
     address public twapOracleAddress;
     address public debtCouponAddress;
@@ -19,12 +20,15 @@ contract StabilitasConfig is AccessControl {
     address public comparisonTokenAddress; //USDC
     address public couponCalculatorAddress;
     address public dollarCalculatorAddress;
+    address public sablier;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
 
-    constructor(address _admin) {
+    constructor(address _admin, address _sablier) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        _setupRole(BONDING_MANAGER_ROLE, _admin);
+        sablier = _sablier;
     }
 
     function setTwapOracleAddress(address _twapOracleAddress) external {
@@ -63,6 +67,14 @@ contract StabilitasConfig is AccessControl {
     {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
         dollarCalculatorAddress = _dollarCalculatorAddress;
+    }
+
+    function setSablier(address _sablier) external {
+        require(
+            hasRole(BONDING_MANAGER_ROLE, msg.sender),
+            "Caller is not a bonding manager"
+        );
+        sablier = _sablier;
     }
 
     function setExcessDollarsDistributor(

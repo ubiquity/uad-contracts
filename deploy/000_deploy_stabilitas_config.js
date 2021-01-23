@@ -3,11 +3,11 @@ const { ethers } = require("hardhat");
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy } = deployments;
   const { sablier } = await getNamedAccounts();
-  const [treasury] = await ethers.getSigners();
+  const [admin] = await ethers.getSigners();
 
-  await deploy("Bonding", {
-    from: treasury.address,
-    args: [sablier],
+  await deploy("StabilitasConfig", {
+    from: admin.address,
+    args: [admin.address, sablier],
     log: true,
     deterministicDeployment: true,
   });
