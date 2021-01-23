@@ -20,68 +20,67 @@ contract StabilitasConfig is AccessControl {
     address public comparisonTokenAddress; //USDC
     address public couponCalculatorAddress;
     address public dollarCalculatorAddress;
-    address public sablier;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
 
-    constructor(address _admin, address _sablier) {
-        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
-        _setupRole(BONDING_MANAGER_ROLE, _admin);
-        sablier = _sablier;
+    modifier onlyAdmin() {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
+        _;
     }
 
-    function setTwapOracleAddress(address _twapOracleAddress) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
+    constructor(address _admin) {
+        _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        _setupRole(COUPON_MANAGER_ROLE, _admin);
+        _setupRole(BONDING_MANAGER_ROLE, _admin);
+    }
+
+    function setTwapOracleAddress(address _twapOracleAddress)
+        external
+        onlyAdmin
+    {
         twapOracleAddress = _twapOracleAddress;
     }
 
-    function setDebtCouponAddress(address _debtCouponAddress) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
+    function setDebtCouponAddress(address _debtCouponAddress)
+        external
+        onlyAdmin
+    {
         debtCouponAddress = _debtCouponAddress;
     }
 
     function setStabilitasTokenAddress(address _stabilitasTokenAddress)
         external
+        onlyAdmin
     {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
         stabilitasTokenAddress = _stabilitasTokenAddress;
     }
 
     function setComparisonTokenAddress(address _comparisonTokenAddress)
         external
+        onlyAdmin
     {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
         comparisonTokenAddress = _comparisonTokenAddress;
     }
 
     function setCouponCalculatorAddress(address _couponCalculatorAddress)
         external
+        onlyAdmin
     {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
         couponCalculatorAddress = _couponCalculatorAddress;
     }
 
     function setDollarCalculatorAddress(address _dollarCalculatorAddress)
         external
+        onlyAdmin
     {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
         dollarCalculatorAddress = _dollarCalculatorAddress;
-    }
-
-    function setSablier(address _sablier) external {
-        require(
-            hasRole(BONDING_MANAGER_ROLE, msg.sender),
-            "Caller is not a bonding manager"
-        );
-        sablier = _sablier;
     }
 
     function setExcessDollarsDistributor(
         address debtCouponManagerAddress,
         address excessCouponDistributor
-    ) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
+    ) external onlyAdmin {
         _excessDollarDistributors[
             debtCouponManagerAddress
         ] = excessCouponDistributor;

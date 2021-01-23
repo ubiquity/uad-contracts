@@ -22,13 +22,31 @@ describe("Bonding", () => {
 
     const Config = await deploy("StabilitasConfig", {
       from: admin.address,
-      args: [admin.address, sablier],
+      args: [admin.address],
     });
     config = new ethers.Contract(Config.address, Config.abi, provider);
 
-    await deploy("Bonding", { from: admin.address, args: [config.address] });
+    await deploy("Bonding", {
+      from: admin.address,
+      args: [config.address, sablier],
+    });
     const Bonding = await deployments.get("Bonding");
     bonding = new ethers.Contract(Bonding.address, Bonding.abi, provider);
+  });
+
+  it("Should return the current Sablier address", async () => {
+    expect(await bonding.sablier()).to.equal(sablier);
+  });
+
+  it("admin should be able to update the Sablier address", async () => {
+    await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
+    expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
+  });
+
+  it("Should revert when another account tries to update the Sablier address", async () => {
+    await expect(
+      bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
+    ).to.be.revertedWith("Caller is not a bonding manager");
   });
 
   it("Owner should be able to add protocol token (CollectableDust)", async () => {
