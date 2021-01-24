@@ -133,8 +133,56 @@ contract Bonding is CollectableDust {
         _bond(_amount, currentPrice);
     }
 
-    function redeemShares() public {
+    function redeemShares(uint256 _sharesAmount) public {
         _updateOracle();
+
+        require(
+            IERC20(config.bondingShareAddress()).balanceOf(msg.sender) >=
+                _sharesAmount,
+            "Bonding: Caller does not have enough shares"
+        );
+
+        IBondingShare(config.bondingShareAddress()).burnFrom(
+            msg.sender,
+            _sharesAmount
+        );
+
+        uint256 tokenAmount =
+            _sharesAmount.mul(currentShareValue()).div(TARGET_PRICE);
+
+        if (redeemStreamTime == 0) {
+            IERC20(config.stabilitasTokenAddress()).safeTransfer(
+                msg.sender,
+                tokenAmount
+            );
+        } else {
+            // The transaction must be processed by the Ethereum blockchain before
+            // the start time of the stream, or otherwise the sablier contract
+            // reverts with a "start time before block.timestamp" message.
+            // solhint-disable-next-line not-rely-on-time
+            uint256 streamStart = block.timestamp.add(60); // tx mining + 60 seconds
+
+            uint256 streamStop = streamStart.add(redeemStreamTime);
+            // The deposit must be a multiple of the difference between the stop
+            // time and the start time
+            streamStop = streamStop.add(
+                tokenAmount % (streamStop.sub(streamStart))
+            );
+
+            sablier.createStream(
+                msg.sender,
+                tokenAmount,
+                config.stabilitasTokenAddress(),
+                streamStart,
+                streamStop
+            );
+        }
+    }
+
+    function redeemAllShares() public {
+        redeemShares(
+            IERC20(config.bondingShareAddress()).balanceOf(msg.sender)
+        );
     }
 
     function _updateOracle() internal {

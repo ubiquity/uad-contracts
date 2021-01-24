@@ -4,7 +4,7 @@
   "rules": {
     "prettier/prettier": "error",
     "code-complexity": ["error", 5],
-    "function-max-lines": ["error", 40],
+    "function-max-lines": ["error", 60],
     "max-line-length": ["error", 100],
     "max-states-count": ["error", 10],
     "no-empty-blocks": "error",
