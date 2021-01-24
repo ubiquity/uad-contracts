@@ -21,18 +21,33 @@ describe("Bonding", () => {
     ({ sablier, USDC, DAI } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
 
+    const BondingShare = await deploy("BondingShare", {
+      from: admin.address,
+    });
+
+    const bondingShare = new ethers.Contract(
+      BondingShare.address,
+      BondingShare.abi,
+      provider
+    );
+
     const Config = await deploy("StabilitasConfig", {
       from: admin.address,
       args: [admin.address],
     });
     config = new ethers.Contract(Config.address, Config.abi, provider);
 
-    await deploy("Bonding", {
+    await config.connect(admin).setBondingShareAddress(bondingShare.address);
+
+    const Bonding = await deploy("Bonding", {
       from: admin.address,
       args: [config.address, sablier],
     });
-    const Bonding = await deployments.get("Bonding");
     bonding = new ethers.Contract(Bonding.address, Bonding.abi, provider);
+
+    await bondingShare
+      .connect(admin)
+      .grantRole(ethers.utils.id("MINTER_ROLE"), bonding.address);
   });
 
   it("Should return the current Sablier address", async () => {
