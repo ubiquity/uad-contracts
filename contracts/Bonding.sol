@@ -100,7 +100,7 @@ contract Bonding is CollectableDust {
     }
 
     function _bond(uint256 _amount) internal {
-        uint256 shareValue = getCurrentShareValue();
+        uint256 shareValue = currentShareValue();
         uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
 
         if (bondingDiscountMultiplier != 0) {
@@ -147,11 +147,7 @@ contract Bonding is CollectableDust {
         _bond(_amount);
     }
 
-    function getCurrentShareValue()
-        public
-        view
-        returns (uint256 pricePerShare)
-    {
+    function currentShareValue() public view returns (uint256 pricePerShare) {
         uint256 totalShares =
             IERC20(config.bondingShareAddress()).totalSupply();
 
