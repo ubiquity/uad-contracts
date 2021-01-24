@@ -119,10 +119,7 @@ contract Bonding is CollectableDust {
     }
 
     function bondTokens(uint256 _amount) public {
-        IUniswapOracle(config.twapOracleAddress()).update(
-            config.stabilitasTokenAddress(),
-            config.comparisonTokenAddress()
-        );
+        _updateOracle();
         uint256 currentPrice = currentTokenPrice();
         require(
             currentPrice < maxBondingPrice,
@@ -134,6 +131,17 @@ contract Bonding is CollectableDust {
             _amount
         );
         _bond(_amount, currentPrice);
+    }
+
+    function redeemShares() public {
+        _updateOracle();
+    }
+
+    function _updateOracle() internal {
+        IUniswapOracle(config.twapOracleAddress()).update(
+            config.stabilitasTokenAddress(),
+            config.comparisonTokenAddress()
+        );
     }
 
     function currentShareValue() public view returns (uint256 pricePerShare) {
