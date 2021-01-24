@@ -2,13 +2,13 @@
 pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "./StabilitasConfig.sol";
 import "./interfaces/ISablier.sol";
 import "./interfaces/IUniswapOracle.sol";
+import "./interfaces/IBondingShare.sol";
 import "./utils/CollectableDust.sol";
 
 contract Bonding is CollectableDust {
@@ -22,7 +22,6 @@ contract Bonding is CollectableDust {
     uint256 public maxBondingPrice = 1000000000000000000000000;
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = 0;
-    uint256 public rewardsBalance;
     uint256 public redeemStreamTime = 604800; // 1 week in seconds
 
     modifier onlyBondingManager() {
@@ -100,6 +99,31 @@ contract Bonding is CollectableDust {
         emit RedeemStreamTimeUpdated(_redeemStreamTime);
     }
 
+    function _bond(uint256 _amount) internal {
+        uint256 shareValue = getCurrentShareValue();
+        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
+
+        if (bondingDiscountMultiplier != 0) {
+            uint256 currentPrice =
+                IUniswapOracle(config.twapOracleAddress()).consult(
+                    config.stabilitasTokenAddress(),
+                    TARGET_PRICE,
+                    config.comparisonTokenAddress()
+                );
+            uint256 bonus =
+                (TARGET_PRICE.sub(currentPrice))
+                    .mul(numberOfShares)
+                    .mul(bondingDiscountMultiplier)
+                    .div(TARGET_PRICE.mul(TARGET_PRICE));
+            numberOfShares = numberOfShares.add(bonus);
+        }
+
+        IBondingShare(config.bondingShareAddress()).mint(
+            msg.sender,
+            numberOfShares
+        );
+    }
+
     function bondTokens(uint256 _amount) public {
         IUniswapOracle(config.twapOracleAddress()).update(
             config.stabilitasTokenAddress(),
@@ -120,5 +144,22 @@ contract Bonding is CollectableDust {
             address(this),
             _amount
         );
+        _bond(_amount);
+    }
+
+    function getCurrentShareValue()
+        public
+        view
+        returns (uint256 pricePerShare)
+    {
+        uint256 totalShares =
+            IERC20(config.bondingShareAddress()).totalSupply();
+
+        pricePerShare = totalShares == 0
+            ? TARGET_PRICE
+            : IERC20(config.stabilitasTokenAddress())
+                .balanceOf(address(this))
+                .mul(TARGET_PRICE)
+                .div(totalShares);
     }
 }
