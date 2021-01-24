@@ -99,17 +99,11 @@ contract Bonding is CollectableDust {
         emit RedeemStreamTimeUpdated(_redeemStreamTime);
     }
 
-    function _bond(uint256 _amount) internal {
+    function _bond(uint256 _amount, uint256 currentPrice) internal {
         uint256 shareValue = currentShareValue();
         uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
 
         if (bondingDiscountMultiplier != 0) {
-            uint256 currentPrice =
-                IUniswapOracle(config.twapOracleAddress()).consult(
-                    config.stabilitasTokenAddress(),
-                    TARGET_PRICE,
-                    config.comparisonTokenAddress()
-                );
             uint256 bonus =
                 (TARGET_PRICE.sub(currentPrice))
                     .mul(numberOfShares)
@@ -129,12 +123,7 @@ contract Bonding is CollectableDust {
             config.stabilitasTokenAddress(),
             config.comparisonTokenAddress()
         );
-        uint256 currentPrice =
-            IUniswapOracle(config.twapOracleAddress()).consult(
-                config.stabilitasTokenAddress(),
-                TARGET_PRICE,
-                config.comparisonTokenAddress()
-            );
+        uint256 currentPrice = currentTokenPrice();
         require(
             currentPrice < maxBondingPrice,
             "Bonding: Current price is too high"
@@ -144,7 +133,7 @@ contract Bonding is CollectableDust {
             address(this),
             _amount
         );
-        _bond(_amount);
+        _bond(_amount, currentPrice);
     }
 
     function currentShareValue() public view returns (uint256 pricePerShare) {
@@ -157,5 +146,14 @@ contract Bonding is CollectableDust {
                 .balanceOf(address(this))
                 .mul(TARGET_PRICE)
                 .div(totalShares);
+    }
+
+    function currentTokenPrice() public view returns (uint256) {
+        return
+            IUniswapOracle(config.twapOracleAddress()).consult(
+                config.stabilitasTokenAddress(),
+                TARGET_PRICE,
+                config.comparisonTokenAddress()
+            );
     }
 }
