@@ -10,7 +10,7 @@ use(solidity);
 
 describe("Bonding", () => {
   let bonding;
-  let config;
+  let manager;
   let admin;
   let secondAccount;
   let sablier;
@@ -31,17 +31,17 @@ describe("Bonding", () => {
       provider
     );
 
-    const Config = await deploy("StabilitasConfig", {
+    const Manager = await deploy("UbiquityAlgorithmicDollarManager", {
       from: admin.address,
       args: [admin.address],
     });
-    config = new ethers.Contract(Config.address, Config.abi, provider);
+    manager = new ethers.Contract(Manager.address, Manager.abi, provider);
 
-    await config.connect(admin).setBondingShareAddress(bondingShare.address);
+    await manager.connect(admin).setBondingShareAddress(bondingShare.address);
 
     const Bonding = await deploy("Bonding", {
       from: admin.address,
-      args: [config.address, sablier],
+      args: [manager.address, sablier],
     });
     bonding = new ethers.Contract(Bonding.address, Bonding.abi, provider);
 

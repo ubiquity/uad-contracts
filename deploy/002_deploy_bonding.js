@@ -4,11 +4,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy } = deployments;
   const { sablier } = await getNamedAccounts();
   const [admin] = await ethers.getSigners();
-  const config = await deployments.get("StabilitasConfig");
+  const manager = await deployments.get("UbiquityAlgorithmicDollarManager");
 
   await deploy("Bonding", {
     from: admin.address,
-    args: [config.address, sablier],
+    args: [manager.address, sablier],
     log: true,
     deterministicDeployment: true,
   });

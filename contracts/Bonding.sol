@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "./StabilitasConfig.sol";
+import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
-import "./interfaces/IUniswapOracle.sol";
+import "./interfaces/ITWAPOracle.sol";
 import "./interfaces/IBondingShare.sol";
 import "./utils/CollectableDust.sol";
 
@@ -15,18 +15,18 @@ contract Bonding is CollectableDust {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    StabilitasConfig public config;
+    UbiquityAlgorithmicDollarManager public manager;
 
-    uint256 public constant TARGET_PRICE = 1000000; // USDC has 6 decimals
+    uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
     // Initially set at $1,000,000 to avoid interference with growth.
-    uint256 public maxBondingPrice = 1000000000000000000000000;
+    uint256 public maxBondingPrice = uint256(1 ether).mul(1000000);
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = 0;
     uint256 public redeemStreamTime = 604800; // 1 week in seconds
 
     modifier onlyBondingManager() {
         require(
-            config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
+            manager.hasRole(manager.BONDING_MANAGER_ROLE(), msg.sender),
             "Caller is not a bonding manager"
         );
         _;
@@ -37,8 +37,8 @@ contract Bonding is CollectableDust {
     event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
     event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
 
-    constructor(address _config, address _sablier) CollectableDust() {
-        config = StabilitasConfig(_config);
+    constructor(address _manager, address _sablier) CollectableDust() {
+        manager = UbiquityAlgorithmicDollarManager(_manager);
         sablier = ISablier(_sablier);
     }
 
@@ -112,7 +112,7 @@ contract Bonding is CollectableDust {
             numberOfShares = numberOfShares.add(bonus);
         }
 
-        IBondingShare(config.bondingShareAddress()).mint(
+        IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
             numberOfShares
         );
@@ -125,7 +125,7 @@ contract Bonding is CollectableDust {
             currentPrice < maxBondingPrice,
             "Bonding: Current price is too high"
         );
-        IERC20(config.stabilitasTokenAddress()).safeTransferFrom(
+        IERC20(manager.uADTokenAddress()).safeTransferFrom(
             msg.sender,
             address(this),
             _amount
@@ -137,12 +137,12 @@ contract Bonding is CollectableDust {
         _updateOracle();
 
         require(
-            IERC20(config.bondingShareAddress()).balanceOf(msg.sender) >=
+            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender) >=
                 _sharesAmount,
             "Bonding: Caller does not have enough shares"
         );
 
-        IBondingShare(config.bondingShareAddress()).burnFrom(
+        IBondingShare(manager.bondingShareAddress()).burnFrom(
             msg.sender,
             _sharesAmount
         );
@@ -151,7 +151,7 @@ contract Bonding is CollectableDust {
             _sharesAmount.mul(currentShareValue()).div(TARGET_PRICE);
 
         if (redeemStreamTime == 0) {
-            IERC20(config.stabilitasTokenAddress()).safeTransfer(
+            IERC20(manager.uADTokenAddress()).safeTransfer(
                 msg.sender,
                 tokenAmount
             );
@@ -171,7 +171,7 @@ contract Bonding is CollectableDust {
             sablier.createStream(
                 msg.sender,
                 tokenAmount,
-                config.stabilitasTokenAddress(),
+                manager.uADTokenAddress(),
                 streamStart,
                 streamStop
             );
@@ -180,35 +180,27 @@ contract Bonding is CollectableDust {
 
     function redeemAllShares() public {
         redeemShares(
-            IERC20(config.bondingShareAddress()).balanceOf(msg.sender)
+            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender)
         );
     }
 
     function _updateOracle() internal {
-        IUniswapOracle(config.twapOracleAddress()).update(
-            config.stabilitasTokenAddress(),
-            config.comparisonTokenAddress()
-        );
+        ITWAPOracle(manager.twapOracleAddress()).update();
     }
 
     function currentShareValue() public view returns (uint256 pricePerShare) {
         uint256 totalShares =
-            IERC20(config.bondingShareAddress()).totalSupply();
+            IERC20(manager.bondingShareAddress()).totalSupply();
 
         pricePerShare = totalShares == 0
             ? TARGET_PRICE
-            : IERC20(config.stabilitasTokenAddress())
+            : IERC20(manager.uADTokenAddress())
                 .balanceOf(address(this))
                 .mul(TARGET_PRICE)
                 .div(totalShares);
     }
 
     function currentTokenPrice() public view returns (uint256) {
-        return
-            IUniswapOracle(config.twapOracleAddress()).consult(
-                config.stabilitasTokenAddress(),
-                TARGET_PRICE,
-                config.comparisonTokenAddress()
-            );
+        return ITWAPOracle(manager.twapOracleAddress()).consult(TARGET_PRICE);
     }
 }
