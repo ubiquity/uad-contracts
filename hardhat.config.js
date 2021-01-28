@@ -7,7 +7,9 @@ require("dotenv").config();
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  solidity: "0.7.6",
+  solidity: {
+    compilers: [{ version: "0.7.6" }, { version: "0.6.6" }],
+  },
 
   namedAccounts: {
     sablier: "0xA4fc358455Febe425536fd1878bE67FfDBDEC59a",

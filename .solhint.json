@@ -39,8 +39,8 @@
     "no-complex-fallback": "error",
     "no-inline-assembly": "off",
     "not-rely-on-block-hash": "error",
-    "not-rely-on-time": "error",
     "reentrancy": "error",
-    "state-visibility": "error"
+    "state-visibility": "error",
+    "not-rely-on-time": "off"
   }
 }

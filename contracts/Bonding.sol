@@ -159,7 +159,6 @@ contract Bonding is CollectableDust {
             // The transaction must be processed by the Ethereum blockchain before
             // the start time of the stream, or otherwise the sablier contract
             // reverts with a "start time before block.timestamp" message.
-            // solhint-disable-next-line not-rely-on-time
             uint256 streamStart = block.timestamp.add(60); // tx mining + 60 seconds
 
             uint256 streamStop = streamStart.add(redeemStreamTime);
