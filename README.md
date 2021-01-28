@@ -1,3 +1,3 @@
-# stabilitas-bonding
+# uad-contracts
 
-Bonding system for the Universal Digital Dollar
+Smart Contracts for the Universal Digital Dollar
