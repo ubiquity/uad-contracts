@@ -3,7 +3,6 @@ require("hardhat-deploy");
 require("hardhat-deploy-ethers");
 require("dotenv").config();
 require("@eth-optimism/smock/build/src/plugins/hardhat-storagelayout");
-// require("@nomiclabs/hardhat-vyper");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
