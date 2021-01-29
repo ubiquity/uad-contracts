@@ -1,8 +1,9 @@
 const { expect, use } = require("chai");
-const { describe, it, beforeEach } = require("mocha");
+const { describe, it, before } = require("mocha");
 const { ethers, deployments, waffle, getNamedAccounts } = require("hardhat");
 const { BigNumber } = require("ethers");
 const { smoddit } = require("@eth-optimism/smock");
+const CurveFactoryABI = require("./CurveFactory.json");
 const fs = require("fs").promises;
 
 const provider = waffle.provider;
@@ -18,9 +19,17 @@ describe("Bonding", () => {
   let sablier;
   let USDC;
   let DAI;
+  let CurveFactory;
+  let _3CrvBasePool;
 
-  beforeEach(async () => {
-    ({ sablier, USDC, DAI } = await getNamedAccounts());
+  before(async () => {
+    ({
+      sablier,
+      USDC,
+      DAI,
+      CurveFactory,
+      _3CrvBasePool,
+    } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
 
     const BondingShare = await deploy("BondingShare", {
@@ -75,6 +84,24 @@ describe("Bonding", () => {
     await crvToken
       .connect(admin)
       .mint(secondAccount.address, ethers.BigNumber.from("1000000"));
+
+    const curveFactory = new ethers.Contract(
+      CurveFactory,
+      CurveFactoryABI,
+      provider
+    );
+
+    // Create new StableSwap meta pool (uDA <-> 3Crv)
+    await curveFactory
+      .connect(secondAccount)
+      .deploy_metapool(
+        _3CrvBasePool,
+        "Ubiquity Algorithmic Dollar",
+        "uAD",
+        uAD.address,
+        10,
+        4000000
+      );
 
     const Bonding = await deploy("Bonding", {
       from: admin.address,

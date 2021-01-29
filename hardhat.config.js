@@ -12,19 +12,24 @@ module.exports = {
     compilers: [{ version: "0.7.6" }, { version: "0.6.6" }],
   },
 
+  mocha: {
+    timeout: 1000000,
+  },
+
   namedAccounts: {
     sablier: "0xA4fc358455Febe425536fd1878bE67FfDBDEC59a",
     USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     DAI: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
     _3CrvBasePool: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     _3CrvToken: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+    CurveFactory: "0xfD6f33A0509ec67dEFc500755322aBd9Df1bD5B8",
   },
 
   networks: {
     hardhat: {
       forking: {
         url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
-        blockNumber: 11695522,
+        blockNumber: 11748565,
       },
       accounts: [
         {
