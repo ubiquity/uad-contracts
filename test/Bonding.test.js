@@ -2,6 +2,7 @@ const { expect, use } = require("chai");
 const { describe, it, beforeEach } = require("mocha");
 const { ethers, deployments, waffle, getNamedAccounts } = require("hardhat");
 const { BigNumber } = require("ethers");
+const { smoddit } = require("@eth-optimism/smock");
 
 const provider = waffle.provider;
 const { deploy } = deployments;
@@ -38,6 +39,39 @@ describe("Bonding", () => {
     manager = new ethers.Contract(Manager.address, Manager.abi, provider);
 
     await manager.connect(admin).setBondingShareAddress(bondingShare.address);
+
+    const UAD = await smoddit("UbiquityAlgorithmicDollar", admin);
+    const uAD = await UAD.deploy();
+
+    await manager.connect(admin).setuADTokenAddress(uAD.address);
+
+    uAD.smodify.put({
+      _balances: {
+        [secondAccount.address]: ethers.BigNumber.from("1000000"),
+      },
+    });
+
+    // const crv = await smoddit("3CrvToken");
+    // ethers.getContractFactory()
+    // const f = ethers.getContractAt(CrvTokenABI, _3CrvToken, admin);
+    // await f.deployed();
+    // const CrvToken = new ethers.Contract(_3CrvToken, CrvTokenABI, provider);
+    // awa
+    // const crvToken = await smockit(CrvToken, {
+    //   provider: provider,
+    //   address: _3CrvToken,
+    // });
+
+    // const token = await smoddit(CrvTokenABI);
+    // const crvToken = await CrvToken.deploy();
+    // const CrvToken = new ethers.ContractFactory(CrvTokenABI);
+
+    // console.log(token.smodify);
+    // crvToken.smodify.put({
+    //   _balances: {
+    //     [secondAccount.address]: ethers.BigNumber.from("1000000"),
+    //   },
+    // });
 
     const Bonding = await deploy("Bonding", {
       from: admin.address,
