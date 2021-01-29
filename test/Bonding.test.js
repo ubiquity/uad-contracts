@@ -3,6 +3,7 @@ const { describe, it, beforeEach } = require("mocha");
 const { ethers, deployments, waffle, getNamedAccounts } = require("hardhat");
 const { BigNumber } = require("ethers");
 const { smoddit } = require("@eth-optimism/smock");
+const fs = require("fs").promises;
 
 const provider = waffle.provider;
 const { deploy } = deployments;
@@ -51,27 +52,29 @@ describe("Bonding", () => {
       },
     });
 
-    // const crv = await smoddit("3CrvToken");
-    // ethers.getContractFactory()
-    // const f = ethers.getContractAt(CrvTokenABI, _3CrvToken, admin);
-    // await f.deployed();
-    // const CrvToken = new ethers.Contract(_3CrvToken, CrvTokenABI, provider);
-    // awa
-    // const crvToken = await smockit(CrvToken, {
-    //   provider: provider,
-    //   address: _3CrvToken,
-    // });
+    // Need to use this hack for now because Hardhat still can't compile
+    // Solidity and Vyper contracts in the same project
+    await fs.copyFile("./test/Curve.json", "./artifacts/Curve.json");
 
-    // const token = await smoddit(CrvTokenABI);
-    // const crvToken = await CrvToken.deploy();
-    // const CrvToken = new ethers.ContractFactory(CrvTokenABI);
+    const CrvToken = await deploy("Curve", {
+      from: admin.address,
+      args: [
+        "Curve.fi DAI/USDC/USDT",
+        "3Crv",
+        ethers.BigNumber.from("18"),
+        ethers.BigNumber.from("100000000000"),
+      ],
+    });
 
-    // console.log(token.smodify);
-    // crvToken.smodify.put({
-    //   _balances: {
-    //     [secondAccount.address]: ethers.BigNumber.from("1000000"),
-    //   },
-    // });
+    const crvToken = new ethers.Contract(
+      CrvToken.address,
+      CrvToken.abi,
+      provider
+    );
+
+    await crvToken
+      .connect(admin)
+      .mint(secondAccount.address, ethers.BigNumber.from("1000000"));
 
     const Bonding = await deploy("Bonding", {
       from: admin.address,
