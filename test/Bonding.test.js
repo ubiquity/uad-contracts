@@ -1,10 +1,14 @@
 const { expect, use } = require("chai");
 const { describe, it, before } = require("mocha");
-const { ethers, deployments, waffle, getNamedAccounts } = require("hardhat");
+const {
+  ethers,
+  deployments,
+  waffle,
+  getNamedAccounts,
+  network,
+} = require("hardhat");
 const { BigNumber } = require("ethers");
-const { smoddit } = require("@eth-optimism/smock");
-const CurveFactoryABI = require("./CurveFactory.json");
-const fs = require("fs").promises;
+const CurveABI = require("./Curve.json");
 
 const provider = waffle.provider;
 const { deploy } = deployments;
@@ -21,6 +25,8 @@ describe("Bonding", () => {
   let DAI;
   let CurveFactory;
   let _3CrvBasePool;
+  let _3CrvToken;
+  let curveWhaleAddress;
 
   before(async () => {
     ({
@@ -29,6 +35,8 @@ describe("Bonding", () => {
       DAI,
       CurveFactory,
       _3CrvBasePool,
+      _3CrvToken,
+      curveWhaleAddress,
     } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
 
@@ -50,58 +58,99 @@ describe("Bonding", () => {
 
     await manager.connect(admin).setBondingShareAddress(bondingShare.address);
 
-    const UAD = await smoddit("UbiquityAlgorithmicDollar", admin);
-    const uAD = await UAD.deploy();
+    const UAD = await deploy("UbiquityAlgorithmicDollar", {
+      from: admin.address,
+    });
+    const uAD = new ethers.Contract(UAD.address, UAD.abi, provider);
+
+    await uAD
+      .connect(admin)
+      .mint(manager.address, ethers.utils.parseEther("10000"));
 
     await manager.connect(admin).setuADTokenAddress(uAD.address);
 
-    uAD.smodify.put({
-      _balances: {
-        [secondAccount.address]: ethers.BigNumber.from("1000000"),
-      },
+    const crvToken = new ethers.Contract(_3CrvToken, CurveABI.abi, provider);
+
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [curveWhaleAddress],
     });
 
-    // Need to use this hack for now because Hardhat still can't compile
-    // Solidity and Vyper contracts in the same project
-    await fs.copyFile("./test/Curve.json", "./artifacts/Curve.json");
-
-    const CrvToken = await deploy("Curve", {
-      from: admin.address,
-      args: [
-        "Curve.fi DAI/USDC/USDT",
-        "3Crv",
-        ethers.BigNumber.from("18"),
-        ethers.BigNumber.from("100000000000"),
-      ],
-    });
-
-    const crvToken = new ethers.Contract(
-      CrvToken.address,
-      CrvToken.abi,
-      provider
-    );
+    const curveWhale = await ethers.provider.getSigner(curveWhaleAddress);
 
     await crvToken
+      .connect(curveWhale)
+      .transfer(manager.address, ethers.utils.parseEther("10000"));
+
+    await manager
       .connect(admin)
-      .mint(secondAccount.address, ethers.BigNumber.from("1000000"));
-
-    const curveFactory = new ethers.Contract(
-      CurveFactory,
-      CurveFactoryABI,
-      provider
-    );
-
-    // Create new StableSwap meta pool (uDA <-> 3Crv)
-    await curveFactory
-      .connect(secondAccount)
-      .deploy_metapool(
+      .deployStableSwapPool(
+        CurveFactory,
         _3CrvBasePool,
-        "Ubiquity Algorithmic Dollar",
-        "uAD",
-        uAD.address,
+        crvToken.address,
         10,
         4000000
       );
+
+    const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
+
+    console.log((await crvToken.balanceOf(metaPoolAddr)).toString());
+
+    // const metaPool = new ethers.Contract();
+    // const curveFactory = new ethers.Contract(
+    //   CurveFactory,
+    //   CurveFactoryABI,
+    //   provider
+    // );
+
+    // Will be used to get the address of the newly-deployed meta pool
+    // const poolCount = parseInt((await curveFactory.pool_count()).toString());
+
+    // // Create new StableSwap meta pool (uDA <-> 3Crv)
+    // await curveFactory
+    //   .connect(secondAccount)
+    //   .deploy_metapool(
+    //     _3CrvBasePool,
+    //     "Ubiquity Algorithmic Dollar",
+    //     "uAD",
+    //     uAD.address,
+    //     10,
+    //     4000000
+    //   );
+
+    // Approve the depositor to spend the user's tokens
+    // await uAD
+    //   .connect(secondAccount)
+    //   .approve(usdDepositerAddress, ethers.constants.MaxUint256);
+
+    // await crvToken
+    //   .connect(secondAccount)
+    //   .approve(usdDepositerAddress, ethers.constants.MaxUint256);
+
+    // Add liquidity to the new StableSwap pool
+    // const metaPoolAddr = await curveFactory.pool_list(poolCount);
+
+    // const depositer = new ethers.Contract(
+    //   usdDepositerAddress,
+    //   usdDepositerABI,
+    //   provider
+    // );
+
+    // await depositer
+    //   .add_liquidity(
+    //     metaPoolAddr,
+    //     [
+    //       ethers.BigNumber.from("1000"),
+    //       ethers.BigNumber.from("1000"),
+    //       ethers.BigNumber.from("1000"),
+    //       ethers.BigNumber.from("1000"),
+    //     ],
+    //     "0"
+    //   );
+    // console.log(amountToReceive);
+    // const expectedLPTokens = await metaPool.totalSupply();
+    // const expectedLPTokens = await metaPool.A();
+    // console.log(expectedLPTokens);
 
     const Bonding = await deploy("Bonding", {
       from: admin.address,

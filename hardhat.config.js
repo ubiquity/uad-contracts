@@ -2,7 +2,6 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-deploy");
 require("hardhat-deploy-ethers");
 require("dotenv").config();
-require("@eth-optimism/smock/build/src/plugins/hardhat-storagelayout");
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -23,13 +22,15 @@ module.exports = {
     _3CrvBasePool: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     _3CrvToken: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
     CurveFactory: "0xfD6f33A0509ec67dEFc500755322aBd9Df1bD5B8",
+    usdDepositerAddress: "0xA79828DF1850E8a3A3064576f380D90aECDD3359",
+    curveWhaleAddress: "0x09cabda22B553bA8FFCD2d453078e2fD4017404F",
   },
 
   networks: {
     hardhat: {
       forking: {
         url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
-        blockNumber: 11748565,
+        blockNumber: 11754488,
       },
       accounts: [
         {
