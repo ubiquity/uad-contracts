@@ -168,6 +168,12 @@ contract Bonding is CollectableDust {
                 tokenAmount % (streamStop.sub(streamStart))
             );
 
+            IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
+            IERC20(manager.uADTokenAddress()).safeApprove(
+                address(sablier),
+                tokenAmount
+            );
+
             sablier.createStream(
                 msg.sender,
                 tokenAmount,
