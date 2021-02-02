@@ -138,29 +138,6 @@ describe("Bonding", () => {
       .grantRole(ethers.utils.id("MINTER_ROLE"), bonding.address);
   });
 
-  describe("Sablier configuration", () => {
-    it("Should return the current Sablier address", async () => {
-      expect(await bonding.sablier()).to.equal(sablier);
-    });
-
-    it("admin should be able to update the Sablier address", async () => {
-      await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
-      expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
-    });
-
-    it("Should emit the SablierUpdated event", async () => {
-      await expect(bonding.connect(admin).setSablier(DAI))
-        .to.emit(bonding, "SablierUpdated")
-        .withArgs(DAI);
-    });
-
-    it("Should revert when another account tries to update the Sablier address", async () => {
-      await expect(
-        bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
-      ).to.be.revertedWith("Caller is not a bonding manager");
-    });
-  });
-
   describe("CollectableDust", () => {
     it("Admin should be able to add protocol token (CollectableDust)", async () => {
       await bonding.connect(admin).addProtocolToken(USDC);
@@ -419,6 +396,68 @@ describe("Bonding", () => {
       );
 
       await bonding.connect(admin).setRedeemStreamTime(initialRedeemStreamTime);
+    });
+
+    it("Users should be able to start Sablier streams to redeem their shares", async () => {
+      const prevUADBalance = parseInt(
+        (await uAD.balanceOf(secondAccount.address)).toString()
+      );
+
+      const amountToBond = ethers.utils.parseEther("5000");
+      await uAD
+        .connect(secondAccount)
+        .approve(bonding.address, ethers.BigNumber.from("0"));
+      await uAD.connect(secondAccount).approve(bonding.address, amountToBond);
+
+      await bonding.connect(secondAccount).bondTokens(amountToBond);
+
+      const prevBondingSharesBalance = await bondingShare.balanceOf(
+        secondAccount.address
+      );
+
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, ethers.BigNumber.from("0"));
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, prevBondingSharesBalance);
+
+      await bonding
+        .connect(secondAccount)
+        .redeemShares(prevBondingSharesBalance);
+
+      expect(
+        parseInt((await uAD.balanceOf(secondAccount.address)).toString())
+      ).to.be.lessThan(prevUADBalance);
+
+      expect(parseInt(prevBondingSharesBalance.toString())).to.be.greaterThan(
+        parseInt(
+          (await bondingShare.balanceOf(secondAccount.address)).toString()
+        )
+      );
+    });
+  });
+
+  describe("Sablier configuration", () => {
+    it("Should return the current Sablier address", async () => {
+      expect(await bonding.sablier()).to.equal(sablier);
+    });
+
+    it("admin should be able to update the Sablier address", async () => {
+      await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
+      expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
+    });
+
+    it("Should emit the SablierUpdated event", async () => {
+      await expect(bonding.connect(admin).setSablier(DAI))
+        .to.emit(bonding, "SablierUpdated")
+        .withArgs(DAI);
+    });
+
+    it("Should revert when another account tries to update the Sablier address", async () => {
+      await expect(
+        bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
+      ).to.be.revertedWith("Caller is not a bonding manager");
     });
   });
 });
