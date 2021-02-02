@@ -31,6 +31,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public dollarCalculatorAddress;
     address public bondingShareAddress;
     address public stableSwapMetaPoolAddress;
+    address public autoRedeemPoolTokenAddress;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -153,11 +154,18 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         stableSwapMetaPoolAddress = _stableSwapMetaPoolAddress;
     }
 
-    function getExcessDollarsDistributor(address debtCouponManagerAddress)
+    function setAutoRedeemPoolTokenAddress(address _autoRedeemPoolTokenAddress)
+        external
+        onlyAdmin
+    {
+        autoRedeemPoolTokenAddress = _autoRedeemPoolTokenAddress;
+    }
+
+    function getExcessDollarsDistributor(address _debtCouponManagerAddress)
         external
         view
         returns (address)
     {
-        return _excessDollarDistributors[debtCouponManagerAddress];
+        return _excessDollarDistributors[_debtCouponManagerAddress];
     }
 }

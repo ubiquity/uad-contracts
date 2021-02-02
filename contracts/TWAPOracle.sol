@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity =0.6.6;
+pragma solidity >=0.6.6;
 
 import "hardhat/console.sol";
 import "./interfaces/IMetaPool.sol";
@@ -29,7 +29,7 @@ contract TWAPOracle {
         address _pool,
         address _token0,
         address _token1
-    ) public {
+    ) {
         pool = _pool;
         token0 = _token0;
         token1 = _token1;
