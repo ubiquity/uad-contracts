@@ -22,7 +22,7 @@ contract Bonding is CollectableDust {
     uint256 public maxBondingPrice = uint256(1 ether).mul(1000000);
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = 0;
-    uint256 public redeemStreamTime = 604800; // 1 week in seconds
+    uint256 public redeemStreamTime = 86400; // 1 day in seconds
 
     modifier onlyBondingManager() {
         require(
