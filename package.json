@@ -62,6 +62,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "3.3.0-solc-0.7",
     "@uniswap/lib": "^4.0.1-alpha",
-    "@uniswap/v2-periphery": "^1.1.0-beta.0"
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "solidity-linked-list": "^4.0.0"
   }
 }
