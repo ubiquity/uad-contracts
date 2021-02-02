@@ -164,9 +164,8 @@ contract Bonding is CollectableDust {
             uint256 streamStop = streamStart.add(redeemStreamTime);
             // The deposit must be a multiple of the difference between the stop
             // time and the start time
-            streamStop = streamStop.add(
-                tokenAmount % (streamStop.sub(streamStart))
-            );
+            uint256 streamDuration = streamStop.sub(streamStart);
+            tokenAmount = tokenAmount.div(streamDuration).mul(streamDuration);
 
             IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
             IERC20(manager.uADTokenAddress()).safeApprove(
