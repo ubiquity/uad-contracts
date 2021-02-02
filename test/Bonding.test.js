@@ -7,8 +7,9 @@ const {
   getNamedAccounts,
   network,
 } = require("hardhat");
-const { BigNumber } = require("ethers");
+
 const CurveABI = require("./Curve.json");
+const { mineBlock } = require("./utils/hardhatNode");
 
 const provider = waffle.provider;
 const { deploy } = deployments;
@@ -20,6 +21,7 @@ describe("Bonding", () => {
   let manager;
   let admin;
   let secondAccount;
+  let uAD;
   let sablier;
   let USDC;
   let DAI;
@@ -27,6 +29,7 @@ describe("Bonding", () => {
   let _3CrvBasePool;
   let _3CrvToken;
   let curveWhaleAddress;
+  let twapOracle;
 
   before(async () => {
     ({
@@ -61,7 +64,7 @@ describe("Bonding", () => {
     const UAD = await deploy("UbiquityAlgorithmicDollar", {
       from: admin.address,
     });
-    const uAD = new ethers.Contract(UAD.address, UAD.abi, provider);
+    uAD = new ethers.Contract(UAD.address, UAD.abi, provider);
 
     await uAD
       .connect(admin)
@@ -94,63 +97,32 @@ describe("Bonding", () => {
 
     const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
 
-    console.log((await crvToken.balanceOf(metaPoolAddr)).toString());
+    const TWAPOracle = await deploy("TWAPOracle", {
+      from: admin.address,
+      args: [metaPoolAddr, _3CrvToken, uAD.address],
+    });
 
-    // const metaPool = new ethers.Contract();
-    // const curveFactory = new ethers.Contract(
-    //   CurveFactory,
-    //   CurveFactoryABI,
-    //   provider
-    // );
+    twapOracle = new ethers.Contract(
+      TWAPOracle.address,
+      TWAPOracle.abi,
+      provider
+    );
 
-    // Will be used to get the address of the newly-deployed meta pool
-    // const poolCount = parseInt((await curveFactory.pool_count()).toString());
+    await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
 
-    // // Create new StableSwap meta pool (uDA <-> 3Crv)
-    // await curveFactory
-    //   .connect(secondAccount)
-    //   .deploy_metapool(
-    //     _3CrvBasePool,
-    //     "Ubiquity Algorithmic Dollar",
-    //     "uAD",
-    //     uAD.address,
-    //     10,
-    //     4000000
-    //   );
+    await twapOracle.connect(secondAccount).update();
 
-    // Approve the depositor to spend the user's tokens
-    // await uAD
-    //   .connect(secondAccount)
-    //   .approve(usdDepositerAddress, ethers.constants.MaxUint256);
+    let blockTimestamp =
+      parseInt((await twapOracle.reservesBlockTimestampLast()).toString()) +
+      23 * 3600;
+    await mineBlock(blockTimestamp);
+    await twapOracle.connect(secondAccount).update();
 
-    // await crvToken
-    //   .connect(secondAccount)
-    //   .approve(usdDepositerAddress, ethers.constants.MaxUint256);
-
-    // Add liquidity to the new StableSwap pool
-    // const metaPoolAddr = await curveFactory.pool_list(poolCount);
-
-    // const depositer = new ethers.Contract(
-    //   usdDepositerAddress,
-    //   usdDepositerABI,
-    //   provider
-    // );
-
-    // await depositer
-    //   .add_liquidity(
-    //     metaPoolAddr,
-    //     [
-    //       ethers.BigNumber.from("1000"),
-    //       ethers.BigNumber.from("1000"),
-    //       ethers.BigNumber.from("1000"),
-    //       ethers.BigNumber.from("1000"),
-    //     ],
-    //     "0"
-    //   );
-    // console.log(amountToReceive);
-    // const expectedLPTokens = await metaPool.totalSupply();
-    // const expectedLPTokens = await metaPool.A();
-    // console.log(expectedLPTokens);
+    blockTimestamp =
+      parseInt((await twapOracle.reservesBlockTimestampLast()).toString()) +
+      23 * 3600;
+    await mineBlock(blockTimestamp);
+    await twapOracle.connect(secondAccount).update();
 
     const Bonding = await deploy("Bonding", {
       from: admin.address,
@@ -323,7 +295,7 @@ describe("Bonding", () => {
         .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
     )
       .to.emit(bonding, "BondingDiscountMultiplierUpdated")
-      .withArgs(BigNumber.from(2));
+      .withArgs(ethers.BigNumber.from(2));
   });
 
   it("Admin should be able to update the redeemStreamTime", async () => {
@@ -350,5 +322,11 @@ describe("Bonding", () => {
     )
       .to.emit(bonding, "RedeemStreamTimeUpdated")
       .withArgs(ethers.BigNumber.from(0));
+  });
+
+  it("Oracle should return the correct initial price", async () => {
+    expect(
+      await twapOracle.consult(uAD.address, ethers.utils.parseEther("1"))
+    ).to.equal(ethers.utils.parseEther("1"));
   });
 });
