@@ -30,6 +30,7 @@ describe("Bonding", () => {
   let _3CrvToken;
   let curveWhaleAddress;
   let twapOracle;
+  let bondingShare;
 
   before(async () => {
     ({
@@ -47,7 +48,7 @@ describe("Bonding", () => {
       from: admin.address,
     });
 
-    const bondingShare = new ethers.Contract(
+    bondingShare = new ethers.Contract(
       BondingShare.address,
       BondingShare.abi,
       provider
@@ -66,9 +67,11 @@ describe("Bonding", () => {
     });
     uAD = new ethers.Contract(UAD.address, UAD.abi, provider);
 
-    await uAD
-      .connect(admin)
-      .mint(manager.address, ethers.utils.parseEther("10000"));
+    for (const signer of [manager, admin, secondAccount]) {
+      await uAD
+        .connect(admin)
+        .mint(signer.address, ethers.utils.parseEther("10000"));
+    }
 
     await manager.connect(admin).setuADTokenAddress(uAD.address);
 
@@ -301,10 +304,10 @@ describe("Bonding", () => {
   it("Admin should be able to update the redeemStreamTime", async () => {
     await bonding
       .connect(admin)
-      .setRedeemStreamTime(ethers.BigNumber.from(86400));
+      .setRedeemStreamTime(ethers.BigNumber.from("0"));
 
     expect(await bonding.redeemStreamTime()).to.equal(
-      ethers.BigNumber.from(86400)
+      ethers.BigNumber.from("0")
     );
   });
 
@@ -318,15 +321,84 @@ describe("Bonding", () => {
 
   it("Should emit the RedeemStreamTimeUpdated event", async () => {
     await expect(
-      bonding.connect(admin).setRedeemStreamTime(ethers.BigNumber.from(0))
+      bonding
+        .connect(admin)
+        .setRedeemStreamTime(ethers.BigNumber.from("604800"))
     )
       .to.emit(bonding, "RedeemStreamTimeUpdated")
-      .withArgs(ethers.BigNumber.from(0));
+      .withArgs(ethers.BigNumber.from("604800"));
   });
 
   it("Oracle should return the correct initial price", async () => {
     expect(
       await twapOracle.consult(uAD.address, ethers.utils.parseEther("1"))
     ).to.equal(ethers.utils.parseEther("1"));
+  });
+
+  it("User should be able to bond uAD tokens", async () => {
+    const prevBondingSharesBalance = parseInt(
+      (await bondingShare.balanceOf(secondAccount.address)).toString()
+    );
+
+    const amountToBond = ethers.utils.parseEther("5000");
+
+    await uAD
+      .connect(secondAccount)
+      .approve(bonding.address, ethers.BigNumber.from("0"));
+    await uAD.connect(secondAccount).approve(bonding.address, amountToBond);
+
+    await bonding.connect(secondAccount).bondTokens(amountToBond);
+
+    const newBondingSharesBalance = parseInt(
+      (await bondingShare.balanceOf(secondAccount.address)).toString()
+    );
+
+    expect(newBondingSharesBalance).to.be.greaterThan(prevBondingSharesBalance);
+  });
+
+  it("Should revert when users try to redeem more shares than they have", async () => {
+    await expect(
+      bonding
+        .connect(secondAccount)
+        .redeemShares(ethers.utils.parseEther("10000"))
+    ).to.be.revertedWith("Bonding: Caller does not have enough shares");
+  });
+
+  it("Users should be able to instantaneously redeem shares when the redeemStreamTime is 0", async () => {
+    const initialRedeemStreamTime = await bonding.redeemStreamTime();
+    await bonding
+      .connect(admin)
+      .setRedeemStreamTime(ethers.BigNumber.from("0"));
+
+    const prevUADBalance = parseInt(
+      (await uAD.balanceOf(secondAccount.address)).toString()
+    );
+    const prevBondingSharesBalance = await bondingShare.balanceOf(
+      secondAccount.address
+    );
+    await bondingShare
+      .connect(secondAccount)
+      .approve(bonding.address, ethers.BigNumber.from("0"));
+    await bondingShare
+      .connect(secondAccount)
+      .approve(bonding.address, prevBondingSharesBalance);
+
+    await bonding.connect(secondAccount).redeemShares(prevBondingSharesBalance);
+
+    const newUADBalance = parseInt(
+      (await uAD.balanceOf(secondAccount.address)).toString()
+    );
+
+    const newBondingSharesBalance = parseInt(
+      (await bondingShare.balanceOf(secondAccount.address)).toString()
+    );
+
+    expect(prevUADBalance).to.be.lessThan(newUADBalance);
+
+    expect(parseInt(prevBondingSharesBalance.toString())).to.be.greaterThan(
+      newBondingSharesBalance
+    );
+
+    await bonding.connect(admin).setRedeemStreamTime(initialRedeemStreamTime);
   });
 });
