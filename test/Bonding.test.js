@@ -138,267 +138,287 @@ describe("Bonding", () => {
       .grantRole(ethers.utils.id("MINTER_ROLE"), bonding.address);
   });
 
-  it("Should return the current Sablier address", async () => {
-    expect(await bonding.sablier()).to.equal(sablier);
-  });
-
-  it("admin should be able to update the Sablier address", async () => {
-    await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
-    expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
-  });
-
-  it("Should emit the SablierUpdated event", async () => {
-    await expect(bonding.connect(admin).setSablier(DAI))
-      .to.emit(bonding, "SablierUpdated")
-      .withArgs(DAI);
-  });
-
-  it("Should revert when another account tries to update the Sablier address", async () => {
-    await expect(
-      bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
-    ).to.be.revertedWith("Caller is not a bonding manager");
-  });
-
-  it("Admin should be able to add protocol token (CollectableDust)", async () => {
-    await bonding.connect(admin).addProtocolToken(USDC);
-  });
-
-  it("Should revert when another account tries to add protocol token (CollectableDust)", async () => {
-    await expect(
-      bonding.connect(secondAccount).addProtocolToken(USDC)
-    ).to.be.revertedWith("Caller is not a bonding manager");
-  });
-
-  it("Should revert when trying to add an already existing protocol token (CollectableDust)", async () => {
-    await expect(
-      bonding.connect(admin).addProtocolToken(USDC)
-    ).to.be.revertedWith("collectable-dust::token-is-part-of-the-protocol");
-  });
-
-  it("Should revert when another account tries to remove a protocol token (CollectableDust)", async () => {
-    await expect(
-      bonding.connect(secondAccount).removeProtocolToken(USDC)
-    ).to.be.revertedWith("Caller is not a bonding manager");
-  });
-
-  it("Admin should be able to remove protocol token (CollectableDust)", async () => {
-    await bonding.connect(admin).removeProtocolToken(USDC);
-  });
-
-  it("Should revert when trying to remove token that is not a part of the protocol (CollectableDust)", async () => {
-    await expect(
-      bonding.connect(admin).removeProtocolToken(USDC)
-    ).to.be.revertedWith("collectable-dust::token-not-part-of-the-protocol");
-  });
-
-  it("Admin should be able to send dust from the contract (CollectableDust)", async () => {
-    // Send ETH to the Bonding contract
-    await secondAccount.sendTransaction({
-      to: bonding.address,
-      value: ethers.utils.parseUnits("100", "gwei"),
+  describe("Sablier configuration", () => {
+    it("Should return the current Sablier address", async () => {
+      expect(await bonding.sablier()).to.equal(sablier);
     });
 
-    // Send dust back to the admin
-    await bonding
-      .connect(admin)
-      .sendDust(
-        admin.address,
-        await bonding.ETH_ADDRESS(),
-        ethers.utils.parseUnits("50", "gwei")
-      );
+    it("admin should be able to update the Sablier address", async () => {
+      await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
+      expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
+    });
+
+    it("Should emit the SablierUpdated event", async () => {
+      await expect(bonding.connect(admin).setSablier(DAI))
+        .to.emit(bonding, "SablierUpdated")
+        .withArgs(DAI);
+    });
+
+    it("Should revert when another account tries to update the Sablier address", async () => {
+      await expect(
+        bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
   });
 
-  it("Should emit DustSent event (CollectableDust)", async () => {
-    await expect(
-      bonding
+  describe("CollectableDust", () => {
+    it("Admin should be able to add protocol token (CollectableDust)", async () => {
+      await bonding.connect(admin).addProtocolToken(USDC);
+    });
+
+    it("Should revert when another account tries to add protocol token (CollectableDust)", async () => {
+      await expect(
+        bonding.connect(secondAccount).addProtocolToken(USDC)
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+
+    it("Should revert when trying to add an already existing protocol token (CollectableDust)", async () => {
+      await expect(
+        bonding.connect(admin).addProtocolToken(USDC)
+      ).to.be.revertedWith("collectable-dust::token-is-part-of-the-protocol");
+    });
+
+    it("Should revert when another account tries to remove a protocol token (CollectableDust)", async () => {
+      await expect(
+        bonding.connect(secondAccount).removeProtocolToken(USDC)
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+
+    it("Admin should be able to remove protocol token (CollectableDust)", async () => {
+      await bonding.connect(admin).removeProtocolToken(USDC);
+    });
+
+    it("Should revert when trying to remove token that is not a part of the protocol (CollectableDust)", async () => {
+      await expect(
+        bonding.connect(admin).removeProtocolToken(USDC)
+      ).to.be.revertedWith("collectable-dust::token-not-part-of-the-protocol");
+    });
+
+    it("Admin should be able to send dust from the contract (CollectableDust)", async () => {
+      // Send ETH to the Bonding contract
+      await secondAccount.sendTransaction({
+        to: bonding.address,
+        value: ethers.utils.parseUnits("100", "gwei"),
+      });
+
+      // Send dust back to the admin
+      await bonding
         .connect(admin)
         .sendDust(
           admin.address,
           await bonding.ETH_ADDRESS(),
           ethers.utils.parseUnits("50", "gwei")
-        )
-    )
-      .to.emit(bonding, "DustSent")
-      .withArgs(
-        admin.address,
-        await bonding.ETH_ADDRESS(),
-        ethers.utils.parseUnits("50", "gwei")
-      );
-  });
-  it("Should revert when another account tries to remove dust from the contract (CollectableDust)", async () => {
-    await expect(
-      bonding
-        .connect(secondAccount)
-        .sendDust(
+        );
+    });
+
+    it("Should emit DustSent event (CollectableDust)", async () => {
+      await expect(
+        bonding
+          .connect(admin)
+          .sendDust(
+            admin.address,
+            await bonding.ETH_ADDRESS(),
+            ethers.utils.parseUnits("50", "gwei")
+          )
+      )
+        .to.emit(bonding, "DustSent")
+        .withArgs(
           admin.address,
           await bonding.ETH_ADDRESS(),
-          ethers.utils.parseUnits("100", "gwei")
-        )
-    ).to.be.revertedWith("Caller is not a bonding manager");
+          ethers.utils.parseUnits("50", "gwei")
+        );
+    });
+    it("Should revert when another account tries to remove dust from the contract (CollectableDust)", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .sendDust(
+            admin.address,
+            await bonding.ETH_ADDRESS(),
+            ethers.utils.parseUnits("100", "gwei")
+          )
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+
+    it("Should emit ProtocolTokenAdded event (CollectableDust)", async () => {
+      await expect(bonding.connect(admin).addProtocolToken(DAI))
+        .to.emit(bonding, "ProtocolTokenAdded")
+        .withArgs(DAI);
+    });
+
+    it("Should emit ProtocolTokenRemoved event (CollectableDust)", async () => {
+      await expect(bonding.connect(admin).removeProtocolToken(DAI))
+        .to.emit(bonding, "ProtocolTokenRemoved")
+        .withArgs(DAI);
+    });
   });
 
-  it("Should emit ProtocolTokenAdded event (CollectableDust)", async () => {
-    await expect(bonding.connect(admin).addProtocolToken(DAI))
-      .to.emit(bonding, "ProtocolTokenAdded")
-      .withArgs(DAI);
-  });
-
-  it("Should emit ProtocolTokenRemoved event (CollectableDust)", async () => {
-    await expect(bonding.connect(admin).removeProtocolToken(DAI))
-      .to.emit(bonding, "ProtocolTokenRemoved")
-      .withArgs(DAI);
-  });
-
-  it("Admin should be able to update the maxBondingPrice", async () => {
-    await bonding
-      .connect(admin)
-      .setMaxBondingPrice(ethers.constants.MaxUint256);
-    expect(await bonding.maxBondingPrice()).to.equal(
-      ethers.constants.MaxUint256
-    );
-  });
-
-  it("Should revert when unauthorized accounts try to update the maxBondingPrice", async () => {
-    await expect(
-      bonding
-        .connect(secondAccount)
-        .setMaxBondingPrice(ethers.constants.MaxUint256)
-    ).to.be.revertedWith("Caller is not a bonding manager");
-  });
-
-  it("Should emit the MaxBondingPriceUpdated event", async () => {
-    await expect(
-      bonding.connect(admin).setMaxBondingPrice(ethers.constants.MaxUint256)
-    )
-      .to.emit(bonding, "MaxBondingPriceUpdated")
-      .withArgs(ethers.constants.MaxUint256);
-  });
-
-  it("Admin should be able to update the bondingDiscountMultiplier", async () => {
-    await bonding
-      .connect(admin)
-      .setBondingDiscountMultiplier(ethers.BigNumber.from(2));
-    expect(await bonding.bondingDiscountMultiplier()).to.equal(
-      ethers.BigNumber.from(2)
-    );
-  });
-
-  it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
-    await expect(
-      bonding
-        .connect(secondAccount)
-        .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
-    ).to.be.revertedWith("Caller is not a bonding manager");
-  });
-
-  it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
-    await expect(
-      bonding
+  describe("maxBondingPrice", () => {
+    it("Admin should be able to update the maxBondingPrice", async () => {
+      await bonding
         .connect(admin)
-        .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
-    )
-      .to.emit(bonding, "BondingDiscountMultiplierUpdated")
-      .withArgs(ethers.BigNumber.from(2));
+        .setMaxBondingPrice(ethers.constants.MaxUint256);
+      expect(await bonding.maxBondingPrice()).to.equal(
+        ethers.constants.MaxUint256
+      );
+    });
+
+    it("Should revert when unauthorized accounts try to update the maxBondingPrice", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .setMaxBondingPrice(ethers.constants.MaxUint256)
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+
+    it("Should emit the MaxBondingPriceUpdated event", async () => {
+      await expect(
+        bonding.connect(admin).setMaxBondingPrice(ethers.constants.MaxUint256)
+      )
+        .to.emit(bonding, "MaxBondingPriceUpdated")
+        .withArgs(ethers.constants.MaxUint256);
+    });
   });
 
-  it("Admin should be able to update the redeemStreamTime", async () => {
-    await bonding
-      .connect(admin)
-      .setRedeemStreamTime(ethers.BigNumber.from("0"));
-
-    expect(await bonding.redeemStreamTime()).to.equal(
-      ethers.BigNumber.from("0")
-    );
-  });
-
-  it("Should revert when unauthorized accounts try to update the redeemStreamTime", async () => {
-    await expect(
-      bonding
-        .connect(secondAccount)
-        .setRedeemStreamTime(ethers.BigNumber.from(0))
-    ).to.be.revertedWith("Caller is not a bonding manager");
-  });
-
-  it("Should emit the RedeemStreamTimeUpdated event", async () => {
-    await expect(
-      bonding
+  describe("bondingDiscountMultiplier", () => {
+    it("Admin should be able to update the bondingDiscountMultiplier", async () => {
+      await bonding
         .connect(admin)
-        .setRedeemStreamTime(ethers.BigNumber.from("604800"))
-    )
-      .to.emit(bonding, "RedeemStreamTimeUpdated")
-      .withArgs(ethers.BigNumber.from("604800"));
+        .setBondingDiscountMultiplier(ethers.BigNumber.from(2));
+      expect(await bonding.bondingDiscountMultiplier()).to.equal(
+        ethers.BigNumber.from(2)
+      );
+    });
+
+    it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+
+    it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
+      await expect(
+        bonding
+          .connect(admin)
+          .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
+      )
+        .to.emit(bonding, "BondingDiscountMultiplierUpdated")
+        .withArgs(ethers.BigNumber.from(2));
+    });
   });
 
-  it("Oracle should return the correct initial price", async () => {
-    expect(
-      await twapOracle.consult(uAD.address, ethers.utils.parseEther("1"))
-    ).to.equal(ethers.utils.parseEther("1"));
+  describe("redeemStreamTime", () => {
+    it("Admin should be able to update the redeemStreamTime", async () => {
+      await bonding
+        .connect(admin)
+        .setRedeemStreamTime(ethers.BigNumber.from("0"));
+
+      expect(await bonding.redeemStreamTime()).to.equal(
+        ethers.BigNumber.from("0")
+      );
+    });
+
+    it("Should revert when unauthorized accounts try to update the redeemStreamTime", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .setRedeemStreamTime(ethers.BigNumber.from(0))
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+
+    it("Should emit the RedeemStreamTimeUpdated event", async () => {
+      await expect(
+        bonding
+          .connect(admin)
+          .setRedeemStreamTime(ethers.BigNumber.from("604800"))
+      )
+        .to.emit(bonding, "RedeemStreamTimeUpdated")
+        .withArgs(ethers.BigNumber.from("604800"));
+    });
   });
 
-  it("User should be able to bond uAD tokens", async () => {
-    const prevBondingSharesBalance = parseInt(
-      (await bondingShare.balanceOf(secondAccount.address)).toString()
-    );
-
-    const amountToBond = ethers.utils.parseEther("5000");
-
-    await uAD
-      .connect(secondAccount)
-      .approve(bonding.address, ethers.BigNumber.from("0"));
-    await uAD.connect(secondAccount).approve(bonding.address, amountToBond);
-
-    await bonding.connect(secondAccount).bondTokens(amountToBond);
-
-    const newBondingSharesBalance = parseInt(
-      (await bondingShare.balanceOf(secondAccount.address)).toString()
-    );
-
-    expect(newBondingSharesBalance).to.be.greaterThan(prevBondingSharesBalance);
+  describe("StableSwap meta pool TWAP oracle", () => {
+    it("Oracle should return the correct initial price", async () => {
+      expect(
+        await twapOracle.consult(uAD.address, ethers.utils.parseEther("1"))
+      ).to.equal(ethers.utils.parseEther("1"));
+    });
   });
 
-  it("Should revert when users try to redeem more shares than they have", async () => {
-    await expect(
-      bonding
+  describe("bondTokens", () => {
+    it("User should be able to bond uAD tokens", async () => {
+      const prevBondingSharesBalance = parseInt(
+        (await bondingShare.balanceOf(secondAccount.address)).toString()
+      );
+
+      const amountToBond = ethers.utils.parseEther("5000");
+
+      await uAD
         .connect(secondAccount)
-        .redeemShares(ethers.utils.parseEther("10000"))
-    ).to.be.revertedWith("Bonding: Caller does not have enough shares");
+        .approve(bonding.address, ethers.BigNumber.from("0"));
+      await uAD.connect(secondAccount).approve(bonding.address, amountToBond);
+
+      await bonding.connect(secondAccount).bondTokens(amountToBond);
+
+      const newBondingSharesBalance = parseInt(
+        (await bondingShare.balanceOf(secondAccount.address)).toString()
+      );
+
+      expect(newBondingSharesBalance).to.be.greaterThan(
+        prevBondingSharesBalance
+      );
+    });
   });
 
-  it("Users should be able to instantaneously redeem shares when the redeemStreamTime is 0", async () => {
-    const initialRedeemStreamTime = await bonding.redeemStreamTime();
-    await bonding
-      .connect(admin)
-      .setRedeemStreamTime(ethers.BigNumber.from("0"));
+  describe("redeemShares", () => {
+    it("Should revert when users try to redeem more shares than they have", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .redeemShares(ethers.utils.parseEther("10000"))
+      ).to.be.revertedWith("Bonding: Caller does not have enough shares");
+    });
 
-    const prevUADBalance = parseInt(
-      (await uAD.balanceOf(secondAccount.address)).toString()
-    );
-    const prevBondingSharesBalance = await bondingShare.balanceOf(
-      secondAccount.address
-    );
-    await bondingShare
-      .connect(secondAccount)
-      .approve(bonding.address, ethers.BigNumber.from("0"));
-    await bondingShare
-      .connect(secondAccount)
-      .approve(bonding.address, prevBondingSharesBalance);
+    it("Users should be able to instantaneously redeem shares when the redeemStreamTime is 0", async () => {
+      const initialRedeemStreamTime = await bonding.redeemStreamTime();
+      await bonding
+        .connect(admin)
+        .setRedeemStreamTime(ethers.BigNumber.from("0"));
 
-    await bonding.connect(secondAccount).redeemShares(prevBondingSharesBalance);
+      const prevUADBalance = parseInt(
+        (await uAD.balanceOf(secondAccount.address)).toString()
+      );
+      const prevBondingSharesBalance = await bondingShare.balanceOf(
+        secondAccount.address
+      );
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, ethers.BigNumber.from("0"));
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, prevBondingSharesBalance);
 
-    const newUADBalance = parseInt(
-      (await uAD.balanceOf(secondAccount.address)).toString()
-    );
+      await bonding
+        .connect(secondAccount)
+        .redeemShares(prevBondingSharesBalance);
 
-    const newBondingSharesBalance = parseInt(
-      (await bondingShare.balanceOf(secondAccount.address)).toString()
-    );
+      const newUADBalance = parseInt(
+        (await uAD.balanceOf(secondAccount.address)).toString()
+      );
 
-    expect(prevUADBalance).to.be.lessThan(newUADBalance);
+      const newBondingSharesBalance = parseInt(
+        (await bondingShare.balanceOf(secondAccount.address)).toString()
+      );
 
-    expect(parseInt(prevBondingSharesBalance.toString())).to.be.greaterThan(
-      newBondingSharesBalance
-    );
+      expect(prevUADBalance).to.be.lessThan(newUADBalance);
 
-    await bonding.connect(admin).setRedeemStreamTime(initialRedeemStreamTime);
+      expect(parseInt(prevBondingSharesBalance.toString())).to.be.greaterThan(
+        newBondingSharesBalance
+      );
+
+      await bonding.connect(admin).setRedeemStreamTime(initialRedeemStreamTime);
+    });
   });
 });
