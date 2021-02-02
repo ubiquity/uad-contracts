@@ -201,6 +201,10 @@ contract Bonding is CollectableDust {
     }
 
     function currentTokenPrice() public view returns (uint256) {
-        return ITWAPOracle(manager.twapOracleAddress()).consult(TARGET_PRICE);
+        return
+            ITWAPOracle(manager.twapOracleAddress()).consult(
+                manager.uADTokenAddress(),
+                TARGET_PRICE
+            );
     }
 }
