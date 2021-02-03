@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
+import { DeployFunction } from "hardhat-deploy/types";
 
-export default async ({ deployments }) => {
+const deployFunc: DeployFunction = async ({ deployments }) => {
   const { deploy } = deployments;
   const [admin] = await ethers.getSigners();
 
@@ -23,3 +24,5 @@ export default async ({ deployments }) => {
       .getRoleMember(ethers.utils.id("MINTER_ROLE"), "0")
   );
 };
+
+export default deployFunc;

@@ -1,6 +1,10 @@
 import { ethers } from "hardhat";
+import { DeployFunction } from "hardhat-deploy/types";
 
-export default async ({ getNamedAccounts, deployments }) => {
+const deployFunc: DeployFunction = async ({
+  deployments,
+  getNamedAccounts,
+}) => {
   const { deploy } = deployments;
   const { sablier } = await getNamedAccounts();
   const [admin] = await ethers.getSigners();
@@ -13,3 +17,5 @@ export default async ({ getNamedAccounts, deployments }) => {
     deterministicDeployment: true,
   });
 };
+
+export default deployFunc;

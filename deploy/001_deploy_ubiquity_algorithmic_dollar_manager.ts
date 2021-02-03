@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
+import { DeployFunction } from "hardhat-deploy/types";
 
-export default async ({ deployments }) => {
+const deployFunc: DeployFunction = async ({ deployments }) => {
   const { deploy } = deployments;
   const [admin] = await ethers.getSigners();
 
@@ -24,3 +25,5 @@ export default async ({ deployments }) => {
     .connect(admin)
     .setBondingShareAddress(bondingShare.address);
 };
+
+export default deployFunc;
