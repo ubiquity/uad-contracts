@@ -1,12 +1,12 @@
-require("@nomiclabs/hardhat-waffle");
-require("hardhat-deploy");
-require("hardhat-deploy-ethers");
-require("dotenv").config();
+import "@nomiclabs/hardhat-waffle";
+import * as dotenv from "dotenv";
+import "hardhat-deploy";
+import "hardhat-deploy-ethers";
+import { HardhatUserConfig } from "hardhat/config";
 
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-module.exports = {
+dotenv.config();
+
+const config: HardhatUserConfig = {
   solidity: {
     compilers: [{ version: "0.7.6" }, { version: "0.6.6" }],
   },
@@ -45,3 +45,5 @@ module.exports = {
     },
   },
 };
+
+export default config;

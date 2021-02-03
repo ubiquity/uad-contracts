@@ -1,36 +1,28 @@
-const { expect, use } = require("chai");
-const { describe, it, before } = require("mocha");
-const {
-  ethers,
-  deployments,
-  waffle,
-  getNamedAccounts,
-  network,
-} = require("hardhat");
+import { Contract, Signer } from "ethers";
+import { deployments, ethers, getNamedAccounts, network } from "hardhat";
+import { before, describe, it } from "mocha";
+import { expect, provider } from "./setup";
 
 const CurveABI = require("./Curve.json");
 const { mineBlock } = require("./utils/hardhatNode");
 
-const provider = waffle.provider;
 const { deploy } = deployments;
-const { solidity } = waffle;
-use(solidity);
 
 describe("Bonding", () => {
-  let bonding;
-  let manager;
-  let admin;
-  let secondAccount;
-  let uAD;
-  let sablier;
-  let USDC;
-  let DAI;
-  let CurveFactory;
-  let _3CrvBasePool;
-  let _3CrvToken;
-  let curveWhaleAddress;
-  let twapOracle;
-  let bondingShare;
+  let bonding: Contract;
+  let manager: Contract;
+  let admin: Signer;
+  let secondAccount: Signer;
+  let uAD: Contract;
+  let sablier: string;
+  let USDC: string;
+  let DAI: string;
+  let CurveFactory: string;
+  let _3CrvBasePool: string;
+  let _3CrvToken: string;
+  let curveWhaleAddress: string;
+  let twapOracle: Contract;
+  let bondingShare: Contract;
 
   before(async () => {
     ({
@@ -45,7 +37,7 @@ describe("Bonding", () => {
     [admin, secondAccount] = await ethers.getSigners();
 
     const BondingShare = await deploy("BondingShare", {
-      from: admin.address,
+      from: await admin.getAddress(),
     });
 
     bondingShare = new ethers.Contract(
@@ -55,23 +47,26 @@ describe("Bonding", () => {
     );
 
     const Manager = await deploy("UbiquityAlgorithmicDollarManager", {
-      from: admin.address,
-      args: [admin.address],
+      from: await admin.getAddress(),
+      args: [await admin.getAddress()],
     });
     manager = new ethers.Contract(Manager.address, Manager.abi, provider);
 
     await manager.connect(admin).setBondingShareAddress(bondingShare.address);
 
     const UAD = await deploy("UbiquityAlgorithmicDollar", {
-      from: admin.address,
+      from: await admin.getAddress(),
     });
     uAD = new ethers.Contract(UAD.address, UAD.abi, provider);
 
-    for (const signer of [manager, admin, secondAccount]) {
+    for (const signer of [admin, secondAccount]) {
       await uAD
         .connect(admin)
-        .mint(signer.address, ethers.utils.parseEther("10000"));
+        .mint(await signer.getAddress(), ethers.utils.parseEther("10000"));
     }
+    await uAD
+      .connect(admin)
+      .mint(await manager.address, ethers.utils.parseEther("10000"));
 
     await manager.connect(admin).setuADTokenAddress(uAD.address);
 
@@ -101,7 +96,7 @@ describe("Bonding", () => {
     const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
 
     const TWAPOracle = await deploy("TWAPOracle", {
-      from: admin.address,
+      from: await admin.getAddress(),
       args: [metaPoolAddr, _3CrvToken, uAD.address],
     });
 
@@ -128,7 +123,7 @@ describe("Bonding", () => {
     await twapOracle.connect(secondAccount).update();
 
     const Bonding = await deploy("Bonding", {
-      from: admin.address,
+      from: await admin.getAddress(),
       args: [manager.address, sablier],
     });
     bonding = new ethers.Contract(Bonding.address, Bonding.abi, provider);
@@ -182,7 +177,7 @@ describe("Bonding", () => {
       await bonding
         .connect(admin)
         .sendDust(
-          admin.address,
+          await admin.getAddress(),
           await bonding.ETH_ADDRESS(),
           ethers.utils.parseUnits("50", "gwei")
         );
@@ -193,14 +188,14 @@ describe("Bonding", () => {
         bonding
           .connect(admin)
           .sendDust(
-            admin.address,
+            await admin.getAddress(),
             await bonding.ETH_ADDRESS(),
             ethers.utils.parseUnits("50", "gwei")
           )
       )
         .to.emit(bonding, "DustSent")
         .withArgs(
-          admin.address,
+          await admin.getAddress(),
           await bonding.ETH_ADDRESS(),
           ethers.utils.parseUnits("50", "gwei")
         );
@@ -210,7 +205,7 @@ describe("Bonding", () => {
         bonding
           .connect(secondAccount)
           .sendDust(
-            admin.address,
+            await admin.getAddress(),
             await bonding.ETH_ADDRESS(),
             ethers.utils.parseUnits("100", "gwei")
           )
@@ -327,7 +322,9 @@ describe("Bonding", () => {
   describe("bondTokens", () => {
     it("User should be able to bond uAD tokens", async () => {
       const prevBondingSharesBalance = parseInt(
-        (await bondingShare.balanceOf(secondAccount.address)).toString()
+        (
+          await bondingShare.balanceOf(await secondAccount.getAddress())
+        ).toString()
       );
 
       const amountToBond = ethers.utils.parseEther("5000");
@@ -340,7 +337,9 @@ describe("Bonding", () => {
       await bonding.connect(secondAccount).bondTokens(amountToBond);
 
       const newBondingSharesBalance = parseInt(
-        (await bondingShare.balanceOf(secondAccount.address)).toString()
+        (
+          await bondingShare.balanceOf(await secondAccount.getAddress())
+        ).toString()
       );
 
       expect(newBondingSharesBalance).to.be.greaterThan(
@@ -365,10 +364,10 @@ describe("Bonding", () => {
         .setRedeemStreamTime(ethers.BigNumber.from("0"));
 
       const prevUADBalance = parseInt(
-        (await uAD.balanceOf(secondAccount.address)).toString()
+        (await uAD.balanceOf(await secondAccount.getAddress())).toString()
       );
       const prevBondingSharesBalance = await bondingShare.balanceOf(
-        secondAccount.address
+        await secondAccount.getAddress()
       );
       await bondingShare
         .connect(secondAccount)
@@ -382,11 +381,13 @@ describe("Bonding", () => {
         .redeemShares(prevBondingSharesBalance);
 
       const newUADBalance = parseInt(
-        (await uAD.balanceOf(secondAccount.address)).toString()
+        (await uAD.balanceOf(await secondAccount.getAddress())).toString()
       );
 
       const newBondingSharesBalance = parseInt(
-        (await bondingShare.balanceOf(secondAccount.address)).toString()
+        (
+          await bondingShare.balanceOf(await secondAccount.getAddress())
+        ).toString()
       );
 
       expect(prevUADBalance).to.be.lessThan(newUADBalance);
@@ -400,7 +401,7 @@ describe("Bonding", () => {
 
     it("Users should be able to start Sablier streams to redeem their shares", async () => {
       const prevUADBalance = parseInt(
-        (await uAD.balanceOf(secondAccount.address)).toString()
+        (await uAD.balanceOf(await secondAccount.getAddress())).toString()
       );
 
       const amountToBond = ethers.utils.parseEther("5000");
@@ -412,7 +413,7 @@ describe("Bonding", () => {
       await bonding.connect(secondAccount).bondTokens(amountToBond);
 
       const prevBondingSharesBalance = await bondingShare.balanceOf(
-        secondAccount.address
+        await secondAccount.getAddress()
       );
 
       await bondingShare
@@ -427,12 +428,16 @@ describe("Bonding", () => {
         .redeemShares(prevBondingSharesBalance);
 
       expect(
-        parseInt((await uAD.balanceOf(secondAccount.address)).toString())
+        parseInt(
+          (await uAD.balanceOf(await secondAccount.getAddress())).toString()
+        )
       ).to.be.lessThan(prevUADBalance);
 
       expect(parseInt(prevBondingSharesBalance.toString())).to.be.greaterThan(
         parseInt(
-          (await bondingShare.balanceOf(secondAccount.address)).toString()
+          (
+            await bondingShare.balanceOf(await secondAccount.getAddress())
+          ).toString()
         )
       );
     });

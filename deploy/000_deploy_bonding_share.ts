@@ -1,6 +1,6 @@
-const { ethers } = require("hardhat");
+import { ethers } from "hardhat";
 
-module.exports = async ({ deployments }) => {
+export default async ({ deployments }) => {
   const { deploy } = deployments;
   const [admin] = await ethers.getSigners();
 
