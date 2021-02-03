@@ -1,15 +1,15 @@
-const { network } = require("hardhat");
+import { network } from "hardhat";
 
-exports.passOneHour = async () => {
+export async function passOneHour(): Promise<void> {
   await network.provider.request({
     method: "evm_increaseTime",
     params: [3600],
   });
-};
+}
 
-exports.mineBlock = async (timestamp) => {
+export async function mineBlock(timestamp: number): Promise<void> {
   await network.provider.request({
     method: "evm_mine",
     params: [timestamp],
   });
-};
+}
