@@ -1,10 +1,9 @@
 import { Contract, Signer } from "ethers";
 import { deployments, ethers, getNamedAccounts, network } from "hardhat";
 import { before, describe, it } from "mocha";
+import CurveABI from "./Curve.json";
 import { expect, provider } from "./setup";
-
-const CurveABI = require("./Curve.json");
-const { mineBlock } = require("./utils/hardhatNode");
+import { mineBlock } from "./utils/hardhatNode";
 
 const { deploy } = deployments;
 
