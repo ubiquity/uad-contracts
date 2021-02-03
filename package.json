@@ -6,7 +6,7 @@
   "scripts": {
     "test": "npx hardhat test",
     "solhint": "find . -type f -name '*.sol' -not -path './node_modules/*' -not -path './contracts/interfaces/ICurveFactory.sol' -not -path './contracts/interfaces/IMetaPool.sol' -exec npx solhint --fix {} ';'",
-    "eslint": "npx eslint . --ext js --fix",
+    "eslint": "npx eslint . --ext ts --fix",
     "format": "npx prettier --write .",
     "lint": "yarn solhint && yarn eslint && yarn format"
   },
@@ -39,8 +39,15 @@
   "homepage": "https://github.com/ubiquity/stabilitas-bonding#readme",
   "devDependencies": {
     "@eth-optimism/smock": "^0.2.1-alpha.0",
+    "@ethereum-waffle/chai": "^3.2.2",
+    "@ethereum-waffle/mock-contract": "^3.2.2",
+    "@ethereum-waffle/provider": "^3.2.2",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@types/dotenv": "^8.2.0",
+    "@types/mocha": "^8.2.0",
+    "@typescript-eslint/eslint-plugin": "^4.14.2",
+    "@typescript-eslint/parser": "^4.14.2",
     "abi-to-sol": "^0.2.0",
     "babel-eslint": "^10.1.0",
     "chai": "^4.2.0",
@@ -48,7 +55,7 @@
     "eslint": "^7.18.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-plugin-prettier": "^3.3.1",
-    "ethereum-waffle": "^3.2.1",
+    "ethereum-waffle": "^3.2.2",
     "ethers": "^5.0.26",
     "hardhat": "^2.0.8",
     "hardhat-deploy": "^0.7.0-beta.44",
@@ -66,5 +73,6 @@
     "@uniswap/lib": "^4.0.1-alpha",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "solidity-linked-list": "^4.0.0"
-  }
+  },
+  "type": "module"
 }
