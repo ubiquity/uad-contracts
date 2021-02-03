@@ -34,11 +34,11 @@ const config: HardhatUserConfig = {
       },
       accounts: [
         {
-          privateKey: process.env.TREASURY_PRIV_KEY,
+          privateKey: process.env.TREASURY_PRIV_KEY ?? "",
           balance: "10000000000000000000000",
         },
         {
-          privateKey: process.env.SECOND_ACC_PRIV_KEY,
+          privateKey: process.env.SECOND_ACC_PRIV_KEY ?? "",
           balance: "10000000000000000000000",
         },
       ],
