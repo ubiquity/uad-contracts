@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockAutoRedeemToken is ERC20 {
     // Temporary placeholder name
-    constructor(uint256 initialSupply) ERC20("AUTOREDEEM", "ARDM") {
+    constructor(uint256 initialSupply) ERC20("AUTOREDEEM", "uAR") {
         _mint(msg.sender, initialSupply);
     }
 
