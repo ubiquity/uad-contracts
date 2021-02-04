@@ -75,14 +75,15 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         MockStabilitasToken stabilitas =
             MockStabilitasToken(manager.uADTokenAddress());
         require(
-            stabilitas.balanceOf(msg.sender) > ammount,
+            stabilitas.balanceOf(msg.sender) > amount,
             "There aren't enough uAD in caller's balance."
         );
 
         MockAutoRedeemToken uAR =
             MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
 
-        // If it's the first call of the debt cycle, set the block height as the beginning of the debt cycle.
+        // If it's the first call of the debt cycle, set the block
+        // height as the beginning of the debt cycle.
         if (beginningOfDebtCycle == 0) beginningOfDebtCycle = block.number;
 
         // Calculate uAR to mint according to the formula: amt * (BH_debt / BH_burn)**control.
@@ -130,7 +131,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         if (beginningOfDebtCycle != 0) beginningOfDebtCycle = 0;
 
         // Set amount of uAR to burn.
-        uint255 amountToRedeem = amount;
+        uint256 amountToRedeem = amount;
 
         if (amount >= autoRedeemPool) {
             amountToRedeem = autoRedeemPool;
@@ -154,7 +155,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         // TODO: reward msg.sender for calling this function. Determine reward logic.
     }
 
-    /// @param id the timestamp of the coupon
+    /// @param id the block number of the coupon
     /// @param amount the amount of coupons to redeem
     /// @return amount of unredeemed coupons
     function redeemCoupons(uint256 id, uint256 amount)
@@ -167,7 +168,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
         DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
 
-        require(id > block.timestamp, "Coupon has expired");
+        require(id > block.number, "Coupon has expired");
         require(
             debtCoupon.balanceOf(msg.sender, id) >= amount,
             "User doesnt have enough coupons"
@@ -290,11 +291,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         //TODO: @Steve to call burn on stabilitas contract here
         MockStabilitasToken(manager.uADTokenAddress()).burn(msg.sender, amount);
 
-        uint256 expiryTimestamp = block.timestamp.add(couponLengthSeconds);
-        debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryTimestamp);
+        uint256 expiryBlockNumber = block.number.add(couponLengthSeconds);
+        debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryBlockNumber);
 
-        //give the caller timestamp of minted nft
-        return expiryTimestamp;
+        //give the caller the block number of the minted nft
+        return expiryBlockNumber;
     }
 
     /// @dev uses the current coupons for dollars calculation to get coupons for dollars
