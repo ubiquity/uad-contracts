@@ -43,38 +43,20 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         return oracle.consult(manager.uADTokenAddress(), 1 ether);
     }
 
-    /// @dev Block height recorded at the beginning of a debt cycle
-    uint256 public beginningOfDebtCycle = 0;
-
-    /// @dev Constant that determines the rate of decrease of uAR mint
-    uint256 public uARMintControl = 1;
-
-    /// @dev The two redemption pools of the contract.
-    uint256 public couponRedemptionPool;
-    uint256 public autoRedeemPool;
-
-    /// @dev Set the value of the uAR mint control variable
-    /// @param controlValue New uAR mint cotrol value.
-    function setuARMintControl(uint256 controlValue) external {
-        // require -- only DAO can call it.
-        uARMintControl = controlValue;
-    }
-
-    /// @dev Lets debt holder burn uAD for uAR.
-    /// @param amount the amount of uAD to redeem burn.
-    /// @return amount of auto redeem pool tokens (i.e. LP tokens) minted to the caller
-    function burnDollarsForAutoRedeemTokens(uint256 amount)
+    /// @dev Lets debt holder burn coupons for auto redemption. Doesn't make TWAP > 1 check.
+    /// @param id the timestamp of the coupon
+    /// @param amount the amount of coupons to redeem
+    /// @return amount of auto redeem pool tokens (i.e. LP tokens) minted to debt holder
+    function burnCouponsForAutoRedemption(uint256 id, uint256 amount)
         public
         returns (uint256)
     {
-        // Check whether TWAP < 1.
-        uint256 twapPrice = _getTwapPrice();
-        require(twapPrice < 1 ether, "Price must be above 1 to redeem coupons");
+        // Check whether debt coupon hasn't expired --> Burn debt coupons.
+        DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
 
-        // Check caller's uAD balance.
-        MockStabilitasToken stabilitas =
-            MockStabilitasToken(manager.uADTokenAddress());
+        require(id > block.timestamp, "Coupon has expired");
         require(
+<<<<<<< HEAD
             stabilitas.balanceOf(msg.sender) > amount,
             "There aren't enough uAD in caller's balance."
         );
@@ -91,33 +73,36 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             amount.mul(
                 (beginningOfDebtCycle.div(block.number))**uARMintControl
             );
+=======
+            debtCoupon.balanceOf(msg.sender, id) >= amount,
+            "User doesnt have enough coupons"
+        );
 
-        // Burn uAD.
-        stabilitas.burn(msg.sender, amount);
+        debtCoupon.safeTransferFrom(msg.sender, address(this), id, amount, "");
+>>>>>>> parent of f4be168... uAR logic added
 
-        // Mint, then transfer uAR to sender.
-        uAR.mint(address(this), uARToMint);
-        uAR.transfer(msg.sender, uARToMint);
+        debtCoupon.burnCoupons(address(this), amount, id);
 
-        return uAR.balanceOf(msg.sender);
+        // Mint LP tokens to this contract. Transfer LP tokens to msg.sender i.e. debt holder
+        MockAutoRedeemToken autoRedeemToken =
+            MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
+        autoRedeemToken.mint(address(this), amount);
+        autoRedeemToken.transfer(msg.sender, amount);
+
+        return autoRedeemToken.balanceOf(msg.sender);
     }
 
-    /// @dev Exchange uAR for uAD.
-    /// @param amount Amount of uAR to burn in exchange for uAD.
-    /// @return caller's remaining balance of uAR.
+    /// @dev Exchange auto redeem pool tokens (i.e. LP tokens) for uAD tokens.
+    /// @param amount Amount of LP tokens to burn in exchange for uAD tokens.
+    /// @return msg.sender's remaining balance of LP tokens.
     function burnAutoRedeemTokensForDollars(uint256 amount)
         public
         returns (uint256)
     {
-        // Check whether TWAP > 1
-        uint256 twapPrice = _getTwapPrice();
-        require(twapPrice > 1 ether, "Price must be above 1 to redeem uAR");
-
-        // Check caller's uAR balance
-        MockAutoRedeemToken uAR =
+        MockAutoRedeemToken autoRedeemToken =
             MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
         require(
-            uAR.balanceOf(msg.sender) >= amount,
+            autoRedeemToken.balanceOf(msg.sender) >= amount,
             "User doesn't have enough auto redeem pool tokens."
         );
 
@@ -128,24 +113,26 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             "There aren't any stabilitas to redeem currently"
         );
 
+<<<<<<< HEAD
         if (beginningOfDebtCycle != 0) beginningOfDebtCycle = 0;
 
         // Set amount of uAR to burn.
         uint256 amountToRedeem = amount;
+=======
+        // Elementary LP shares calculation. Can be updated for more complex / tailored math.
+        uint256 totalBalanceOfPool = stabilitas.balanceOf(address(this));
+        uint256 amountToRedeem =
+            totalBalanceOfPool.mul(amount.div(autoRedeemToken.totalSupply()));
+>>>>>>> parent of f4be168... uAR logic added
 
-        if (amount >= autoRedeemPool) {
-            amountToRedeem = autoRedeemPool;
-        }
-
-        // Burn uAR -- transfer uAD.
-        uAR.burn(msg.sender, amountToRedeem);
+        autoRedeemToken.burn(msg.sender, amount);
         stabilitas.transfer(msg.sender, amountToRedeem);
 
-        return (uAR.balanceOf(msg.sender));
+        return (autoRedeemToken.balanceOf(msg.sender));
     }
 
     /// @dev Mint tokens to auto redeem pool.
-    function mintToPools() public {
+    function autoRedeemCoupons() public {
         // Check whether TWAP > 1.
         uint256 twapPrice = _getTwapPrice();
         require(twapPrice > 1 ether, "Price must be above 1 to redeem coupons");
@@ -174,11 +161,12 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             "User doesnt have enough coupons"
         );
 
-        if (beginningOfDebtCycle != 0) beginningOfDebtCycle = 0;
-
         mintClaimableDollars();
 
-        uint256 maxRedeemableCoupons = couponRedemptionPool;
+        uint256 maxRedeemableCoupons =
+            MockStabilitasToken(manager.uADTokenAddress()).balanceOf(
+                address(this)
+            );
         uint256 couponsToRedeem = amount;
 
         if (amount > maxRedeemableCoupons) {
@@ -222,38 +210,27 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
 
-        MockStabilitasToken stabilitas =
-            MockStabilitasToken(manager.uADTokenAddress());
-        MockAutoRedeemToken uAR =
-            MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
-
         //TODO: @Steve to call mint on stabilitas contract here. dollars should
         // be minted to address(this)
-        stabilitas.mint(address(this), dollarsToMint);
+        MockStabilitasToken(manager.uADTokenAddress()).mint(
+            address(this),
+            dollarsToMint
+        );
 
-        uint256 autoRedeemPoolDeficit = uAR.totalSupply() - autoRedeemPool;
-        uint256 couponRedemptionPoolDeficit =
-            debtCoupon.getTotalOutstandingDebt() - couponRedemptionPool;
+        MockStabilitasToken stabilitas =
+            MockStabilitasToken(manager.uADTokenAddress());
+        MockAutoRedeemToken autoRedeemToken =
+            MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
 
-        if (dollarsToMint >= autoRedeemPoolDeficit) {
-            autoRedeemPool += autoRedeemPoolDeficit;
-            dollarsToMint -= autoRedeemPoolDeficit;
-        } else {
-            autoRedeemPool += dollarsToMint;
-            dollarsToMint = 0;
-        }
+        uint256 currentRedeemableBalance = stabilitas.balanceOf(address(this));
+        uint256 totalOutstandingDebt =
+            debtCoupon.getTotalOutstandingDebt() +
+                autoRedeemToken.totalSupply();
 
-        if (dollarsToMint >= couponRedemptionPool) {
-            autoRedeemPool += couponRedemptionPoolDeficit;
-            dollarsToMint -= couponRedemptionPoolDeficit;
-        } else {
-            couponRedemptionPool += dollarsToMint;
-            dollarsToMint = 0;
-        }
+        if (currentRedeemableBalance > totalOutstandingDebt) {
+            uint256 excessDollars =
+                currentRedeemableBalance.sub(totalOutstandingDebt);
 
-        uint256 excessDollars = dollarsToMint;
-
-        if (excessDollars > 0) {
             IExcessDollarsDistributor dollarsDistributor =
                 IExcessDollarsDistributor(
                     manager.getExcessDollarsDistributor(address(this))

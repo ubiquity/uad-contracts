@@ -63,7 +63,8 @@ contract DebtCoupon is ERC1155 {
         _totalOutstandingDebt = _totalOutstandingDebt.add(amount);
     }
 
-    /// @notice Burn an amount of coupons expiring at a certain block from a certain holder's balance
+    /// @notice Burn an amount of coupons expiring at a certain block from
+    /// a certain holder's balance
     /// @param couponOwner the owner of those coupons
     /// @param amount amount of tokens to burn
     /// @param expiryBlockNumber the expiration block number of the coupons to burn
