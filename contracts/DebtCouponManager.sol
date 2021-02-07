@@ -28,14 +28,14 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
     //the amount of dollars we minted this cycle, so we can calculate delta.
     // should be reset to 0 when cycle ends
     uint256 public dollarsMintedThisCycle;
-    uint256 public couponLengthSeconds;
+    uint256 public couponLengthBlocks;
 
     /// @param _manager the address of the manager contract so we can fetch variables
-    /// @param _couponLengthSeconds how long coupons last in seconds. can't be changed
+    /// @param _couponLengthBlocks how many blocks coupons last. can't be changed
     /// once set (unless migrated)
-    constructor(address _manager, uint256 _couponLengthSeconds) {
+    constructor(address _manager, uint256 _couponLengthBlocks) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
-        couponLengthSeconds = _couponLengthSeconds;
+        couponLengthBlocks = _couponLengthBlocks;
     }
 
     function _getTwapPrice() internal view returns (uint256) {
@@ -56,30 +56,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
         require(id > block.timestamp, "Coupon has expired");
         require(
-<<<<<<< HEAD
-            stabilitas.balanceOf(msg.sender) > amount,
-            "There aren't enough uAD in caller's balance."
-        );
-
-        MockAutoRedeemToken uAR =
-            MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
-
-        // If it's the first call of the debt cycle, set the block
-        // height as the beginning of the debt cycle.
-        if (beginningOfDebtCycle == 0) beginningOfDebtCycle = block.number;
-
-        // Calculate uAR to mint according to the formula: amt * (BH_debt / BH_burn)**control.
-        uint256 uARToMint =
-            amount.mul(
-                (beginningOfDebtCycle.div(block.number))**uARMintControl
-            );
-=======
             debtCoupon.balanceOf(msg.sender, id) >= amount,
             "User doesnt have enough coupons"
         );
 
         debtCoupon.safeTransferFrom(msg.sender, address(this), id, amount, "");
->>>>>>> parent of f4be168... uAR logic added
 
         debtCoupon.burnCoupons(address(this), amount, id);
 
@@ -113,17 +94,10 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             "There aren't any stabilitas to redeem currently"
         );
 
-<<<<<<< HEAD
-        if (beginningOfDebtCycle != 0) beginningOfDebtCycle = 0;
-
-        // Set amount of uAR to burn.
-        uint256 amountToRedeem = amount;
-=======
         // Elementary LP shares calculation. Can be updated for more complex / tailored math.
         uint256 totalBalanceOfPool = stabilitas.balanceOf(address(this));
         uint256 amountToRedeem =
             totalBalanceOfPool.mul(amount.div(autoRedeemToken.totalSupply()));
->>>>>>> parent of f4be168... uAR logic added
 
         autoRedeemToken.burn(msg.sender, amount);
         stabilitas.transfer(msg.sender, amountToRedeem);
@@ -268,7 +242,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         //TODO: @Steve to call burn on stabilitas contract here
         MockStabilitasToken(manager.uADTokenAddress()).burn(msg.sender, amount);
 
-        uint256 expiryBlockNumber = block.number.add(couponLengthSeconds);
+        uint256 expiryBlockNumber = block.number.add(couponLengthBlocks);
         debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryBlockNumber);
 
         //give the caller the block number of the minted nft
