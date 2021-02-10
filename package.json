@@ -8,7 +8,9 @@
     "solhint": "find . -type f -name '*.sol' -not -path './node_modules/*' -not -path './contracts/interfaces/ICurveFactory.sol' -not -path './contracts/interfaces/IMetaPool.sol' -exec npx solhint --fix {} ';'",
     "eslint": "npx eslint . --ext ts --fix",
     "format": "npx prettier --write .",
-    "lint": "yarn solhint && yarn eslint && yarn format"
+    "lint": "yarn solhint && yarn eslint && yarn format",
+    "start": "hardhat node",
+    "deploy-localhost": "hardhat deploy --network localhost --write true && kill $! && exit 0"
   },
   "husky": {
     "hooks": {
