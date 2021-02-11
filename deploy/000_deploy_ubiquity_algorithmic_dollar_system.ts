@@ -54,6 +54,14 @@ const deployFunc: DeployFunction = async ({ getNamedAccounts }) => {
     .connect(admin)
     .mint(admin.address, ethers.utils.parseEther("10000"));
 
+  await uAD
+    .connect(admin)
+    .approve(bonding.address, ethers.constants.MaxUint256);
+
+  await bondingShare
+    .connect(admin)
+    .approve(bonding.address, ethers.constants.MaxUint256);
+
   const crvToken = new ethers.Contract(_3CrvToken, CurveABI.abi);
 
   await network.provider.request({
