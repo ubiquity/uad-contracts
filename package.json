@@ -10,7 +10,7 @@
     "format": "npx prettier --write .",
     "lint": "yarn solhint && yarn eslint && yarn format",
     "start": "hardhat node",
-    "deploy-localhost": "hardhat deploy --network localhost --write true && kill $! && exit 0"
+    "deploy-localhost": "hardhat deploy --network localhost --write true"
   },
   "husky": {
     "hooks": {
