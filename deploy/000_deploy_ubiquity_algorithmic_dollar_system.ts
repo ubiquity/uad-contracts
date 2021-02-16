@@ -137,6 +137,8 @@ const deployFunc: DeployFunction = async ({ getNamedAccounts }) => {
     ubiquityAlgorithmicDollarManager.address,
     ethers.BigNumber.from("1000000")
   );
+
+  await bonding.connect(admin).bondTokens(ethers.utils.parseEther("5000"));
 };
 
 export default deployFunc;
