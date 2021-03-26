@@ -38,9 +38,81 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         couponLengthBlocks = _couponLengthBlocks;
     }
 
-    function _getTwapPrice() internal view returns (uint256) {
-        TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        return oracle.consult(manager.uADTokenAddress(), 1 ether);
+    /// @dev called when a user wants to redeem. should only be called when oracle is below a dollar
+    /// @param amount the amount of dollars to exchange for coupons
+    function exchangeDollarsForCoupons(uint256 amount)
+        external
+        returns (uint256)
+    {
+        uint256 twapPrice = _getTwapPrice();
+
+        require(twapPrice < 1 ether, "Price must be below 1 to mint coupons");
+
+        DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
+        debtCoupon.updateTotalDebt();
+
+        //we are in a down cycle so reset the cycle counter
+        dollarsMintedThisCycle = 0;
+
+        ICouponsForDollarsCalculator couponCalculator =
+            ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
+        uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
+
+        //TODO: @Steve to call burn on stabilitas contract here
+        MockStabilitasToken(manager.uADTokenAddress()).burn(msg.sender, amount);
+
+        uint256 expiryBlockNumber = block.number.add(couponLengthBlocks);
+        debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryBlockNumber);
+
+        //give the caller the block number of the minted nft
+        return expiryBlockNumber;
+    }
+
+    /// @dev uses the current coupons for dollars calculation to get coupons for dollars
+    /// @param amount the amount of dollars to exchange for coupons
+    function getCouponsReturnedForDollars(uint256 amount)
+        external
+        view
+        returns (uint256)
+    {
+        ICouponsForDollarsCalculator couponCalculator =
+            ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
+        return couponCalculator.getCouponAmount(amount);
+    }
+
+    /// @dev should be called by this contract only when getting coupons to be burnt
+    function onERC1155Received(
+        address operator,
+        address,
+        uint256,
+        uint256,
+        bytes calldata
+    ) external view override returns (bytes4) {
+        if (manager.hasRole(manager.COUPON_MANAGER_ROLE(), operator)) {
+            //allow the transfer since it originated from this contract
+            return
+                bytes4(
+                    keccak256(
+                        "onERC1155Received(address,address,uint256,uint256,bytes)"
+                    )
+                );
+        } else {
+            //reject the transfer
+            return "";
+        }
+    }
+
+    /// @dev this method is never called by the contract so if called,
+    /// it was called by someone else -> revert.
+    function onERC1155BatchReceived(
+        address,
+        address,
+        uint256[] calldata,
+        uint256[] calldata,
+        bytes calldata
+    ) external pure override returns (bytes4) {
+        //reject the transfer
+        return "";
     }
 
     /// @dev Lets debt holder burn coupons for auto redemption. Doesn't make TWAP > 1 check.
@@ -219,80 +291,8 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         }
     }
 
-    /// @dev called when a user wants to redeem. should only be called when oracle is below a dollar
-    /// @param amount the amount of dollars to exchange for coupons
-    function exchangeDollarsForCoupons(uint256 amount)
-        external
-        returns (uint256)
-    {
-        uint256 twapPrice = _getTwapPrice();
-
-        require(twapPrice < 1 ether, "Price must be below 1 to mint coupons");
-
-        DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
-        debtCoupon.updateTotalDebt();
-
-        //we are in a down cycle so reset the cycle counter
-        dollarsMintedThisCycle = 0;
-
-        ICouponsForDollarsCalculator couponCalculator =
-            ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
-        uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
-
-        //TODO: @Steve to call burn on stabilitas contract here
-        MockStabilitasToken(manager.uADTokenAddress()).burn(msg.sender, amount);
-
-        uint256 expiryBlockNumber = block.number.add(couponLengthBlocks);
-        debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryBlockNumber);
-
-        //give the caller the block number of the minted nft
-        return expiryBlockNumber;
-    }
-
-    /// @dev uses the current coupons for dollars calculation to get coupons for dollars
-    /// @param amount the amount of dollars to exchange for coupons
-    function getCouponsReturnedForDollars(uint256 amount)
-        external
-        view
-        returns (uint256)
-    {
-        ICouponsForDollarsCalculator couponCalculator =
-            ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
-        return couponCalculator.getCouponAmount(amount);
-    }
-
-    /// @dev should be called by this contract only when getting coupons to be burnt
-    function onERC1155Received(
-        address operator,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external view override returns (bytes4) {
-        if (manager.hasRole(manager.COUPON_MANAGER_ROLE(), operator)) {
-            //allow the transfer since it originated from this contract
-            return
-                bytes4(
-                    keccak256(
-                        "onERC1155Received(address,address,uint256,uint256,bytes)"
-                    )
-                );
-        } else {
-            //reject the transfer
-            return "";
-        }
-    }
-
-    /// @dev this method is never called by the contract so if called,
-    /// it was called by someone else -> revert.
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure override returns (bytes4) {
-        //reject the transfer
-        return "";
+    function _getTwapPrice() internal view returns (uint256) {
+        TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
+        return oracle.consult(manager.uADTokenAddress(), 1 ether);
     }
 }

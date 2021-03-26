@@ -5,12 +5,11 @@ const deployFunc: DeployFunction = async ({
   deployments,
   getNamedAccounts,
 }) => {
-  const { deploy } = deployments;
   const { sablier } = await getNamedAccounts();
   const [admin] = await ethers.getSigners();
   const manager = await deployments.get("UbiquityAlgorithmicDollarManager");
 
-  await deploy("Bonding", {
+  await deployments.deploy("Bonding", {
     from: admin.address,
     args: [manager.address, sablier],
     log: true,
@@ -19,3 +18,5 @@ const deployFunc: DeployFunction = async ({
 };
 
 export default deployFunc;
+deployFunc.tags = ["Bonding"];
+deployFunc.dependencies = ["UbiquityAlgorithmicDollarManager"];

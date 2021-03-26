@@ -28,6 +28,14 @@ contract DebtCoupon is ERC1155 {
     //ordered list of coupon expiries
     StructuredLinkedList.List private _sortedBlockNumbers;
 
+    event MintedCoupons(address recipient, uint256 expiryBlock, uint256 amount);
+
+    event BurnedCoupons(
+        address couponHolder,
+        uint256 expiryBlock,
+        uint256 amount
+    );
+
     modifier onlyCouponManager() {
         require(
             manager.hasRole(manager.COUPON_MANAGER_ROLE(), msg.sender),
@@ -40,6 +48,19 @@ contract DebtCoupon is ERC1155 {
     constructor(address _manager) ERC1155("URI") {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         _totalOutstandingDebt = 0;
+    }
+
+    /// @notice This can only be done once, and should be done post-deployment!
+    function setRedemptionContractAddress(address newAddress)
+        external
+        onlyCouponManager
+    {
+        require(
+            !_redemptionContractSet,
+            "Redemption contract has already been set"
+        );
+        _redemptionContractSet = true;
+        redemptionContractAddress = newAddress;
     }
 
     /// @notice Mint an amount of coupons expiring at a certain block for a certain recipient
@@ -131,25 +152,4 @@ contract DebtCoupon is ERC1155 {
 
         return outstandingDebt;
     }
-
-    /// @notice This can only be done once, and should be done post-deployment!
-    function setRedemptionContractAddress(address newAddress)
-        external
-        onlyCouponManager
-    {
-        require(
-            !_redemptionContractSet,
-            "Redemption contract has already been set"
-        );
-        _redemptionContractSet = true;
-        redemptionContractAddress = newAddress;
-    }
-
-    event MintedCoupons(address recipient, uint256 expiryBlock, uint256 amount);
-
-    event BurnedCoupons(
-        address couponHolder,
-        uint256 expiryBlock,
-        uint256 amount
-    );
 }

@@ -95,6 +95,18 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         ] = excessCouponDistributor;
     }
 
+    /**
+    @notice deploy a new Curve metapools for uAD Token uAD/3Pool
+    @dev  From the curve documentation for uncollateralized algorithmic
+    stablecoins amplification should be 5-10
+    @param _curveFactory MetaPool factory address
+    @param _crvBasePool Address of the base pool to use within the new metapool.
+    @param _crv3PoolTokenAddress curve 3Pool token Address
+    @param _amplificationCoefficient amplification coefficient. The smaller
+     it is the closer to a constant product we are.
+    @param _fee Trade fee, given as an integer with 1e10 precision.
+
+    */
     function deployStableSwapPool(
         address _curveFactory,
         address _crvBasePool,
@@ -102,7 +114,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         uint256 _amplificationCoefficient,
         uint256 _fee
     ) external onlyAdmin {
-        // Create new StableSwap meta pool (uDA <-> 3Crv)
+        // Create new StableSwap meta pool (uAD <-> 3Crv)
         address metaPool =
             ICurveFactory(_curveFactory).deploy_metapool(
                 _crvBasePool,
@@ -121,6 +133,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         uint256 uADTokenAmount =
             IERC20(uADTokenAddress).balanceOf(address(this));
 
+        // WHY approve 0 first ?
         IERC20(_crv3PoolTokenAddress).safeApprove(metaPool, 0);
         IERC20(_crv3PoolTokenAddress).safeApprove(
             metaPool,

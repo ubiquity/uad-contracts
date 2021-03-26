@@ -1,7 +1,7 @@
-{
-  "extends": "solhint:recommended",
-  "plugins": ["prettier"],
-  "rules": {
+module.exports = {
+  extends: "solhint:recommended",
+  plugins: ["prettier"],
+  rules: {
     "prettier/prettier": "error",
     "code-complexity": ["error", 10],
     "function-max-lines": ["error", 60],
@@ -10,20 +10,20 @@
     "no-empty-blocks": "error",
     "no-unused-vars": "error",
     "payable-fallback": "off",
-    "reason-string": ["off", { "maxLength": 32 }],
+    "reason-string": ["off", { maxLength: 32 }],
     "constructor-syntax": "off",
     "comprehensive-interface": "off",
-    "quotes": ["error", "double"],
+    quotes: ["error", "double"],
     "const-name-snakecase": "error",
     "contract-name-camelcase": "error",
     "event-name-camelcase": "error",
     "func-name-mixedcase": "error",
     "func-param-name-mixedcase": "error",
     "modifier-name-mixedcase": "error",
-    "private-vars-leading-underscore": ["error", { "strict": false }],
+    "private-vars-leading-underscore": ["error", { strict: false }],
     "var-name-mixedcase": "error",
     "imports-on-top": "error",
-    "ordering": "error",
+    ordering: "error",
     "visibility-modifier-order": "error",
     "avoid-call-value": "off",
     "avoid-low-level-calls": "off",
@@ -34,13 +34,13 @@
     "check-send-result": "error",
     "compiler-version": ["error", ">=0.6.0"],
     "mark-callable-contracts": "off",
-    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "func-visibility": ["error", { ignoreConstructors: true }],
     "multiple-sends": "error",
     "no-complex-fallback": "error",
     "no-inline-assembly": "off",
     "not-rely-on-block-hash": "error",
-    "reentrancy": "error",
+    reentrancy: "error",
     "state-visibility": "error",
-    "not-rely-on-time": "off"
-  }
-}
+    "not-rely-on-time": "off",
+  },
+};
