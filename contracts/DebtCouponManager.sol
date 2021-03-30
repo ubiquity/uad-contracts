@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.3;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IDebtRedemption.sol";
 import "./interfaces/ICouponsForDollarsCalculator.sol";
@@ -21,7 +20,6 @@ import "./DebtCoupon.sol";
 /// @notice Allows users to redeem individual debt coupons or batch redeem
 /// coupons on a first-come first-serve basis
 contract DebtCouponManager is ERC165, IERC1155Receiver {
-    using SafeMath for uint256;
     UbiquityAlgorithmicDollarManager public manager;
 
     //the amount of dollars we minted this cycle, so we can calculate delta.
@@ -63,7 +61,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             amount
         );
 
-        uint256 expiryBlockNumber = block.number.add(couponLengthBlocks);
+        uint256 expiryBlockNumber = block.number + (couponLengthBlocks);
         debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryBlockNumber);
 
         //give the caller the block number of the minted nft
@@ -171,7 +169,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         // Elementary LP shares calculation. Can be updated for more complex / tailored math.
         uint256 totalBalanceOfPool = uAD.balanceOf(address(this));
         uint256 amountToRedeem =
-            totalBalanceOfPool.mul(amount.div(autoRedeemToken.totalSupply()));
+            totalBalanceOfPool * (amount / (autoRedeemToken.totalSupply()));
 
         autoRedeemToken.burn(msg.sender, amount);
         uAD.transfer(msg.sender, amountToRedeem);
@@ -241,7 +239,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
         uAD.transfer(msg.sender, couponsToRedeem);
 
-        return amount.sub(couponsToRedeem);
+        return amount - (couponsToRedeem);
     }
 
     function mintClaimableDollars() public {
@@ -252,8 +250,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 totalMintableDollars =
             IDollarMintingCalculator(manager.dollarCalculatorAddress())
                 .getDollarsToMint();
-        uint256 dollarsToMint =
-            totalMintableDollars.sub(dollarsMintedThisCycle);
+        uint256 dollarsToMint = totalMintableDollars - (dollarsMintedThisCycle);
 
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
@@ -277,7 +274,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
         if (currentRedeemableBalance > totalOutstandingDebt) {
             uint256 excessDollars =
-                currentRedeemableBalance.sub(totalOutstandingDebt);
+                currentRedeemableBalance - (totalOutstandingDebt);
 
             IExcessDollarsDistributor dollarsDistributor =
                 IExcessDollarsDistributor(

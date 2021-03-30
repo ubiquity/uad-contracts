@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
@@ -11,7 +10,6 @@ import "./UbiquityAlgorithmicDollarManager.sol";
 /// @notice An ERC1155 where the token ID is the expiry block number
 /// @dev Implements ERC1155 so receiving contracts must implement IERC1155Receiver
 contract DebtCoupon is ERC1155 {
-    using SafeMath for uint256;
     using StructuredLinkedList for StructuredLinkedList.List;
 
     UbiquityAlgorithmicDollarManager public manager;
@@ -79,9 +77,10 @@ contract DebtCoupon is ERC1155 {
         _sortedBlockNumbers.pushBack(expiryBlockNumber);
 
         //update the total supply for that expiry and total outstanding debt
-        _tokenSupplies[expiryBlockNumber] = _tokenSupplies[expiryBlockNumber]
-            .add(amount);
-        _totalOutstandingDebt = _totalOutstandingDebt.add(amount);
+        _tokenSupplies[expiryBlockNumber] =
+            _tokenSupplies[expiryBlockNumber] +
+            (amount);
+        _totalOutstandingDebt = _totalOutstandingDebt + (amount);
     }
 
     /// @notice Burn an amount of coupons expiring at a certain block from
@@ -102,9 +101,10 @@ contract DebtCoupon is ERC1155 {
         emit BurnedCoupons(couponOwner, expiryBlockNumber, amount);
 
         //update the total supply for that expiry and total outstanding debt
-        _tokenSupplies[expiryBlockNumber] = _tokenSupplies[expiryBlockNumber]
-            .sub(amount);
-        _totalOutstandingDebt = _totalOutstandingDebt.sub(amount);
+        _tokenSupplies[expiryBlockNumber] =
+            _tokenSupplies[expiryBlockNumber] -
+            (amount);
+        _totalOutstandingDebt = _totalOutstandingDebt - (amount);
     }
 
     /// @notice Should be called prior to any state changing functions.
@@ -121,9 +121,9 @@ contract DebtCoupon is ERC1155 {
                 reachedEndOfExpiredKeys = true;
             } else {
                 //update tally and remove key from blocks and map
-                _totalOutstandingDebt = _totalOutstandingDebt.sub(
-                    _tokenSupplies[currentBlockNumber]
-                );
+                _totalOutstandingDebt =
+                    _totalOutstandingDebt -
+                    (_tokenSupplies[currentBlockNumber]);
                 delete _tokenSupplies[currentBlockNumber];
                 _sortedBlockNumbers.remove(currentBlockNumber);
             }
@@ -141,9 +141,9 @@ contract DebtCoupon is ERC1155 {
             if (currentBlockNumber > block.number) {
                 reachedEndOfExpiredKeys = true;
             } else {
-                outstandingDebt = outstandingDebt.sub(
-                    _tokenSupplies[currentBlockNumber]
-                );
+                outstandingDebt =
+                    outstandingDebt -
+                    (_tokenSupplies[currentBlockNumber]);
             }
             (, currentBlockNumber) = _sortedBlockNumbers.getNextNode(
                 currentBlockNumber
