@@ -1,28 +1,26 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+import { BondingShare } from "../artifacts/types/BondingShare";
 
 const deployFunc: DeployFunction = async ({ deployments }) => {
-  const { deploy } = deployments;
   const [admin] = await ethers.getSigners();
 
   console.log(admin.address);
-  const BondingShare = await deploy("BondingShare", {
+  const BondingShareDeployment = await deployments.deploy("BondingShare", {
     from: admin.address,
     log: true,
     deterministicDeployment: true,
   });
 
-  const bondingShare = new ethers.Contract(
-    BondingShare.address,
-    BondingShare.abi,
-    ethers.provider
-  );
+  const bs: BondingShare = (await ethers.getContractAt(
+    "BondingShare",
+    BondingShareDeployment.address
+  )) as BondingShare;
 
   console.log(
-    await bondingShare
-      .connect(admin)
-      .getRoleMember(ethers.utils.id("MINTER_ROLE"), "0")
+    await bs.connect(admin).getRoleMember(ethers.utils.id("MINTER_ROLE"), "0")
   );
 };
 
 export default deployFunc;
+deployFunc.tags = ["BondingShare"];

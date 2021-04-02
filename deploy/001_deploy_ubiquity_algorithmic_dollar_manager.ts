@@ -1,29 +1,29 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
 const deployFunc: DeployFunction = async ({ deployments }) => {
-  const { deploy } = deployments;
   const [admin] = await ethers.getSigners();
 
-  await deploy("UbiquityAlgorithmicDollarManager", {
-    from: admin.address,
-    args: [admin.address],
-    log: true,
-    deterministicDeployment: true,
-  });
+  const UbiquityAlgorithmicDollarManagerDeployment = await deployments.deploy(
+    "UbiquityAlgorithmicDollarManager",
+    {
+      from: admin.address,
+      args: [admin.address],
+      log: true,
+      deterministicDeployment: true,
+    }
+  );
 
-  const UbiquityAlgorithmicDollarManager = await deployments.get(
-    "UbiquityAlgorithmicDollarManager"
-  );
-  const ubiquityAlgorithmicDollarManager = new ethers.Contract(
-    UbiquityAlgorithmicDollarManager.address,
-    UbiquityAlgorithmicDollarManager.abi
-  );
+  const uADMgr: UbiquityAlgorithmicDollarManager = (await ethers.getContractAt(
+    "UbiquityAlgorithmicDollarManager",
+    UbiquityAlgorithmicDollarManagerDeployment.address
+  )) as UbiquityAlgorithmicDollarManager;
 
   const bondingShare = await deployments.get("BondingShare");
-  await ubiquityAlgorithmicDollarManager
-    .connect(admin)
-    .setBondingShareAddress(bondingShare.address);
+  await uADMgr.connect(admin).setBondingShareAddress(bondingShare.address);
 };
 
 export default deployFunc;
+deployFunc.tags = ["UbiquityAlgorithmicDollarManager"];
+deployFunc.dependencies = ["BondingShare"];

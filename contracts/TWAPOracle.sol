@@ -45,6 +45,51 @@ contract TWAPOracle {
         pricesBlockTimestampLast = currentBlockTimestamp;
     }
 
+    function update() external {
+        _update();
+
+        (
+            uint256 price0Cumulative,
+            uint256 price1Cumulative,
+            uint32 blockTimestamp
+        ) = _currentCumulativePrices();
+
+        // overflow is desired
+        uint32 timeElapsed = blockTimestamp - pricesBlockTimestampLast;
+
+        price0Average = FixedPoint.uq112x112(
+            uint224((price0Cumulative - price0CumulativeLast) / timeElapsed)
+        );
+        price1Average = FixedPoint.uq112x112(
+            uint224((price1Cumulative - price1CumulativeLast) / timeElapsed)
+        );
+
+        price0CumulativeLast = price0Cumulative;
+        price1CumulativeLast = price1Cumulative;
+        pricesBlockTimestampLast = blockTimestamp;
+    }
+
+    // note this will always return 0 before update has been called successfully
+    // for the first time.
+    function consult(address token, uint256 amountIn)
+        external
+        view
+        returns (uint256 amountOut)
+    {
+        if (token == token0) {
+            amountOut = price0Average.mul(amountIn).decode144();
+        } else {
+            require(token == token1, "TWAPOracle: INVALID_TOKEN");
+            amountOut = price1Average.mul(amountIn).decode144();
+        }
+    }
+
+    // helper function that returns the current block timestamp within the
+    // range of uint32, i.e. [0, 2**32 - 1]
+    function _currentBlockTimestamp() internal view returns (uint32) {
+        return uint32(block.timestamp % 2**32);
+    }
+
     function _currentCumulativePrices()
         internal
         view
@@ -94,50 +139,5 @@ contract TWAPOracle {
         }
 
         reservesBlockTimestampLast = blockTimestamp;
-    }
-
-    function update() external {
-        _update();
-
-        (
-            uint256 price0Cumulative,
-            uint256 price1Cumulative,
-            uint32 blockTimestamp
-        ) = _currentCumulativePrices();
-
-        // overflow is desired
-        uint32 timeElapsed = blockTimestamp - pricesBlockTimestampLast;
-
-        price0Average = FixedPoint.uq112x112(
-            uint224((price0Cumulative - price0CumulativeLast) / timeElapsed)
-        );
-        price1Average = FixedPoint.uq112x112(
-            uint224((price1Cumulative - price1CumulativeLast) / timeElapsed)
-        );
-
-        price0CumulativeLast = price0Cumulative;
-        price1CumulativeLast = price1Cumulative;
-        pricesBlockTimestampLast = blockTimestamp;
-    }
-
-    // helper function that returns the current block timestamp within the
-    // range of uint32, i.e. [0, 2**32 - 1]
-    function _currentBlockTimestamp() internal view returns (uint32) {
-        return uint32(block.timestamp % 2**32);
-    }
-
-    // note this will always return 0 before update has been called successfully
-    // for the first time.
-    function consult(address token, uint256 amountIn)
-        external
-        view
-        returns (uint256 amountOut)
-    {
-        if (token == token0) {
-            amountOut = price0Average.mul(amountIn).decode144();
-        } else {
-            require(token == token1, "TWAPOracle: INVALID_TOKEN");
-            amountOut = price1Average.mul(amountIn).decode144();
-        }
     }
 }

@@ -24,6 +24,11 @@ contract Bonding is CollectableDust {
     uint256 public bondingDiscountMultiplier = 0;
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
 
+    event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
+    event SablierUpdated(address _sablier);
+    event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
+    event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
+
     modifier onlyBondingManager() {
         require(
             manager.hasRole(manager.BONDING_MANAGER_ROLE(), msg.sender),
@@ -32,15 +37,13 @@ contract Bonding is CollectableDust {
         _;
     }
 
-    event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
-    event SablierUpdated(address _sablier);
-    event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
-    event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
-
     constructor(address _manager, address _sablier) CollectableDust() {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         sablier = ISablier(_sablier);
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 
     /// Collectable Dust
     function addProtocolToken(address _token)
@@ -66,9 +69,6 @@ contract Bonding is CollectableDust {
     ) external override onlyBondingManager {
         _sendDust(_to, _token, _amount);
     }
-
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
 
     function setMaxBondingPrice(uint256 _maxBondingPrice)
         external
@@ -97,25 +97,6 @@ contract Bonding is CollectableDust {
     {
         redeemStreamTime = _redeemStreamTime;
         emit RedeemStreamTimeUpdated(_redeemStreamTime);
-    }
-
-    function _bond(uint256 _amount, uint256 currentPrice) internal {
-        uint256 shareValue = currentShareValue();
-        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
-
-        if (bondingDiscountMultiplier != 0) {
-            uint256 bonus =
-                (TARGET_PRICE.sub(currentPrice))
-                    .mul(numberOfShares)
-                    .mul(bondingDiscountMultiplier)
-                    .div(TARGET_PRICE.mul(TARGET_PRICE));
-            numberOfShares = numberOfShares.add(bonus);
-        }
-
-        IBondingShare(manager.bondingShareAddress()).mint(
-            msg.sender,
-            numberOfShares
-        );
     }
 
     function bondTokens(uint256 _amount) public {
@@ -189,10 +170,6 @@ contract Bonding is CollectableDust {
         );
     }
 
-    function _updateOracle() internal {
-        ITWAPOracle(manager.twapOracleAddress()).update();
-    }
-
     function currentShareValue() public view returns (uint256 pricePerShare) {
         uint256 totalShares =
             IERC20(manager.bondingShareAddress()).totalSupply();
@@ -211,5 +188,28 @@ contract Bonding is CollectableDust {
                 manager.uADTokenAddress(),
                 TARGET_PRICE
             );
+    }
+
+    function _bond(uint256 _amount, uint256 currentPrice) internal {
+        uint256 shareValue = currentShareValue();
+        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
+
+        if (bondingDiscountMultiplier != 0) {
+            uint256 bonus =
+                (TARGET_PRICE.sub(currentPrice))
+                    .mul(numberOfShares)
+                    .mul(bondingDiscountMultiplier)
+                    .div(TARGET_PRICE.mul(TARGET_PRICE));
+            numberOfShares = numberOfShares.add(bonus);
+        }
+
+        IBondingShare(manager.bondingShareAddress()).mint(
+            msg.sender,
+            numberOfShares
+        );
+    }
+
+    function _updateOracle() internal {
+        ITWAPOracle(manager.twapOracleAddress()).update();
     }
 }

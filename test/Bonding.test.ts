@@ -1,27 +1,30 @@
-import { Contract, Signer } from "ethers";
+import { ContractTransaction, Signer } from "ethers";
 import { deployments, ethers, getNamedAccounts, network } from "hardhat";
 import { before, describe, it } from "mocha";
-import CurveABI from "./Curve.json";
-import { expect, provider } from "./setup";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+import { expect } from "./setup";
 import { mineBlock } from "./utils/hardhatNode";
-
-const { deploy } = deployments;
+import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
+import { ERC20 } from "../artifacts/types/ERC20";
+import { TWAPOracle } from "../artifacts/types/TWAPOracle";
+import { BondingShare } from "../artifacts/types/BondingShare";
+import { Bonding } from "../artifacts/types/Bonding";
 
 describe("Bonding", () => {
-  let bonding: Contract;
-  let manager: Contract;
+  let bonding: Bonding;
+  let manager: UbiquityAlgorithmicDollarManager;
   let admin: Signer;
   let secondAccount: Signer;
-  let uAD: Contract;
+  let uAD: UbiquityAlgorithmicDollar;
   let sablier: string;
   let USDC: string;
   let DAI: string;
   let CurveFactory: string;
-  let _3CrvBasePool: string;
-  let _3CrvToken: string;
+  let curve3CrvBasePool: string;
+  let curve3CrvToken: string;
   let curveWhaleAddress: string;
-  let twapOracle: Contract;
-  let bondingShare: Contract;
+  let twapOracle: TWAPOracle;
+  let bondingShare: BondingShare;
 
   before(async () => {
     ({
@@ -29,54 +32,71 @@ describe("Bonding", () => {
       USDC,
       DAI,
       CurveFactory,
-      _3CrvBasePool,
-      _3CrvToken,
+      curve3CrvBasePool,
+      curve3CrvToken,
       curveWhaleAddress,
     } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
 
-    const BondingShare = await deploy("BondingShare", {
+    const BondingShareDeployment = await deployments.deploy("BondingShare", {
       from: await admin.getAddress(),
     });
 
-    bondingShare = new ethers.Contract(
-      BondingShare.address,
-      BondingShare.abi,
-      provider
+    bondingShare = (await ethers.getContractAt(
+      "BondingShare",
+      BondingShareDeployment.address
+    )) as BondingShare;
+
+    const Manager = await deployments.deploy(
+      "UbiquityAlgorithmicDollarManager",
+      {
+        from: await admin.getAddress(),
+        args: [await admin.getAddress()],
+      }
     );
-
-    const Manager = await deploy("UbiquityAlgorithmicDollarManager", {
-      from: await admin.getAddress(),
-      args: [await admin.getAddress()],
-    });
-    manager = new ethers.Contract(Manager.address, Manager.abi, provider);
+    // manager = new ethers.Contract(Manager.address, Manager.abi, provider);
+    manager = (await ethers.getContractAt(
+      "UbiquityAlgorithmicDollarManager",
+      Manager.address
+    )) as UbiquityAlgorithmicDollarManager;
 
     await manager.connect(admin).setBondingShareAddress(bondingShare.address);
 
-    const UAD = await deploy("UbiquityAlgorithmicDollar", {
+    const UAD = await deployments.deploy("UbiquityAlgorithmicDollar", {
       from: await admin.getAddress(),
     });
-    uAD = new ethers.Contract(UAD.address, UAD.abi, provider);
 
-    for (const signer of [admin, secondAccount]) {
-      await uAD
-        .connect(admin)
-        .mint(await signer.getAddress(), ethers.utils.parseEther("10000"));
-    }
+    uAD = (await ethers.getContractAt(
+      "UbiquityAlgorithmicDollar",
+      UAD.address
+    )) as UbiquityAlgorithmicDollar;
+
+    // mint 10000 uAD each for admin and secondAccount
+    const mintings = [admin, secondAccount].map(
+      async (signer): Promise<ContractTransaction> =>
+        uAD
+          .connect(admin)
+          .mint(await signer.getAddress(), ethers.utils.parseEther("10000"))
+    );
+    await Promise.all(mintings);
+
     await uAD
       .connect(admin)
-      .mint(await manager.address, ethers.utils.parseEther("10000"));
+      .mint(manager.address, ethers.utils.parseEther("10000"));
 
     await manager.connect(admin).setuADTokenAddress(uAD.address);
 
-    const crvToken = new ethers.Contract(_3CrvToken, CurveABI.abi, provider);
+    const crvToken = (await ethers.getContractAt(
+      "ERC20",
+      curve3CrvToken
+    )) as ERC20;
 
     await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [curveWhaleAddress],
     });
 
-    const curveWhale = await ethers.provider.getSigner(curveWhaleAddress);
+    const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
 
     await crvToken
       .connect(curveWhale)
@@ -86,7 +106,7 @@ describe("Bonding", () => {
       .connect(admin)
       .deployStableSwapPool(
         CurveFactory,
-        _3CrvBasePool,
+        curve3CrvBasePool,
         crvToken.address,
         10,
         4000000
@@ -94,38 +114,39 @@ describe("Bonding", () => {
 
     const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
 
-    const TWAPOracle = await deploy("TWAPOracle", {
+    const TWAPOracleDeployment = await deployments.deploy("TWAPOracle", {
       from: await admin.getAddress(),
-      args: [metaPoolAddr, _3CrvToken, uAD.address],
+      args: [metaPoolAddr, curve3CrvToken, uAD.address],
     });
 
-    twapOracle = new ethers.Contract(
-      TWAPOracle.address,
-      TWAPOracle.abi,
-      provider
-    );
+    twapOracle = (await ethers.getContractAt(
+      "TWAPOracle",
+      TWAPOracleDeployment.address
+    )) as TWAPOracle;
 
     await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
 
     await twapOracle.connect(secondAccount).update();
 
     let blockTimestamp =
-      parseInt((await twapOracle.reservesBlockTimestampLast()).toString()) +
-      23 * 3600;
+      (await twapOracle.reservesBlockTimestampLast()) + 23 * 3600;
     await mineBlock(blockTimestamp);
     await twapOracle.connect(secondAccount).update();
 
     blockTimestamp =
-      parseInt((await twapOracle.reservesBlockTimestampLast()).toString()) +
-      23 * 3600;
+      (await twapOracle.reservesBlockTimestampLast()) + 23 * 3600;
     await mineBlock(blockTimestamp);
     await twapOracle.connect(secondAccount).update();
 
-    const Bonding = await deploy("Bonding", {
+    const BondingDeployment = await deployments.deploy("Bonding", {
       from: await admin.getAddress(),
       args: [manager.address, sablier],
     });
-    bonding = new ethers.Contract(Bonding.address, Bonding.abi, provider);
+
+    bonding = (await ethers.getContractAt(
+      "Bonding",
+      BondingDeployment.address
+    )) as Bonding;
 
     await bondingShare
       .connect(admin)
@@ -320,12 +341,9 @@ describe("Bonding", () => {
 
   describe("bondTokens", () => {
     it("User should be able to bond uAD tokens", async () => {
-      const prevBondingSharesBalance = parseInt(
-        (
-          await bondingShare.balanceOf(await secondAccount.getAddress())
-        ).toString()
+      const prevBondingSharesBalance = await bondingShare.balanceOf(
+        await secondAccount.getAddress()
       );
-
       const amountToBond = ethers.utils.parseEther("5000");
 
       await uAD
@@ -335,15 +353,10 @@ describe("Bonding", () => {
 
       await bonding.connect(secondAccount).bondTokens(amountToBond);
 
-      const newBondingSharesBalance = parseInt(
-        (
-          await bondingShare.balanceOf(await secondAccount.getAddress())
-        ).toString()
+      const newBondingSharesBalance = await bondingShare.balanceOf(
+        await secondAccount.getAddress()
       );
-
-      expect(newBondingSharesBalance).to.be.greaterThan(
-        prevBondingSharesBalance
-      );
+      expect(newBondingSharesBalance).to.be.gt(prevBondingSharesBalance);
     });
   });
 
@@ -362,8 +375,8 @@ describe("Bonding", () => {
         .connect(admin)
         .setRedeemStreamTime(ethers.BigNumber.from("0"));
 
-      const prevUADBalance = parseInt(
-        (await uAD.balanceOf(await secondAccount.getAddress())).toString()
+      const prevUADBalance = await uAD.balanceOf(
+        await secondAccount.getAddress()
       );
       const prevBondingSharesBalance = await bondingShare.balanceOf(
         await secondAccount.getAddress()
@@ -379,28 +392,24 @@ describe("Bonding", () => {
         .connect(secondAccount)
         .redeemShares(prevBondingSharesBalance);
 
-      const newUADBalance = parseInt(
-        (await uAD.balanceOf(await secondAccount.getAddress())).toString()
+      const newUADBalance = await uAD.balanceOf(
+        await secondAccount.getAddress()
       );
 
-      const newBondingSharesBalance = parseInt(
-        (
-          await bondingShare.balanceOf(await secondAccount.getAddress())
-        ).toString()
+      const newBondingSharesBalance = await bondingShare.balanceOf(
+        await secondAccount.getAddress()
       );
 
-      expect(prevUADBalance).to.be.lessThan(newUADBalance);
+      expect(prevUADBalance).to.be.lt(newUADBalance);
 
-      expect(parseInt(prevBondingSharesBalance.toString())).to.be.greaterThan(
-        newBondingSharesBalance
-      );
+      expect(prevBondingSharesBalance).to.be.gt(newBondingSharesBalance);
 
       await bonding.connect(admin).setRedeemStreamTime(initialRedeemStreamTime);
     });
 
     it("Users should be able to start Sablier streams to redeem their shares", async () => {
-      const prevUADBalance = parseInt(
-        (await uAD.balanceOf(await secondAccount.getAddress())).toString()
+      const prevUADBalance = await uAD.balanceOf(
+        await secondAccount.getAddress()
       );
 
       const amountToBond = ethers.utils.parseEther("5000");
@@ -426,18 +435,12 @@ describe("Bonding", () => {
         .connect(secondAccount)
         .redeemShares(prevBondingSharesBalance);
 
-      expect(
-        parseInt(
-          (await uAD.balanceOf(await secondAccount.getAddress())).toString()
-        )
-      ).to.be.lessThan(prevUADBalance);
+      expect(await uAD.balanceOf(await secondAccount.getAddress())).to.be.lt(
+        prevUADBalance
+      );
 
-      expect(parseInt(prevBondingSharesBalance.toString())).to.be.greaterThan(
-        parseInt(
-          (
-            await bondingShare.balanceOf(await secondAccount.getAddress())
-          ).toString()
-        )
+      expect(prevBondingSharesBalance).to.be.gt(
+        await bondingShare.balanceOf(await secondAccount.getAddress())
       );
     });
   });
