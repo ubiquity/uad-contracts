@@ -4,8 +4,5 @@ pragma solidity ^0.7.0;
 interface ITWAPOracle {
     function update() external;
 
-    function consult(address token, uint256 amountIn)
-        external
-        view
-        returns (uint256 amountOut);
+    function consult(address token) external view returns (uint256 amountOut);
 }

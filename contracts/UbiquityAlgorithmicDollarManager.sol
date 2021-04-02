@@ -133,7 +133,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         uint256 uADTokenAmount =
             IERC20(uADTokenAddress).balanceOf(address(this));
 
-        // WHY approve 0 first ?
+        // safe approve revert if approve from non-zero to non-zero allowance
         IERC20(_crv3PoolTokenAddress).safeApprove(metaPool, 0);
         IERC20(_crv3PoolTokenAddress).safeApprove(
             metaPool,
@@ -143,11 +143,17 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         IERC20(uADTokenAddress).safeApprove(metaPool, 0);
         IERC20(uADTokenAddress).safeApprove(metaPool, uADTokenAmount);
 
+        // coin at index 0 is uAD and index 1 is 3CRV
+        require(
+            IMetaPool(metaPool).coins(0) == uADTokenAddress &&
+                IMetaPool(metaPool).coins(1) == _crv3PoolTokenAddress,
+            "uADMGR: COIN_ORDER_MISMATCH"
+        );
         // Add the initial liquidity to the StableSwap meta pool
         uint256[2] memory amounts =
             [
-                IERC20(_crv3PoolTokenAddress).balanceOf(address(this)),
-                IERC20(uADTokenAddress).balanceOf(address(this))
+                IERC20(uADTokenAddress).balanceOf(address(this)),
+                IERC20(_crv3PoolTokenAddress).balanceOf(address(this))
             ];
 
         IMetaPool(metaPool).add_liquidity(amounts, 0, msg.sender);

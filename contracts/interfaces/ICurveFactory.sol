@@ -80,13 +80,16 @@ interface ICurveFactory {
             bool
         );
 
-    function add_base_pool(address _base_pool, address _metapool_implementation)
-        external;
+    function add_base_pool(
+        address _base_pool,
+        address _metapool_implementation,
+        address _fee_receiver
+    ) external;
 
     function deploy_metapool(
         address _base_pool,
-        string calldata _name,
-        string calldata _symbol,
+        string memory _name,
+        string memory _symbol,
         address _coin,
         uint256 _A,
         uint256 _fee
@@ -95,6 +98,11 @@ interface ICurveFactory {
     function commit_transfer_ownership(address addr) external;
 
     function accept_transfer_ownership() external;
+
+    function set_fee_receiver(address _base_pool, address _fee_receiver)
+        external;
+
+    function convert_fees() external returns (bool);
 
     function admin() external view returns (address);
 
@@ -107,4 +115,6 @@ interface ICurveFactory {
     function base_pool_list(uint256 arg0) external view returns (address);
 
     function base_pool_count() external view returns (uint256);
+
+    function fee_receiver(address arg0) external view returns (address);
 }

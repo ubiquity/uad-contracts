@@ -20,7 +20,7 @@ contract DollarMintingCalculator is IDollarMintingCalculator {
 
     function getDollarsToMint() external view override returns (uint256) {
         TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        uint256 twapPrice = oracle.consult(manager.uADTokenAddress(), 1 ether);
+        uint256 twapPrice = oracle.consult(manager.uADTokenAddress());
         return
             twapPrice.sub(1 ether).mul(
                 IERC20(manager.uADTokenAddress()).totalSupply()

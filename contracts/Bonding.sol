@@ -183,10 +183,13 @@ contract Bonding is CollectableDust {
     }
 
     function currentTokenPrice() public view returns (uint256) {
+        /* uint256[2] memory prices =
+            IMetaPool(manager.stableSwapMetaPoolAddress())
+                .get_price_cumulative_last();
+        return prices[0]; */
         return
             ITWAPOracle(manager.twapOracleAddress()).consult(
-                manager.uADTokenAddress(),
-                TARGET_PRICE
+                manager.uADTokenAddress()
             );
     }
 
