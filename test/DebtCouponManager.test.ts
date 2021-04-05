@@ -1,4 +1,4 @@
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
@@ -31,7 +31,7 @@ describe("DebtCouponManager", () => {
   let curveWhaleAddress: string;
   // let twapOracle: TWAPOracle;
   let bondingShare: BondingShare;
-
+  const couponLengthBlocks = 10;
   beforeEach(async () => {
     // list of accounts
     ({
@@ -73,9 +73,13 @@ describe("DebtCouponManager", () => {
       .connect(curveWhale)
       .transfer(manager.address, ethers.utils.parseEther("10000"));
     // just mint som uAD
-    await uAD
-      .connect(admin)
-      .mint(manager.address, ethers.utils.parseEther("10000"));
+    // mint 10000 uAD each for admin, manager and secondAccount
+    const mintings = [await secondAccount.getAddress(), manager.address].map(
+      async (signer): Promise<ContractTransaction> =>
+        uAD.connect(admin).mint(signer, ethers.utils.parseEther("10000"))
+    );
+    await Promise.all(mintings);
+
     console.log(
       `CurveFactory:${curveFactory}
       curveWhale:${curveWhale}
@@ -125,14 +129,21 @@ describe("DebtCouponManager", () => {
     );
     const debtCouponFactory = await ethers.getContractFactory("DebtCoupon");
     debtCoupon = (await debtCouponFactory.deploy(
-      await admin.getAddress()
+      manager.address
     )) as DebtCoupon;
 
     await manager.connect(admin).setDebtCouponAddress(debtCoupon.address);
     debtCouponMgr = (await dcManagerFactory.deploy(
       manager.address,
-      10
+      couponLengthBlocks
     )) as DebtCouponManager;
+    // debtCouponMgr should have the COUPON_MANAGER_ROLE
+    const COUPON_MANAGER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("COUPON_MANAGER")
+    );
+    await manager
+      .connect(admin)
+      .grantRole(COUPON_MANAGER_ROLE, debtCouponMgr.address);
   });
   describe("DebtCouponManager", () => {
     it("exchangeDollarsForCoupons should fail if uAD price is >= 1", async () => {
@@ -178,7 +189,7 @@ describe("DebtCouponManager", () => {
         ethers.utils.formatEther(x)
       );
       const expected = lpTo3CRV.div(100).mul(99);
-      // approve meto to burn LP on behalf of admin
+      // approve metapool to burn LP on behalf of admin
       await metaPool.approve(metaPool.address, admBalance);
       console.log("---- d");
       //  StableSwap.remove_liquidity_one_coin
@@ -204,9 +215,57 @@ describe("DebtCouponManager", () => {
         "uADPriceAfter",
         ethers.utils.formatEther(uADPriceAfter.toString())
       );
-      const amount = await debtCouponMgr
+      // check that total debt is null
+      const totalDebt = await debtCoupon.getTotalOutstandingDebt();
+      expect(totalDebt).to.equal(0);
+      console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
+      const amountToExchangeForCoupon = ethers.utils.parseEther("1");
+      const secondAccountAdr = await secondAccount.getAddress();
+      const balanceBefore = await uAD.balanceOf(secondAccountAdr);
+      console.log(`
+        uad balanceBefore:${ethers.utils.formatEther(
+          balanceBefore.toString()
+        )} of 2nd account:${secondAccountAdr} `);
+
+      // approve debtCouponManager to burn user's token
+      await uAD
         .connect(secondAccount)
-        .exchangeDollarsForCoupons(1);
+        .approve(debtCouponMgr.address, amountToExchangeForCoupon);
+      const lastBlock = await ethers.provider.getBlock(
+        await ethers.provider.getBlockNumber()
+      );
+      const couponToMint = await couponsForDollarsCalculator.getCouponAmount(
+        amountToExchangeForCoupon
+      );
+      const expiryBlock = lastBlock.number + 1 + couponLengthBlocks;
+      await expect(
+        debtCouponMgr
+          .connect(secondAccount)
+          .exchangeDollarsForCoupons(amountToExchangeForCoupon)
+      )
+        .to.emit(debtCoupon, "MintedCoupons")
+        .withArgs(secondAccountAdr, expiryBlock, couponToMint);
+      //  emit TransferSingle(operator, address(0), account, id, amount);
+      //    event MintedCoupons(address recipient, uint256 expiryBlock, uint256 amount);
+
+      const balanceAfter = await uAD.balanceOf(secondAccountAdr);
+      console.log(`
+        uad balanceAfter:${ethers.utils.formatEther(
+          balanceAfter.toString()
+        )} `);
+      expect(
+        balanceBefore.sub(balanceAfter).sub(amountToExchangeForCoupon)
+      ).to.equal(0);
+      // check that we have a debt coupon with correct premium
+      const debtCoupons = await debtCoupon.balanceOf(
+        secondAccountAdr,
+        expiryBlock
+      );
+      expect(debtCoupons).to.equal(couponToMint);
+      console.log(`
+      debtCoupons:${debtCoupons} `);
+      // check outstanding debt now
+      // should expire after 10 block
     });
   });
 });

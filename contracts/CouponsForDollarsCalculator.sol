@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ICouponsForDollarsCalculator.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./DebtCoupon.sol";
+import "hardhat/console.sol";
 
 /// @title Uses the following formula: ((1/(1-R)^2) - 1)
 contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
@@ -27,11 +28,24 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
         uint256 one = 1;
         uint256 totalDebt =
             DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt();
+        console.log(
+            "##getCouponAmount totalDebt:%s  totalSupply:%s",
+            totalDebt,
+            IERC20(manager.uADTokenAddress()).totalSupply()
+        );
         uint256 r =
             totalDebt.div(IERC20(manager.uADTokenAddress()).totalSupply());
-        uint256 oneMinusRAllSquared = ((one).sub(r)).mul((one).sub(r));
 
+        uint256 oneMinusRAllSquared = ((one).sub(r)).mul((one).sub(r));
+        console.log(
+            "##getCouponAmount r:%s  oneMinusRAllSquared:%s",
+            r,
+            oneMinusRAllSquared
+        );
         //rewards per dollar is ( (1/(1-R)^2) - 1)
-        return ((dollarsToBurn).div(oneMinusRAllSquared)).sub(one);
+        return
+            dollarsToBurn.add(
+                dollarsToBurn.mul(((one.div(oneMinusRAllSquared)).sub(one)))
+            );
     }
 }

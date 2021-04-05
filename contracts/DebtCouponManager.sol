@@ -22,7 +22,6 @@ import "./DebtCoupon.sol";
 /// coupons on a first-come first-serve basis
 contract DebtCouponManager is ERC165, IERC1155Receiver {
     using SafeMath for uint256;
-
     UbiquityAlgorithmicDollarManager public manager;
 
     //the amount of dollars we minted this cycle, so we can calculate delta.
@@ -58,7 +57,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
         uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
 
-        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burn(amount);
+        // we burn user's dollars. User needs to approve debtCouponManager first
+        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+            msg.sender,
+            amount
+        );
 
         uint256 expiryBlockNumber = block.number.add(couponLengthBlocks);
         debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryBlockNumber);
