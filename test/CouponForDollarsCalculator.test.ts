@@ -1,6 +1,7 @@
 import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
+import { Big } from "big.js";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { ERC20 } from "../artifacts/types/ERC20";
@@ -32,6 +33,7 @@ describe("DebtCouponManager", () => {
   // let twapOracle: TWAPOracle;
   let bondingShare: BondingShare;
   const couponLengthBlocks = 10;
+  Big.DP = 35;
 
   const setup = async (uADTotalSupply: BigNumber, totalDebt: BigNumber) => {
     // set uAD Mock
@@ -43,12 +45,17 @@ describe("DebtCouponManager", () => {
     debtCoupon = (await debtCouponFactory.deploy(totalDebt)) as MockDebtCoupon;
     await manager.connect(admin).setDebtCouponAddress(debtCoupon.address);
   };
-  const calcPremium = (uADTotalSupply: number, totalDebt: number): number => {
-    const prem = 1 / (1 - totalDebt / uADTotalSupply) ** 2 - 1;
-    const prem2 = 1 - (1 - totalDebt / uADTotalSupply) ** 2;
-    console.log(
-      `-----prem:${prem} prem2:${prem2}
+  const calcPremium = (uADTotalSupply: Big, totalDebt: Big): Big => {
+    /*  const r = Number.parseFloat((totalDebt / uADTotalSupply).toPrecision(40));
+    const rMinus = Number.parseFloat((1 - r).toPrecision(40));
+    const rMinusSquared = Number.parseFloat((rMinus ** 2).toPrecision(40));
+    const prem = Number.parseFloat((1 / rMinusSquared).toPrecision(40)); */
 
+    const one = new Big(1);
+    const prem = one.div(one.sub(totalDebt.div(uADTotalSupply)).pow(2));
+
+    console.log(
+      `----- prem :${prem.toFixed(35)}
 
      `
     );
@@ -75,7 +82,7 @@ describe("DebtCouponManager", () => {
     );
     const invDenominator = BigNumber.from(1).div(denominator);
     return invDenominator.sub(BigNumber.from(1)); */
-    //premium is ( 1 / (1-R)² ) -1 with r = totalDebt/uADTotalSupply
+    // premium is ( 1 / (1-R)² ) -1 with r = totalDebt/uADTotalSupply
   };
   beforeEach(async () => {
     // list of accounts
@@ -153,16 +160,19 @@ describe("DebtCouponManager", () => {
       );
       expect(couponToMint).to.equal(amountToExchangeForCoupon);
     });
-    it.only("getCouponAmount should work without debt set to 10%", async () => {
-      const premium = calcPremium(100, 10);
-      const amount = 42.456;
+    it("getCouponAmount should work without debt set to 10%", async () => {
       const totalSupply = ethers.utils.parseEther("100000000");
       const totalDebt = ethers.utils.parseEther("10000000");
+      const premium = calcPremium(new Big("100000000"), new Big("10000000"));
+      const amount = new Big(42.456);
+      // with 25 decimals
+      // premium  1.2345679012345679012345679
+      // couponToMint 52.4148148148148148148148148
       await setup(totalSupply, totalDebt);
       // check that total debt is null
       const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
       expect(totalOutstandingDebt).to.equal(totalDebt);
-      console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
+      console.log("totalDebt", ethers.utils.formatEther(totalDebt));
       const amountToExchangeForCoupon = ethers.utils.parseEther(
         amount.toString()
       );
@@ -170,78 +180,91 @@ describe("DebtCouponManager", () => {
       const couponToMint = await couponsForDollarsCalculator.getCouponAmount(
         amountToExchangeForCoupon
       );
-      const amountWithPremium = amount + amount * premium;
+      console.log("couponToMint", ethers.utils.formatEther(couponToMint));
+      const amountWithPremium = amount.mul(premium).toPrecision(21);
+      const amountWithPremiumLessPrecise = amountWithPremium.substr(
+        0,
+        amountWithPremium.indexOf(".") + 19
+      );
+      console.log("amountWithPremium", amountWithPremiumLessPrecise);
+
       expect(couponToMint).to.equal(
-        ethers.utils.parseEther(amountWithPremium.toString())
+        ethers.utils.parseEther(amountWithPremiumLessPrecise)
       );
     });
     it("getCouponAmount should work without debt set to 50%", async () => {
-      let couponToMintCal = calcPremium(100, 0);
-      console.log(
-        `couponToMintCal supply:100 debt0:${couponToMintCal.toString()}
-       `
-      );
-      couponToMintCal = calcPremium(100, 10);
-      console.log(
-        `couponToMintCal supply:100 debt10:${couponToMintCal.toString()}
-       `
-      );
-      couponToMintCal = calcPremium(100, 50);
-      console.log(
-        `couponToMintCal supply:100 debt50:${couponToMintCal.toString()}
-       `
-      );
-      couponToMintCal = calcPremium(100, 99);
-      console.log(
-        `couponToMintCal supply:100 debt99.99999:${couponToMintCal.toString()}
-       `
-      );
-      await setup(BigNumber.from(10), BigNumber.from(0));
+      const totalDebt = "1082743732732734394894";
+      const totalSupply = "2165487465465468789789";
+      const amountStr = "6546546778667854444";
+      const premium = calcPremium(new Big(totalSupply), new Big(totalDebt));
+      const amount = new Big(amountStr);
+      // with 20 decimals
+      // premium  4
+      // couponToMint 26186187114671417775,97581497234938487164
+
+      await setup(BigNumber.from(totalSupply), BigNumber.from(totalDebt));
       // check that total debt is null
-      const totalDebt = await debtCoupon.getTotalOutstandingDebt();
-      expect(totalDebt).to.equal(0);
+      const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
+      expect(totalOutstandingDebt).to.equal(totalDebt);
       console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
-      const amountToExchangeForCoupon = 1;
+      const amountToExchangeForCoupon = BigNumber.from(amountStr);
 
       const couponToMint = await couponsForDollarsCalculator.getCouponAmount(
         amountToExchangeForCoupon
       );
+      console.log("couponToMint", ethers.utils.formatEther(couponToMint));
+      const amountWithPremium = amount.mul(premium).toPrecision(22);
+      const amountWithPremiumLessPrecise = amountWithPremium.substr(
+        0,
+        amountWithPremium.indexOf(".")
+      );
+      console.log("amountWithPremium", amountWithPremium);
+      console.log("amountWithPremiumLessPrecise", amountWithPremiumLessPrecise);
 
-      expect(couponToMint).to.equal(1);
+      expect(couponToMint).to.equal(amountWithPremiumLessPrecise);
     });
-    it("getCouponAmount should work without debt set to 100%", async () => {
-      let couponToMintCal = calcPremium(100, 0);
-      console.log(
-        `couponToMintCal supply:100 debt0:${couponToMintCal.toString()}
-       `
-      );
-      couponToMintCal = calcPremium(100, 10);
-      console.log(
-        `couponToMintCal supply:100 debt10:${couponToMintCal.toString()}
-       `
-      );
-      couponToMintCal = calcPremium(100, 50);
-      console.log(
-        `couponToMintCal supply:100 debt50:${couponToMintCal.toString()}
-       `
-      );
-      couponToMintCal = calcPremium(100, 99);
-      console.log(
-        `couponToMintCal supply:100 debt99.99999:${couponToMintCal.toString()}
-       `
-      );
-      await setup(BigNumber.from(10), BigNumber.from(0));
-      // check that total debt is null
-      const totalDebt = await debtCoupon.getTotalOutstandingDebt();
-      expect(totalDebt).to.equal(0);
+    it("getCouponAmount should work without debt set to 99%", async () => {
+      const totalDebt = "2165487465465468789789";
+      const totalSupply = "2185487465465468799999";
+      const amountStr = "65465456489789711112";
+      const premium = calcPremium(new Big(totalSupply), new Big(totalDebt));
+      const amount = new Big(amountStr);
+      // with 20 decimals
+      // premium  11940,88865426668451012637
+      // couponToMint 781715726645319251457397,253671655233117279062
+      await setup(BigNumber.from(totalSupply), BigNumber.from(totalDebt));
+
+      const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
+      expect(totalOutstandingDebt).to.equal(totalDebt);
       console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
-      const amountToExchangeForCoupon = 1;
+      const amountToExchangeForCoupon = BigNumber.from(amountStr);
 
       const couponToMint = await couponsForDollarsCalculator.getCouponAmount(
         amountToExchangeForCoupon
       );
+      console.log("couponToMint", ethers.utils.formatEther(couponToMint));
+      const amountWithPremium = amount.mul(premium).toFixed(25);
+      const amountWithPremiumLessPrecise = amountWithPremium.substr(
+        0,
+        amountWithPremium.indexOf(".")
+      );
+      console.log("amountWithPremium", amountWithPremium);
+      console.log("amountWithPremiumLessPrecise", amountWithPremiumLessPrecise);
 
-      expect(couponToMint).to.equal(1);
+      expect(couponToMint).to.equal(amountWithPremiumLessPrecise);
+    });
+    it("getCouponAmount should revert with debt set to 100%", async () => {
+      const totalDebt = "2165487465465468789789";
+
+      await setup(BigNumber.from(totalDebt), BigNumber.from(totalDebt));
+
+      const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
+      expect(totalOutstandingDebt).to.equal(totalDebt);
+      console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
+
+      await expect(
+        couponsForDollarsCalculator.getCouponAmount(1)
+      ).to.revertedWith("coupon4Dollar: DEBT_TOO_HIGH");
     });
   });
 });

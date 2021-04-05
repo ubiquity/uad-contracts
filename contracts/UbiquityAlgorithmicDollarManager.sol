@@ -37,7 +37,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     mapping(address => address) private _excessDollarDistributors;
 
     modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "uADMGR: Caller is not admin"
+        );
         _;
     }
 
