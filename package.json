@@ -47,8 +47,8 @@
     "@ethereum-waffle/chai": "^3.2.2",
     "@ethereum-waffle/mock-contract": "^3.2.2",
     "@ethereum-waffle/provider": "^3.2.2",
+    "@lavamoat/allow-scripts": "^1.0.5",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@lavamoat/allow-scripts": "^1.0.4",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@typechain/ethers-v5": "^6.0.5",
     "@types/dotenv": "^8.2.0",
@@ -98,7 +98,8 @@
       "bufferutil": false,
       "utf-8-validate": false,
       "core-js-pure": false,
-      "postinstall-postinstall": false
+      "postinstall-postinstall": false,
+      "husky": false
     }
   }
 }
