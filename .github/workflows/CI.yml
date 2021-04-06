@@ -33,7 +33,7 @@ jobs:
         run: echo "::set-output name=dir::$(yarn cache dir)"
       - uses: actions/cache@v1
         with:
-          path: ${{ steps.yarn-cache2.outputs.dir }}
+          path: ${{ steps.yarn-cache-2.outputs.dir }}
           key: ${{ matrix.os }}-yarn2-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ matrix.os }}-yarn2-
