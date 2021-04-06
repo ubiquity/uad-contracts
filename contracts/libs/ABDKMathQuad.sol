@@ -15,23 +15,25 @@ library ABDKMathQuad {
     /*
      * 0.
      */
-    bytes16 private constant POSITIVE_ZERO = 0x00000000000000000000000000000000;
+    bytes16 private constant _POSITIVE_ZERO =
+        0x00000000000000000000000000000000;
 
     /*
      * -0.
      */
-    bytes16 private constant NEGATIVE_ZERO = 0x80000000000000000000000000000000;
+    bytes16 private constant _NEGATIVE_ZERO =
+        0x80000000000000000000000000000000;
 
     /*
      * +Infinity.
      */
-    bytes16 private constant POSITIVE_INFINITY =
+    bytes16 private constant _POSITIVE_INFINITY =
         0x7FFF0000000000000000000000000000;
 
     /*
      * -Infinity.
      */
-    bytes16 private constant NEGATIVE_INFINITY =
+    bytes16 private constant _NEGATIVE_INFINITY =
         0xFFFF0000000000000000000000000000;
 
     /*
@@ -304,13 +306,13 @@ library ABDKMathQuad {
 
             if (exponent == 0x7FFFF) {
                 if (significand > 0) return NaN;
-                else return negative ? NEGATIVE_INFINITY : POSITIVE_INFINITY;
+                else return negative ? _NEGATIVE_INFINITY : _POSITIVE_INFINITY;
             }
 
             if (exponent > 278526)
-                return negative ? NEGATIVE_INFINITY : POSITIVE_INFINITY;
+                return negative ? _NEGATIVE_INFINITY : _POSITIVE_INFINITY;
             else if (exponent < 245649)
-                return negative ? NEGATIVE_ZERO : POSITIVE_ZERO;
+                return negative ? _NEGATIVE_ZERO : _POSITIVE_ZERO;
             else if (exponent < 245761) {
                 significand =
                     (significand |
@@ -596,9 +598,9 @@ library ABDKMathQuad {
                 else ySignifier |= 0x10000000000000000000000000000;
 
                 if (xSignifier == 0)
-                    return y == NEGATIVE_ZERO ? POSITIVE_ZERO : y;
+                    return y == _NEGATIVE_ZERO ? _POSITIVE_ZERO : y;
                 else if (ySignifier == 0)
-                    return x == NEGATIVE_ZERO ? POSITIVE_ZERO : x;
+                    return x == _NEGATIVE_ZERO ? _POSITIVE_ZERO : x;
                 else {
                     int256 delta = int256(xExponent) - int256(yExponent);
 
@@ -620,7 +622,7 @@ library ABDKMathQuad {
 
                         if (xExponent == 0x7FFF)
                             return
-                                xSign ? NEGATIVE_INFINITY : POSITIVE_INFINITY;
+                                xSign ? _NEGATIVE_INFINITY : _POSITIVE_INFINITY;
                         else {
                             if (xSignifier < 0x10000000000000000000000000000)
                                 xExponent = 0;
@@ -665,7 +667,7 @@ library ABDKMathQuad {
                             xSign = ySign;
                         }
 
-                        if (xSignifier == 0) return POSITIVE_ZERO;
+                        if (xSignifier == 0) return _POSITIVE_ZERO;
 
                         uint256 msb = mostSignificantBit(xSignifier);
 
@@ -689,7 +691,7 @@ library ABDKMathQuad {
 
                         if (xExponent == 0x7FFF)
                             return
-                                xSign ? NEGATIVE_INFINITY : POSITIVE_INFINITY;
+                                xSign ? _NEGATIVE_INFINITY : _POSITIVE_INFINITY;
                         else
                             return
                                 bytes16(
@@ -782,8 +784,8 @@ library ABDKMathQuad {
                 if (xSignifier == 0)
                     return
                         (x ^ y) & 0x80000000000000000000000000000000 > 0
-                            ? NEGATIVE_ZERO
-                            : POSITIVE_ZERO;
+                            ? _NEGATIVE_ZERO
+                            : _POSITIVE_ZERO;
 
                 xExponent += yExponent;
 
@@ -878,13 +880,13 @@ library ABDKMathQuad {
                 if (y & 0x0000FFFFFFFFFFFFFFFFFFFFFFFFFFFF != 0) return NaN;
                 else
                     return
-                        POSITIVE_ZERO |
+                        _POSITIVE_ZERO |
                         ((x ^ y) & 0x80000000000000000000000000000000);
             } else if (y & 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF == 0) {
                 if (x & 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF == 0) return NaN;
                 else
                     return
-                        POSITIVE_INFINITY |
+                        _POSITIVE_INFINITY |
                         ((x ^ y) & 0x80000000000000000000000000000000);
             } else {
                 uint256 ySignifier =
@@ -913,8 +915,8 @@ library ABDKMathQuad {
                 if (xSignifier == 0)
                     return
                         (x ^ y) & 0x80000000000000000000000000000000 > 0
-                            ? NEGATIVE_ZERO
-                            : POSITIVE_ZERO;
+                            ? _NEGATIVE_ZERO
+                            : _POSITIVE_ZERO;
 
                 assert(xSignifier >= 0x1000000000000000000000000000);
 
@@ -1008,7 +1010,7 @@ library ABDKMathQuad {
                     if (xExponent == 0) xExponent = 1;
                     else xSignifier |= 0x10000000000000000000000000000;
 
-                    if (xSignifier == 0) return POSITIVE_ZERO;
+                    if (xSignifier == 0) return _POSITIVE_ZERO;
 
                     bool oddExponent = xExponent & 0x1 == 0;
                     xExponent = (xExponent + 16383) >> 1;
@@ -1066,7 +1068,7 @@ library ABDKMathQuad {
         unchecked {
             if (uint128(x) > 0x80000000000000000000000000000000) return NaN;
             else if (x == 0x3FFF0000000000000000000000000000)
-                return POSITIVE_ZERO;
+                return _POSITIVE_ZERO;
             else {
                 uint256 xExponent = (uint128(x) >> 112) & 0x7FFF;
                 if (xExponent == 0x7FFF) return x;
@@ -1076,7 +1078,7 @@ library ABDKMathQuad {
                     if (xExponent == 0) xExponent = 1;
                     else xSignifier |= 0x10000000000000000000000000000;
 
-                    if (xSignifier == 0) return NEGATIVE_INFINITY;
+                    if (xSignifier == 0) return _NEGATIVE_INFINITY;
 
                     bool resultNegative;
                     uint256 resultExponent = 16495;
@@ -1163,7 +1165,7 @@ library ABDKMathQuad {
 
             if (xExponent == 0x7FFF && xSignifier != 0) return NaN;
             else if (xExponent > 16397)
-                return xNegative ? POSITIVE_ZERO : POSITIVE_INFINITY;
+                return xNegative ? _POSITIVE_ZERO : _POSITIVE_INFINITY;
             else if (xExponent < 16255)
                 return 0x3FFF0000000000000000000000000000;
             else {
@@ -1176,12 +1178,12 @@ library ABDKMathQuad {
                 if (
                     xNegative &&
                     xSignifier > 0x406E00000000000000000000000000000000
-                ) return POSITIVE_ZERO;
+                ) return _POSITIVE_ZERO;
 
                 if (
                     !xNegative &&
                     xSignifier > 0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-                ) return POSITIVE_INFINITY;
+                ) return _POSITIVE_INFINITY;
 
                 uint256 resultExponent = xSignifier >> 128;
                 xSignifier &= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;

@@ -1,14 +1,12 @@
-import { BigNumber, ContractTransaction, Signer } from "ethers";
+import { ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
-import { BondingShare } from "../artifacts/types/BondingShare";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { DebtCoupon } from "../artifacts/types/DebtCoupon";
 import { DebtCouponManager } from "../artifacts/types/DebtCouponManager";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
-import { mineBlock } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { CouponsForDollarsCalculator } from "../artifacts/types/CouponsForDollarsCalculator";
 
@@ -22,22 +20,15 @@ describe("DebtCouponManager", () => {
   let admin: Signer;
   let secondAccount: Signer;
   let uAD: UbiquityAlgorithmicDollar;
-  let sablier: string;
-  let USDC: string;
-  let DAI: string;
+
   let curveFactory: string;
   let curve3CrvBasePool: string;
   let curve3CrvToken: string;
   let curveWhaleAddress: string;
-  // let twapOracle: TWAPOracle;
-  let bondingShare: BondingShare;
   const couponLengthBlocks = 10;
   beforeEach(async () => {
     // list of accounts
     ({
-      sablier,
-      USDC,
-      DAI,
       curveFactory,
       curve3CrvBasePool,
       curve3CrvToken,
@@ -80,12 +71,6 @@ describe("DebtCouponManager", () => {
     );
     await Promise.all(mintings);
 
-    console.log(
-      `CurveFactory:${curveFactory}
-      curveWhale:${curveWhale}
-         curve3CrvBasePool: ${curve3CrvBasePool}
-         crvToken:${crvToken.address}`
-    );
     await manager
       .connect(admin)
       .deployStableSwapPool(
@@ -101,10 +86,7 @@ describe("DebtCouponManager", () => {
       "IMetaPool",
       metaPoolAddr
     )) as IMetaPool;
-    console.log(
-      `
-         crvToken:${metaPoolAddr}`
-    );
+
     const TWAPOracleFactory = await ethers.getContractFactory("TWAPOracle");
     twapOracle = (await TWAPOracleFactory.deploy(
       metaPoolAddr,
@@ -156,19 +138,12 @@ describe("DebtCouponManager", () => {
       const pool1bal = await metaPool.balances(1);
       expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
       expect(pool1bal).to.equal(ethers.utils.parseEther("10000"));
-      console.log(
-        `pool0bal:${pool0bal.toString()} pool1bal:${pool1bal.toString()} `
-      );
+
       // Price must be below 1 to mint coupons
       await twapOracle.update();
-      const uADPrice = await twapOracle.consult(uAD.address);
-      console.log("uADPrice", ethers.utils.formatEther(uADPrice.toString()));
+      await twapOracle.consult(uAD.address);
       // remove liquidity one coin 3CRV only so that uAD will be worth less
       const admBalance = await metaPool.balanceOf(await admin.getAddress());
-      console.log(
-        "admBalance of uAD-3CRV lp token",
-        ethers.utils.formatEther(admBalance.toString())
-      );
       // calculation to withdraw 1e18 LP token
       // Calculate the amount received when withdrawing and unwrapping in a single coin.
       // Useful for setting _max_burn_amount when calling remove_liquidity_one_coin.
@@ -177,21 +152,10 @@ describe("DebtCouponManager", () => {
         1
       );
 
-      console.log("lpTo3CRV", ethers.utils.formatEther(lpTo3CRV.toString()));
-      const x = BigNumber.from("1").mul(101).div(100);
-      console.log(
-        "----x ",
-        lpTo3CRV.toString(),
-        lpTo3CRV.div(100).mul(101).toString(),
-        x.toString(),
-        x.toNumber(),
-        x.toHexString(),
-        ethers.utils.formatEther(x)
-      );
       const expected = lpTo3CRV.div(100).mul(99);
       // approve metapool to burn LP on behalf of admin
       await metaPool.approve(metaPool.address, admBalance);
-      console.log("---- d");
+
       //  StableSwap.remove_liquidity_one_coin
       //        (_burn_amount: uint256, i: int128,
       //         _min_received: uint256, _receiver: address = msg.sender) → uint256: nonpayable
@@ -201,31 +165,15 @@ describe("DebtCouponManager", () => {
         1,
         expected
       );
-      const pool0balAfter = await metaPool.balances(0);
-      const pool1balAfter = await metaPool.balances(1);
-      /*
-      expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
-      expect(pool1bal).to.equal(ethers.utils.parseEther("10000")); */
-      console.log(
-        `pool0balAfter:${pool0balAfter.toString()} pool1balAfter:${pool1balAfter.toString()} `
-      );
+
       await twapOracle.update();
-      const uADPriceAfter = await twapOracle.consult(uAD.address);
-      console.log(
-        "uADPriceAfter",
-        ethers.utils.formatEther(uADPriceAfter.toString())
-      );
+
       // check that total debt is null
       const totalDebt = await debtCoupon.getTotalOutstandingDebt();
       expect(totalDebt).to.equal(0);
-      console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
       const amountToExchangeForCoupon = ethers.utils.parseEther("1");
       const secondAccountAdr = await secondAccount.getAddress();
       const balanceBefore = await uAD.balanceOf(secondAccountAdr);
-      console.log(`
-        uad balanceBefore:${ethers.utils.formatEther(
-          balanceBefore.toString()
-        )} of 2nd account:${secondAccountAdr} `);
 
       // approve debtCouponManager to burn user's token
       await uAD
@@ -249,10 +197,7 @@ describe("DebtCouponManager", () => {
       //    event MintedCoupons(address recipient, uint256 expiryBlock, uint256 amount);
 
       const balanceAfter = await uAD.balanceOf(secondAccountAdr);
-      console.log(`
-        uad balanceAfter:${ethers.utils.formatEther(
-          balanceAfter.toString()
-        )} `);
+
       expect(
         balanceBefore.sub(balanceAfter).sub(amountToExchangeForCoupon)
       ).to.equal(0);
@@ -262,8 +207,7 @@ describe("DebtCouponManager", () => {
         expiryBlock
       );
       expect(debtCoupons).to.equal(couponToMint);
-      console.log(`
-      debtCoupons:${debtCoupons} `);
+
       // check outstanding debt now
       // should expire after 10 block
     });

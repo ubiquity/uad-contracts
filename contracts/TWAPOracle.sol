@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.6.6;
+pragma solidity ^0.8.3;
 
-import "hardhat/console.sol";
 import "./interfaces/IMetaPool.sol";
 
 contract TWAPOracle {
     address public immutable pool;
     address public immutable token0;
     address public immutable token1;
-    // maximum time between two TWAP snapshot
-    uint256 constant twapTime = 3600;
+
     uint256 public price0Average;
     uint256 public price1Average;
     uint256 public pricesBlockTimestampLast;
@@ -18,18 +16,18 @@ contract TWAPOracle {
     constructor(
         address _pool,
         address _uADtoken0,
-        address _3CRVtoken1
+        address _curve3CRVtoken1
     ) {
         pool = _pool;
         // coin at index 0 is uAD and index 1 is 3CRV
         require(
             IMetaPool(_pool).coins(0) == _uADtoken0 &&
-                IMetaPool(_pool).coins(1) == _3CRVtoken1,
+                IMetaPool(_pool).coins(1) == _curve3CRVtoken1,
             "TWAPOracle: COIN_ORDER_MISMATCH"
         );
 
         token0 = _uADtoken0;
-        token1 = _3CRVtoken1;
+        token1 = _curve3CRVtoken1;
 
         uint256 _reserve0 = uint112(IMetaPool(_pool).balances(0));
         uint256 _reserve1 = uint112(IMetaPool(_pool).balances(1));

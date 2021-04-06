@@ -17,12 +17,12 @@ library ABDKMath64x64 {
     /*
      * Minimum value signed 64.64-bit fixed point number may have.
      */
-    int128 private constant MIN_64x64 = -0x80000000000000000000000000000000;
+    int128 private constant _MIN_64x64 = -0x80000000000000000000000000000000;
 
     /*
      * Maximum value signed 64.64-bit fixed point number may have.
      */
-    int128 private constant MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    int128 private constant _MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     /**
      * Convert signed 256-bit integer number into signed 64.64-bit fixed point
@@ -89,7 +89,7 @@ library ABDKMath64x64 {
     function from128x128(int256 x) internal pure returns (int128) {
         unchecked {
             int256 result = x >> 64;
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= _MIN_64x64 && result <= _MAX_64x64);
             return int128(result);
         }
     }
@@ -117,7 +117,7 @@ library ABDKMath64x64 {
     function add(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
             int256 result = int256(x) + y;
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= _MIN_64x64 && result <= _MAX_64x64);
             return int128(result);
         }
     }
@@ -132,7 +132,7 @@ library ABDKMath64x64 {
     function sub(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
             int256 result = int256(x) - y;
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= _MIN_64x64 && result <= _MAX_64x64);
             return int128(result);
         }
     }
@@ -147,7 +147,7 @@ library ABDKMath64x64 {
     function mul(int128 x, int128 y) internal pure returns (int128) {
         unchecked {
             int256 result = (int256(x) * y) >> 64;
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= _MIN_64x64 && result <= _MAX_64x64);
             return int128(result);
         }
     }
@@ -162,7 +162,7 @@ library ABDKMath64x64 {
      */
     function muli(int128 x, int256 y) internal pure returns (int256) {
         unchecked {
-            if (x == MIN_64x64) {
+            if (x == _MIN_64x64) {
                 require(
                     y >= -0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF &&
                         y <= 0x1000000000000000000000000000000000000000000000000
@@ -239,7 +239,7 @@ library ABDKMath64x64 {
         unchecked {
             require(y != 0);
             int256 result = (int256(x) << 64) / y;
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= _MIN_64x64 && result <= _MAX_64x64);
             return int128(result);
         }
     }
@@ -288,7 +288,7 @@ library ABDKMath64x64 {
         unchecked {
             require(y != 0);
             uint128 result = divuu(x, y);
-            require(result <= uint128(MAX_64x64));
+            require(result <= uint128(_MAX_64x64));
             return int128(result);
         }
     }
@@ -301,7 +301,7 @@ library ABDKMath64x64 {
      */
     function neg(int128 x) internal pure returns (int128) {
         unchecked {
-            require(x != MIN_64x64);
+            require(x != _MIN_64x64);
             return -x;
         }
     }
@@ -314,7 +314,7 @@ library ABDKMath64x64 {
      */
     function abs(int128 x) internal pure returns (int128) {
         unchecked {
-            require(x != MIN_64x64);
+            require(x != _MIN_64x64);
             return x < 0 ? -x : x;
         }
     }
@@ -330,7 +330,7 @@ library ABDKMath64x64 {
         unchecked {
             require(x != 0);
             int256 result = int256(0x100000000000000000000000000000000) / x;
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= _MIN_64x64 && result <= _MAX_64x64);
             return int128(result);
         }
     }
@@ -464,7 +464,7 @@ library ABDKMath64x64 {
                 absResult >>= 64 - resultShift;
             }
             int256 result = negative ? -int256(absResult) : int256(absResult);
-            require(result >= MIN_64x64 && result <= MAX_64x64);
+            require(result >= _MIN_64x64 && result <= _MAX_64x64);
             return int128(result);
         }
     }
@@ -697,7 +697,7 @@ library ABDKMath64x64 {
                 result = (result * 0x10000000000000000B17217F7D1CF79AB) >> 128;
 
             result >>= uint256(int256(63 - (x >> 64)));
-            require(result <= uint256(int256(MAX_64x64)));
+            require(result <= uint256(int256(_MAX_64x64)));
 
             return int128(int256(result));
         }
