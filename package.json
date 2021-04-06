@@ -10,7 +10,7 @@
     "lint:sol": "npx solhint 'contracts/**/*.sol' --fix ",
     "lint:eslint": "npx eslint . --ext .js,.ts --fix",
     "lint:prettier": "npx prettier --write .",
-    "lint": "yarn lint:prettier && yarn lint:eslint && yarn run lint:sol"
+    "lint": "yarn compile && yarn lint:prettier && yarn lint:eslint && yarn run lint:sol"
   },
   "husky": {
     "hooks": {
