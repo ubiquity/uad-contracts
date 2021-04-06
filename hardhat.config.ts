@@ -6,8 +6,18 @@ import { HardhatUserConfig } from "hardhat/config";
 import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import "./tasks/index";
 
 dotenv.config();
+const mnemonic = `${
+  process.env.MNEMONIC ||
+  "test test test test test test test test test test test junk"
+}`;
+
+const accounts = {
+  // use default accounts
+  mnemonic,
+};
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -47,15 +57,7 @@ const config: HardhatUserConfig = {
     // curveWhaleAddress: "0x09cabda22B553bA8FFCD2d453078e2fD4017404F",
     curveWhaleAddress: "0x1C0b104A9EeFf2F7001348a49fA28b8A0D23d637",
   },
-  typechain: {
-    outDir: "artifacts/types",
-    target: "ethers-v5",
-  },
-  gasReporter: {
-    currency: "USD",
-    gasPrice: 150,
-    onlyCalledMethods: true,
-  },
+
   /*   paths: {
     deploy: "./scripts/deployment",
     deployments: "./deployments",
@@ -83,6 +85,22 @@ const config: HardhatUserConfig = {
         },
       ], */
     },
+    mainnet: {
+      url: `https://eth-mainnet.alchemyapi.io/v2/${
+        process.env.ALCHEMY_API_KEY || ""
+      }`,
+      accounts,
+    },
+  },
+  typechain: {
+    outDir: "artifacts/types",
+    target: "ethers-v5",
+  },
+  gasReporter: {
+    currency: "USD",
+    gasPrice: 150,
+    onlyCalledMethods: true,
+    coinmarketcap: `${process.env.COINMARKETCAP_API_KEY || ""}`,
   },
 };
 

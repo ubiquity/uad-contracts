@@ -1,5 +1,5 @@
 {
-  "name": "stabilitas-bonding",
+  "name": "uad-contracts",
   "version": "1.0.0",
   "description": "Bonding system for the Universal Digital Dollar",
   "main": "index.js",
@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ubiquity/stabilitas-bonding.git"
+    "url": "git+https://github.com/ubiquity/uad-contracts.git"
   },
   "keywords": [
     "stablecoin",
@@ -37,9 +37,9 @@
   "author": "Ubiquity DAO",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/ubiquity/stabilitas-bonding/issues"
+    "url": "https://github.com/ubiquity/uad-contracts/issues"
   },
-  "homepage": "https://github.com/ubiquity/stabilitas-bonding#readme",
+  "homepage": "https://github.com/ubiquity/uad-contracts#readme",
   "devDependencies": {
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
