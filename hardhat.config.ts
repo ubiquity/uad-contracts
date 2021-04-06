@@ -54,6 +54,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: "USD",
     gasPrice: 150,
+    onlyCalledMethods: true,
   },
   /*   paths: {
     deploy: "./scripts/deployment",

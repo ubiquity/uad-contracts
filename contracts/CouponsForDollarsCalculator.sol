@@ -40,18 +40,14 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
             DebtCoupon(manager.debtCouponAddress())
                 .getTotalOutstandingDebt()
                 .fromUInt();
-        console.logBytes16(totalDebt);
         bytes16 r =
             totalDebt.div(
                 IERC20(manager.uADTokenAddress()).totalSupply().fromUInt()
             );
-        console.logBytes16(r);
 
         bytes16 oneMinusRAllSquared = (one.sub(r)).mul(one.sub(r));
-        console.logBytes16(oneMinusRAllSquared);
 
         bytes16 res = one.div(oneMinusRAllSquared);
-        console.logBytes16(res);
 
         return res.mul(dollarsToBurn.fromUInt()).toUInt();
         // ABDKMath64x64 get 52414814814814820000 instead of 52414814814814814809

@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/ICurveFactory.sol";
 import "./interfaces/IMetaPool.sol";
-import "hardhat/console.sol";
 
 /// @title A central config for the uAD system. Also acts as a central
 /// access control manager.
