@@ -1,4 +1,4 @@
-import { ContractTransaction, Signer } from "ethers";
+import { ContractFactory, ContractTransaction, Signer } from "ethers";
 import { deployments, ethers, getNamedAccounts, network } from "hardhat";
 import { before, describe, it } from "mocha";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
@@ -8,6 +8,8 @@ import { ERC20 } from "../artifacts/types/ERC20";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
+
+const id = 42;
 
 describe("Bonding", () => {
   let bonding: Bonding;
@@ -36,15 +38,21 @@ describe("Bonding", () => {
       curveWhaleAddress,
     } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
+    const adminAddress = await admin.getAddress();
 
-    const BondingShareDeployment = await deployments.deploy("BondingShare", {
-      from: await admin.getAddress(),
-    });
-
-    bondingShare = (await ethers.getContractAt(
-      "BondingShare",
-      BondingShareDeployment.address
+    const factoryBondingShare = await ethers.getContractFactory("BondingShare");
+    bondingShare = (await factoryBondingShare.deploy(
+      adminAddress
     )) as BondingShare;
+
+    // const BondingShareDeployment = await deployments.deploy("BondingShare", {
+    //   from: await admin.getAddress(),
+    // });
+
+    // bondingShare = (await ethers.getContractAt(
+    //   "BondingShare",
+    //   BondingShareDeployment.address
+    // )) as BondingShare;
 
     const Manager = await deployments.deploy(
       "UbiquityAlgorithmicDollarManager",
@@ -94,6 +102,7 @@ describe("Bonding", () => {
     });
 
     const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
+
     // mint uad for whale
     await uAD
       .connect(admin)
@@ -137,6 +146,7 @@ describe("Bonding", () => {
       BondingDeployment.address
     )) as Bonding;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await bondingShare
       .connect(admin)
       .grantRole(ethers.utils.id("MINTER_ROLE"), bonding.address);
@@ -331,7 +341,8 @@ describe("Bonding", () => {
   describe("bondTokens", () => {
     it("User should be able to bond uAD tokens", async () => {
       const prevBondingSharesBalance = await bondingShare.balanceOf(
-        await secondAccount.getAddress()
+        await secondAccount.getAddress(),
+        id
       );
       const amountToBond = ethers.utils.parseEther("5000");
 
@@ -343,7 +354,8 @@ describe("Bonding", () => {
       await bonding.connect(secondAccount).bondTokens(amountToBond);
 
       const newBondingSharesBalance = await bondingShare.balanceOf(
-        await secondAccount.getAddress()
+        await secondAccount.getAddress(),
+        id
       );
       expect(newBondingSharesBalance).to.be.gt(prevBondingSharesBalance);
     });
@@ -368,11 +380,16 @@ describe("Bonding", () => {
         await secondAccount.getAddress()
       );
       const prevBondingSharesBalance = await bondingShare.balanceOf(
-        await secondAccount.getAddress()
+        await secondAccount.getAddress(),
+        id
       );
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await bondingShare
         .connect(secondAccount)
         .approve(bonding.address, ethers.BigNumber.from("0"));
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await bondingShare
         .connect(secondAccount)
         .approve(bonding.address, prevBondingSharesBalance);
@@ -386,7 +403,8 @@ describe("Bonding", () => {
       );
 
       const newBondingSharesBalance = await bondingShare.balanceOf(
-        await secondAccount.getAddress()
+        await secondAccount.getAddress(),
+        id
       );
 
       expect(prevUADBalance).to.be.lt(newUADBalance);
@@ -410,12 +428,16 @@ describe("Bonding", () => {
       await bonding.connect(secondAccount).bondTokens(amountToBond);
 
       const prevBondingSharesBalance = await bondingShare.balanceOf(
-        await secondAccount.getAddress()
+        await secondAccount.getAddress(),
+        id
       );
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await bondingShare
         .connect(secondAccount)
         .approve(bonding.address, ethers.BigNumber.from("0"));
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await bondingShare
         .connect(secondAccount)
         .approve(bonding.address, prevBondingSharesBalance);
@@ -429,7 +451,7 @@ describe("Bonding", () => {
       );
 
       expect(prevBondingSharesBalance).to.be.gt(
-        await bondingShare.balanceOf(await secondAccount.getAddress())
+        await bondingShare.balanceOf(await secondAccount.getAddress(), id)
       );
     });
   });

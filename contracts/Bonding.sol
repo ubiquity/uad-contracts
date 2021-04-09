@@ -13,6 +13,9 @@ import "./utils/CollectableDust.sol";
 contract Bonding is CollectableDust {
     using SafeERC20 for IERC20;
 
+    uint16 id = 42;
+    bytes data = "";
+
     UbiquityAlgorithmicDollarManager public manager;
 
     uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
@@ -121,8 +124,9 @@ contract Bonding is CollectableDust {
             "Bonding: Caller does not have enough shares"
         );
 
-        IBondingShare(manager.bondingShareAddress()).burnFrom(
+        IBondingShare(manager.bondingShareAddress()).burn(
             msg.sender,
+            id,
             _sharesAmount
         );
 
@@ -203,7 +207,9 @@ contract Bonding is CollectableDust {
 
         IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
-            numberOfShares
+            id,
+            numberOfShares,
+            data
         );
     }
 

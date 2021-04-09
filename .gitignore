@@ -103,13 +103,12 @@ dist
 # TernJS port file
 .tern-port
 
-node_modules
-
-#Hardhat files
+# Hardhat files
 cache
 artifacts
 deployments
 
+# MacOS files
 .DS_Store
 
 # VSCode user settings
