@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "./ERC1155.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
