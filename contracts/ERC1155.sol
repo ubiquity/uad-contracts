@@ -24,7 +24,10 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
     // Mapping token ID balances
-    mapping(uint256 => uint256) private _totalSupply;
+    mapping(uint256 => uint256) private _totalSupplyId;
+
+    // total supply
+    uint256 private _totalSupply;
 
     // Mapping from account to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
@@ -90,8 +93,12 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         return _balances[id][account];
     }
 
-    function totalSupply(uint256 id) public view virtual returns (uint256) {
-        return _totalSupply[id];
+    function totalSupplyId(uint256 id) public view virtual returns (uint256) {
+        return _totalSupplyId[id];
+    }
+
+    function totalSupply() public view virtual returns (uint256) {
+        return _totalSupply;
     }
 
     /**
@@ -295,7 +302,8 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         );
 
         _balances[id][account] += amount;
-        _totalSupply[id] += amount;
+        _totalSupplyId[id] += amount;
+        _totalSupply += amount;
         emit TransferSingle(operator, address(0), account, id, amount);
 
         _doSafeTransferAcceptanceCheck(
@@ -335,7 +343,8 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
 
         for (uint256 i = 0; i < ids.length; i++) {
             _balances[ids[i]][to] += amounts[i];
-            _totalSupply[ids[i]] += amounts[i];
+            _totalSupplyId[ids[i]] += amounts[i];
+            _totalSupply += amounts[i];
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
@@ -383,12 +392,19 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         );
         _balances[id][account] = accountBalance - amount;
 
-        uint256 totalSupplyId = _totalSupply[id];
+        uint256 totSupplyId = _totalSupplyId[id];
         require(
-            totalSupplyId >= amount,
+            totSupplyId >= amount,
             "ERC1155: burn amount exceeds total supply"
         );
-        _totalSupply[id] = totalSupplyId - amount;
+        _totalSupplyId[id] = totSupplyId - amount;
+
+        uint256 totSupply = _totalSupply;
+        require(
+            totSupply >= amount,
+            "ERC1155: burn amount exceeds total supply"
+        );
+        _totalSupply = totSupply - amount;
 
         emit TransferSingle(operator, account, address(0), id, amount);
     }
@@ -426,12 +442,19 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
             );
             _balances[id][account] = accountBalance - amount;
 
-            uint256 totalSupplyId = _totalSupply[id];
+            uint256 totSupplyId = _totalSupplyId[id];
             require(
-                totalSupplyId >= amount,
+                totSupplyId >= amount,
                 "ERC1155: burn amount exceeds total supply"
             );
-            _totalSupply[id] = totalSupplyId - amount;
+            _totalSupplyId[id] = totSupplyId - amount;
+
+            uint256 totSupply = _totalSupply;
+            require(
+                totSupply >= amount,
+                "ERC1155: burn amount exceeds total supply"
+            );
+            _totalSupply = totSupply - amount;
         }
 
         emit TransferBatch(operator, account, address(0), ids, amounts);

@@ -45,7 +45,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         require(twapPrice < 1 ether, "Price must be below 1 to mint coupons");
 
         DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
-        debtCoupon.updateTotalDebt();
+        // debtCoupon.updateTotalDebt();
 
         //we are in a down cycle so reset the cycle counter
         dollarsMintedThisCycle = 0;
@@ -243,7 +243,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
     function mintClaimableDollars() public {
         DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
-        debtCoupon.updateTotalDebt();
+        // debtCoupon.updateTotalDebt();
 
         // uint256 twapPrice = _getTwapPrice(); //unused variable. Why here?
         uint256 totalMintableDollars =
