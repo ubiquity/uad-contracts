@@ -23,6 +23,9 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
     // Mapping from token ID to account balances
     mapping(uint256 => mapping(address => uint256)) private _balances;
 
+    // Mapping token ID balances
+    mapping(uint256 => uint256) private _totalSupply;
+
     // Mapping from account to operator approvals
     mapping(address => mapping(address => bool)) private _operatorApprovals;
 
@@ -85,6 +88,10 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
             "ERC1155: balance query for the zero address"
         );
         return _balances[id][account];
+    }
+
+    function totalSupply(uint256 id) public view virtual returns (uint256) {
+        return _totalSupply[id];
     }
 
     /**
@@ -288,6 +295,7 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         );
 
         _balances[id][account] += amount;
+        _totalSupply[id] += amount;
         emit TransferSingle(operator, address(0), account, id, amount);
 
         _doSafeTransferAcceptanceCheck(
@@ -327,6 +335,7 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
 
         for (uint256 i = 0; i < ids.length; i++) {
             _balances[ids[i]][to] += amounts[i];
+            _totalSupply[ids[i]] += amounts[i];
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
@@ -374,6 +383,13 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         );
         _balances[id][account] = accountBalance - amount;
 
+        uint256 totalSupplyId = _totalSupply[id];
+        require(
+            totalSupplyId >= amount,
+            "ERC1155: burn amount exceeds total supply"
+        );
+        _totalSupply[id] = totalSupplyId - amount;
+
         emit TransferSingle(operator, account, address(0), id, amount);
     }
 
@@ -409,6 +425,13 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
                 "ERC1155: burn amount exceeds balance"
             );
             _balances[id][account] = accountBalance - amount;
+
+            uint256 totalSupplyId = _totalSupply[id];
+            require(
+                totalSupplyId >= amount,
+                "ERC1155: burn amount exceeds total supply"
+            );
+            _totalSupply[id] = totalSupplyId - amount;
         }
 
         emit TransferBatch(operator, account, address(0), ids, amounts);
