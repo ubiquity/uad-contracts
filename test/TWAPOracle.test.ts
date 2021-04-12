@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
-import { ContractTransaction, Signer } from "ethers";
+import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { describe, it } from "mocha";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
@@ -27,8 +27,75 @@ describe("TWAPOracle", () => {
   let crvToken: ERC20;
   let daiToken: ERC20;
   let curveWhaleAddress: string;
+  let curveWhale: Signer;
   let twapOracle: TWAPOracle;
 
+  const swapUADtoDAI = async (
+    amount: BigNumber,
+    signer: Signer
+  ): Promise<BigNumber> => {
+    const dyuADtoDAI = await metaPool[
+      "get_dy_underlying(int128,int128,uint256)"
+    ](0, 1, amount);
+    const expectedMinDAI = dyuADtoDAI.div(100).mul(99);
+
+    // secondAccount need to approve metaPool for sending its uAD
+    await uAD.connect(signer).approve(metaPool.address, amount);
+    // secondAccount swap 1uAD => 1 DAI
+    await metaPool
+      .connect(signer)
+      ["exchange_underlying(int128,int128,uint256,uint256)"](
+        0,
+        1,
+        amount,
+        expectedMinDAI
+      );
+    return dyuADtoDAI;
+  };
+
+  const swap3CRVtoUAD = async (
+    amount: BigNumber,
+    signer: Signer
+  ): Promise<BigNumber> => {
+    const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
+      1,
+      0,
+      amount
+    );
+    const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
+
+    // signer need to approve metaPool for sending its coin
+    await crvToken.connect(signer).approve(metaPool.address, amount);
+    // secondAccount swap   3CRV=> x uAD
+    await metaPool
+      .connect(signer)
+      ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
+    return dy3CRVtouAD;
+  };
+  const swapUADto3CRV = async (
+    amount: BigNumber,
+    signer: Signer
+  ): Promise<BigNumber> => {
+    const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
+      0,
+      1,
+      amount
+    );
+    const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
+
+    // signer need to approve metaPool for sending its coin
+    await uAD.connect(signer).approve(metaPool.address, amount);
+    // secondAccount swap   3CRV=> x uAD
+    await metaPool
+      .connect(signer)
+      ["exchange(int128,int128,uint256,uint256)"](
+        0,
+        1,
+        amount,
+        expectedMin3CRV
+      );
+    return dyuADto3CRV;
+  };
   beforeEach(async () => {
     ({
       DAI,
@@ -93,7 +160,7 @@ describe("TWAPOracle", () => {
       params: [curveWhaleAddress],
     });
 
-    const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
+    curveWhale = ethers.provider.getSigner(curveWhaleAddress);
     // mint uad for whale
     await uAD
       .connect(admin)
@@ -154,6 +221,263 @@ describe("TWAPOracle", () => {
       expect(oraclePriceuAD).to.equal(ethers.utils.parseEther("1"));
       expect(oraclePrice3Crv).to.equal(ethers.utils.parseEther("1"));
     });
+    it("should return a higher price for 3CRV after a swap from uAD to 3CRV", async () => {
+      const pool0balBefore = await metaPool.balances(0);
+      const pool1balBefore = await metaPool.balances(1);
+      const balancesBefore = await curvePoolFactory.get_balances(
+        metaPool.address
+      );
+      // take the 3CRV price at this moment
+      const curve3CRVPriceBefore = await metaPool[
+        "get_dy(int128,int128,uint256)"
+      ](1, 0, ethers.utils.parseEther("1"));
+      console.log(`
+      **-*-*-*-*-*--*curve3CRVPriceBefore:${ethers.utils.formatEther(
+        curve3CRVPriceBefore
+      )}
+           `);
+      const curveUADPriceBefore = await metaPool[
+        "get_dy(int128,int128,uint256)"
+      ](0, 1, ethers.utils.parseEther("1"));
+      console.log(`
+      **-*-*-*-*-*--*curveUADPriceBefore:${ethers.utils.formatEther(
+        curveUADPriceBefore
+      )}
+           `);
+
+      const amountOfuADToSwap = ethers.utils.parseEther("1000");
+      const accountAdr = await secondAccount.getAddress();
+      const accountUADBalanceBeforeSwap = await uAD.balanceOf(accountAdr);
+
+      let oraclePriceuAD = await twapOracle.consult(uAD.address);
+      let oraclePrice3Crv = await twapOracle.consult(curve3CrvToken);
+      expect(oraclePriceuAD).to.equal(ethers.utils.parseEther("1"));
+      expect(oraclePrice3Crv).to.equal(ethers.utils.parseEther("1"));
+
+      const account3CRVBalanceBeforeSwap = await crvToken.balanceOf(accountAdr);
+      console.log(`
+      **-*-*-*-*-*--*accountUADBalanceBeforeSwap:${ethers.utils.formatEther(
+        accountUADBalanceBeforeSwap
+      )}`);
+      // Exchange (swap)  uAD=>  3CRV
+      const dyUADto3CRV = await swapUADto3CRV(
+        amountOfuADToSwap.sub(BigNumber.from(1)),
+        secondAccount
+      );
+      await twapOracle.update();
+      const oraclePriceuADBefore = await twapOracle.consult(uAD.address);
+      const oraclePrice3CrvBefore = await twapOracle.consult(curve3CrvToken);
+      console.log(`
+      **-*-*-*-*-*--*oraclePriceuADBefore:${ethers.utils.formatEther(
+        oraclePriceuADBefore
+      )}  oraclePrice3CrvBefore:${ethers.utils.formatEther(
+        oraclePrice3CrvBefore
+      )}
+           `);
+      // the way TWAP work doesn't include the new price yet but we can have it
+      // through dy
+      const curve3CRVPriceAfterSwap = await metaPool[
+        "get_dy(int128,int128,uint256)"
+      ](1, 0, ethers.utils.parseEther("1"));
+      console.log(`
+      **-*-*-*-*-*--*curve3CRVPriceAfterSwap:${ethers.utils.formatEther(
+        curve3CRVPriceAfterSwap
+      )}
+           `);
+      const curveUADPriceAfterSwap = await metaPool[
+        "get_dy(int128,int128,uint256)"
+      ](0, 1, ethers.utils.parseEther("1"));
+      console.log(`
+ **-*-*-*-*-*--*curveUADPriceAfterSwap:${ethers.utils.formatEther(
+   curveUADPriceAfterSwap
+ )}
+      `);
+      expect(curve3CRVPriceAfterSwap).to.be.gt(curve3CRVPriceBefore);
+      expect(curveUADPriceAfterSwap).to.be.lt(curveUADPriceBefore);
+      // to reflect the new price inside the TWAP we need one more swap
+      await swapUADto3CRV(BigNumber.from(1), secondAccount);
+      dyUADto3CRV.add(BigNumber.from(1));
+
+      await twapOracle.update();
+      oraclePriceuAD = await twapOracle.consult(uAD.address);
+      oraclePrice3Crv = await twapOracle.consult(curve3CrvToken);
+      console.log(`
+      **-*-*-*-*-*--*oraclePriceuAD:${ethers.utils.formatEther(
+        oraclePriceuAD
+      )}  oraclePrice3Crv:${ethers.utils.formatEther(oraclePrice3Crv)}
+           `);
+      // we now have more uAD than before wich means that uAD is worth less than before
+      // and 3CRV is worth more than before
+      expect(oraclePriceuAD).to.be.lt(oraclePriceuADBefore);
+      expect(oraclePrice3Crv).to.be.gt(oraclePrice3CrvBefore);
+      const pool0balAfter = await metaPool.balances(0);
+      const pool1balAfter = await metaPool.balances(1);
+      const balancesAfter = await curvePoolFactory.get_balances(
+        metaPool.address
+      );
+      expect(pool0balAfter).to.equal(pool0balBefore.add(amountOfuADToSwap));
+
+      // we now have less 3CRV
+      expect(pool1balBefore.sub(pool1balAfter)).to.be.gt(0);
+      const adminFee = await curvePoolFactory.get_admin_balances(
+        metaPool.address
+      );
+
+      // in the basepool we should be short the 3CRV amount transfered to the user + admin fees (50% of trade fee)
+      // for exchanges the fee is taken in the output currency and calculated against the final amount received.
+      expect(pool1balAfter).to.equal(
+        pool1balBefore.sub(dyUADto3CRV.add(adminFee[1]))
+      );
+      // account 3crv Balance should be equal to the estimate swap amount
+      const account3CRVBalanceAfterSwap = await crvToken.balanceOf(accountAdr);
+      console.log(`
+      **-*-*-*-*-*--*account3CRVBalanceAfterSwap:${ethers.utils.formatEther(
+        account3CRVBalanceAfterSwap
+      )}
+      dyUADto3CRV:${ethers.utils.formatEther(dyUADto3CRV)}
+           `);
+      expect(account3CRVBalanceAfterSwap).to.be.equal(
+        account3CRVBalanceBeforeSwap.add(dyUADto3CRV)
+      );
+      const accountuADBalanceAfterSwap = await uAD.balanceOf(accountAdr);
+      expect(accountuADBalanceAfterSwap).to.be.equal(
+        accountUADBalanceBeforeSwap.sub(amountOfuADToSwap)
+      );
+      // pool1Blance should be less than before the swap
+      expect(pool1balBefore.sub(pool1balAfter)).to.be.gt(0);
+      // UAD balance in the pool should be equal to before + amount
+      expect(balancesAfter[0].sub(balancesBefore[0])).to.equal(
+        amountOfuADToSwap
+      );
+      // 3CRV balance in the pool should be less than before the swap
+      expect(balancesBefore[1].sub(balancesAfter[1])).to.be.gt(0);
+
+      // we should have positive fee in 3CRV
+      expect(adminFee[1]).to.be.gt(0);
+
+      // if no swap after x block the price stays the same
+      const LastBlockTimestamp = await metaPool.block_timestamp_last();
+      const blockTimestamp = LastBlockTimestamp.toNumber() + 23 * 3600;
+      await mineBlock(blockTimestamp);
+      await twapOracle.update();
+      const oraclePriceAfterMine = await twapOracle.consult(uAD.address);
+      expect(oraclePriceuAD.sub(oraclePriceAfterMine)).to.equal(0);
+    });
+    it("should return a higher price for uAD after a swap from 3CRV to uad", async () => {
+      const pool0balBefore = await metaPool.balances(0);
+      const pool1balBefore = await metaPool.balances(1);
+      expect(pool0balBefore).to.equal(ethers.utils.parseEther("10000"));
+      expect(pool1balBefore).to.equal(ethers.utils.parseEther("10000"));
+      const balancesBefore = await curvePoolFactory.get_balances(
+        metaPool.address
+      );
+      const amountOf3CRVToSwap = ethers.utils.parseEther("1000");
+      const whaleUADBalanceBeforeSwap = await uAD.balanceOf(curveWhaleAddress);
+
+      let oraclePriceuAD = await twapOracle.consult(uAD.address);
+      let oraclePrice3Crv = await twapOracle.consult(curve3CrvToken);
+      expect(oraclePriceuAD).to.equal(ethers.utils.parseEther("1"));
+      expect(oraclePrice3Crv).to.equal(ethers.utils.parseEther("1"));
+      const uADPricea = await metaPool["get_dy(int128,int128,uint256)"](
+        0,
+        1,
+        ethers.utils.parseEther("1")
+      );
+      console.log(`
+ **-*-*-*-*-*--*uADPricea:${ethers.utils.formatEther(uADPricea)}
+      `);
+      const whale3CRVBalanceBeforeSwap = await crvToken.balanceOf(
+        curveWhaleAddress
+      );
+
+      // Exchange (swap)  3CRV => uAD
+      const dy3CRVtouAD = await swap3CRVtoUAD(
+        amountOf3CRVToSwap.sub(BigNumber.from(1)),
+        curveWhale
+      );
+      await twapOracle.update();
+
+      // the way TWAP work doesn't include the new price yet but we can have it
+      // through dy
+      const uADPrice = await metaPool["get_dy(int128,int128,uint256)"](
+        0,
+        1,
+        ethers.utils.parseEther("1")
+      );
+      console.log(`
+ **-*-*-*-*-*--*uADPrice:${ethers.utils.formatEther(uADPrice)}
+      `);
+      expect(uADPrice).to.be.gt(ethers.utils.parseEther("1"));
+      // to reflect the new price inside the TWAP we need one more swap
+      await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
+      dy3CRVtouAD.add(BigNumber.from(1));
+
+      await twapOracle.update();
+      oraclePriceuAD = await twapOracle.consult(uAD.address);
+      oraclePrice3Crv = await twapOracle.consult(curve3CrvToken);
+      // we now have more 3CRV  than uAD  wich means that 3CRV is worth less than uAD
+      expect(oraclePriceuAD).to.be.gt(ethers.utils.parseEther("1"));
+      expect(oraclePrice3Crv).to.be.lt(ethers.utils.parseEther("1"));
+      const pool0balAfter = await metaPool.balances(0);
+      const pool1balAfter = await metaPool.balances(1);
+      const balancesAfter = await curvePoolFactory.get_balances(
+        metaPool.address
+      );
+      expect(pool1balAfter).to.equal(pool1balBefore.add(amountOf3CRVToSwap));
+
+      // we now have less uAD
+      expect(pool0balBefore.sub(pool0balAfter)).to.be.gt(0);
+      const adminFee = await curvePoolFactory.get_admin_balances(
+        metaPool.address
+      );
+
+      // in the basepool we should be short the uAD amount transfered to the user + admin fees (50% of trade fee)
+      // for exchanges the fee is taken in the output currency and calculated against the final amount received.
+      expect(pool0balAfter).to.equal(
+        pool0balBefore.sub(dy3CRVtouAD.add(adminFee[0]))
+      );
+      // whale account uAD Balance should be equal to the estimate swap amount
+      const whaleUADBalanceAfterSwap = await uAD.balanceOf(curveWhaleAddress);
+      console.log(`
+      **-*-*-*-*-*--*whaleUADBalanceAfterSwap:${ethers.utils.formatEther(
+        whaleUADBalanceAfterSwap
+      )}
+                                  dy3CRVtouAD:${ethers.utils.formatEther(
+                                    dy3CRVtouAD
+                                  )}
+           `);
+      expect(whaleUADBalanceAfterSwap).to.be.equal(
+        whaleUADBalanceBeforeSwap.add(dy3CRVtouAD)
+      );
+      const whale3CRVBalanceAfterSwap = await crvToken.balanceOf(
+        curveWhaleAddress
+      );
+      expect(whale3CRVBalanceAfterSwap).to.be.equal(
+        whale3CRVBalanceBeforeSwap.sub(amountOf3CRVToSwap)
+      );
+      // pool0Blance should be less than before the swap
+      expect(pool0balBefore.sub(pool0balAfter)).to.be.gt(0);
+      // 3CRV balance in the pool should be equal to before + 1
+      expect(balancesAfter[1].sub(balancesBefore[1])).to.equal(
+        amountOf3CRVToSwap
+      );
+      // uAD balance in the pool should be less than before the swap
+      expect(balancesBefore[0].sub(balancesAfter[0])).to.be.gt(0);
+
+      // we should have positive fee in UAD
+      expect(adminFee[0]).to.be.gt(0);
+
+      await twapOracle.update();
+      const oraclePriceuADAfter = await twapOracle.consult(uAD.address);
+      expect(oraclePriceuADAfter).to.be.gt(ethers.utils.parseEther("1"));
+      // if no swap after x block the price stays the same
+      const LastBlockTimestamp = await metaPool.block_timestamp_last();
+      const blockTimestamp = LastBlockTimestamp.toNumber() + 23 * 3600;
+      await mineBlock(blockTimestamp);
+      await twapOracle.update();
+      const oraclePriceAfterMine = await twapOracle.consult(uAD.address);
+      expect(oraclePriceuADAfter.sub(oraclePriceAfterMine)).to.equal(0);
+    });
     it("should return correct price after a swap for token", async () => {
       const pool0balBefore = await metaPool.balances(0);
       const pool1balBefore = await metaPool.balances(1);
@@ -167,26 +491,11 @@ describe("TWAPOracle", () => {
       expect(oraclePriceuAD).to.equal(ethers.utils.parseEther("1"));
       expect(oraclePrice3Crv).to.equal(ethers.utils.parseEther("1"));
       // Exchange (swap) uAD => 3CRV
-      const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
-        0,
-        1,
-        ethers.utils.parseEther("1")
+      const dyuADto3CRV = await swapUADto3CRV(
+        ethers.utils.parseEther("1"),
+        secondAccount
       );
-      const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
 
-      // secondAccount need to approve metaPool for sending its uAD
-      await uAD
-        .connect(secondAccount)
-        .approve(metaPool.address, ethers.utils.parseEther("1"));
-      // secondAccount swap 1uAD => x 3CRV
-      await metaPool
-        .connect(secondAccount)
-        ["exchange(int128,int128,uint256,uint256)"](
-          0,
-          1,
-          ethers.utils.parseEther("1"),
-          expectedMin3CRV
-        );
       const secondAccount3CRVBalanceAfterSwap = await crvToken.balanceOf(
         await secondAccount.getAddress()
       );
@@ -254,24 +563,10 @@ describe("TWAPOracle", () => {
       expect(oraclePriceuAD).to.equal(ethers.utils.parseEther("1"));
       expect(oraclePrice3Crv).to.equal(ethers.utils.parseEther("1"));
       // Exchange (swap)
-      const dyuADtoDAI = await metaPool[
-        "get_dy_underlying(int128,int128,uint256)"
-      ](0, 1, ethers.utils.parseEther("1"));
-      const expectedMinDAI = dyuADtoDAI.div(100).mul(99);
-
-      // secondAccount need to approve metaPool for sending its uAD
-      await uAD
-        .connect(secondAccount)
-        .approve(metaPool.address, ethers.utils.parseEther("1"));
-      // secondAccount swap 1uAD => 1 DAI
-      await metaPool
-        .connect(secondAccount)
-        ["exchange_underlying(int128,int128,uint256,uint256)"](
-          0,
-          1,
-          ethers.utils.parseEther("1"),
-          expectedMinDAI
-        );
+      const dyuADtoDAI = await swapUADtoDAI(
+        ethers.utils.parseEther("1"),
+        secondAccount
+      );
       const secondAccountDAIBalanceAfterSwap = await daiToken.balanceOf(
         await secondAccount.getAddress()
       );
@@ -332,24 +627,10 @@ describe("TWAPOracle", () => {
       );
 
       // Exchange (swap)
-      const dyuADtoDAI = await metaPool[
-        "get_dy_underlying(int128,int128,uint256)"
-      ](0, 1, ethers.utils.parseEther("1"));
-      const expectedMinDAI = dyuADtoDAI.div(100).mul(99);
-
-      // secondAccount need to approve metaPool for sending its uAD
-      await uAD
-        .connect(secondAccount)
-        .approve(metaPool.address, ethers.utils.parseEther("1"));
-      // secondAccount swap 1uAD to 1 DAI
-      await metaPool
-        .connect(secondAccount)
-        ["exchange_underlying(int128,int128,uint256,uint256)"](
-          0,
-          1,
-          ethers.utils.parseEther("1"),
-          expectedMinDAI
-        );
+      const dyuADtoDAI = await swapUADtoDAI(
+        ethers.utils.parseEther("1"),
+        secondAccount
+      );
       const secondAccountDAIBalance = await daiToken.balanceOf(
         await secondAccount.getAddress()
       );
@@ -368,26 +649,11 @@ describe("TWAPOracle", () => {
       );
 
       // Exchange (swap)
-      const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
-        0,
-        1,
-        ethers.utils.parseEther("1")
+      const dyuADto3CRV = await swapUADto3CRV(
+        ethers.utils.parseEther("1"),
+        secondAccount
       );
-      const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
 
-      // secondAccount need to approve metaPool for sending its uAD
-      await uAD
-        .connect(secondAccount)
-        .approve(metaPool.address, ethers.utils.parseEther("1"));
-      // secondAccount swap 1uAD to 1 DAI
-      await metaPool
-        .connect(secondAccount)
-        ["exchange(int128,int128,uint256,uint256)"](
-          0,
-          1,
-          ethers.utils.parseEther("1"),
-          expectedMin3CRV
-        );
       const secondAccount3CRVBalance = await crvToken.balanceOf(
         await secondAccount.getAddress()
       );
@@ -398,6 +664,14 @@ describe("TWAPOracle", () => {
       expect(secondAccountuADBalance).to.equal(
         uAD2ndBalbeforeSWAP.sub(ethers.utils.parseEther("1"))
       );
+    });
+    it("should return correct name", async () => {
+      const name = await metaPool.name();
+      expect(name).to.equal(
+        "Curve.fi Factory USD Metapool: UbiquityAlgorithmicDollar"
+      );
+      const symbol = await metaPool.symbol();
+      expect(symbol).to.equal("uAD3CRV-f");
     });
     it("should return correct pool balance", async () => {
       const pool0bal = await metaPool.balances(0);
@@ -440,6 +714,65 @@ oraclePrice3Crv:${oraclePrice3Crv}
         "get_dy_underlying(int128,int128,uint256)"
       ](1, 0, ethers.utils.parseEther("1"));
       expect(dyDAI2uAD).to.equal("998193085467601000");
+    });
+    it("deposit liquidity with only uAD should decrease its price", async () => {
+      const dyuAD2USDT = await metaPool[
+        "get_dy_underlying(int128,int128,uint256)"
+      ](0, 3, ethers.utils.parseEther("1"));
+      expect(dyuAD2USDT).to.equal("1000678");
+      const dyuAD2CRV = await metaPool["get_dy(int128,int128,uint256)"](
+        0,
+        1,
+        ethers.utils.parseEther("1")
+      );
+
+      const uAD2ndBalbeforeAddLiquidity = await uAD.balanceOf(
+        await secondAccount.getAddress()
+      );
+      const LP2ndBalbeforeAddLiquidity = await metaPool.balanceOf(
+        await secondAccount.getAddress()
+      );
+      // secondAccount need to approve metaPool for sending its uAD
+      await uAD
+        .connect(secondAccount)
+        .approve(metaPool.address, ethers.utils.parseEther("1"));
+
+      const dyuAD2LP = await metaPool["calc_token_amount(uint256[2],bool)"](
+        [ethers.utils.parseEther("1"), 0],
+        true
+      );
+      await metaPool
+        .connect(secondAccount)
+        ["add_liquidity(uint256[2],uint256)"](
+          [ethers.utils.parseEther("1"), 0],
+          dyuAD2LP.mul(99).div(100)
+        );
+      const uAD2ndBalAfterAddLiquidity = await uAD.balanceOf(
+        await secondAccount.getAddress()
+      );
+      const LP2ndBalAfterAddLiquidity = await metaPool.balanceOf(
+        await secondAccount.getAddress()
+      );
+
+      expect(LP2ndBalAfterAddLiquidity).to.be.gt(LP2ndBalbeforeAddLiquidity);
+      // it is less because calc_token_amount accounts for slippage, but not fees.
+      // It should not be considered to be precise!
+      expect(LP2ndBalAfterAddLiquidity).to.be.lt(
+        LP2ndBalbeforeAddLiquidity.add(dyuAD2LP)
+      );
+      expect(uAD2ndBalAfterAddLiquidity).to.equal(
+        uAD2ndBalbeforeAddLiquidity.sub(ethers.utils.parseEther("1"))
+      );
+      const dyuAD2USDTAfter = await metaPool[
+        "get_dy_underlying(int128,int128,uint256)"
+      ](0, 3, ethers.utils.parseEther("1"));
+      expect(dyuAD2USDTAfter).to.be.lt(dyuAD2USDT);
+      const dyuAD2CRVAfter = await metaPool["get_dy(int128,int128,uint256)"](
+        0,
+        1,
+        ethers.utils.parseEther("1")
+      );
+      expect(dyuAD2CRVAfter).to.be.lt(dyuAD2CRV);
     });
   });
   describe("CurvePoolFactory", () => {

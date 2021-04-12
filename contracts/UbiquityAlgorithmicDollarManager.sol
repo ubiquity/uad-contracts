@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -30,6 +30,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public bondingShareAddress;
     address public stableSwapMetaPoolAddress;
     address public autoRedeemPoolTokenAddress;
+
+    address public treasuryAddress;
+    address public uGovFundAddress;
+    address public lpRewardsAddress;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -106,7 +110,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     @param _amplificationCoefficient amplification coefficient. The smaller
      it is the closer to a constant product we are.
     @param _fee Trade fee, given as an integer with 1e10 precision.
-
     */
     function deployStableSwapPool(
         address _curveFactory,
@@ -179,6 +182,35 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         onlyAdmin
     {
         autoRedeemPoolTokenAddress = _autoRedeemPoolTokenAddress;
+    }
+
+    /**
+     @notice set the lpRewards smart contract address
+    @dev rewards for bonding contract participants
+         that provided liquidity to uGOV pool for a certain duration
+    @param _lpRewardsAddress lpReward address
+     */
+    function setLpRewardsAddress(address _lpRewardsAddress) external onlyAdmin {
+        lpRewardsAddress = _lpRewardsAddress;
+    }
+
+    /**
+     @notice set the uGOV fund address
+    @dev All funds deposited in the uGOV fund will be used
+         to buyback & LP on our uAD-uGOV primary market
+    @param _uGovFundAddress uGOV fund address
+     */
+    function setuGovFundAddress(address _uGovFundAddress) external onlyAdmin {
+        uGovFundAddress = _uGovFundAddress;
+    }
+
+    /**
+     @notice set the treasury address
+    @dev the treasury fund is used to maintain the protocol
+    @param _treasuryAddress treasury fund address
+     */
+    function setTreasuryAddress(address _treasuryAddress) external onlyAdmin {
+        treasuryAddress = _treasuryAddress;
     }
 
     function getExcessDollarsDistributor(address _debtCouponManagerAddress)

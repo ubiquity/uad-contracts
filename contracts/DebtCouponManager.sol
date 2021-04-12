@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
+import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IDebtRedemption.sol";
@@ -32,6 +33,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
     constructor(address _manager, uint256 _couponLengthBlocks) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         couponLengthBlocks = _couponLengthBlocks;
+        // TODO ADD address(this) as minter for uAD ????
     }
 
     /// @dev called when a user wants to redeem. should only be called when oracle is below a dollar
@@ -225,16 +227,8 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             "There aren't any uAD to redeem currently"
         );
 
-        // BUG(?): replace `amount` with couponsToRedeem
-        debtCoupon.safeTransferFrom(
-            msg.sender,
-            address(this),
-            id,
-            couponsToRedeem,
-            ""
-        );
-
-        debtCoupon.burnCoupons(address(this), couponsToRedeem, id);
+        // debtCouponManager must be an operator to tranfer on behalf of msg.sender
+        debtCoupon.burnCoupons(msg.sender, couponsToRedeem, id);
 
         uAD.transfer(msg.sender, couponsToRedeem);
 
@@ -254,15 +248,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
 
-        //TODO: @Steve to call mint on uAD contract here. dollars should
-        // be minted to address(this)
-        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).mint(
-            address(this),
-            dollarsToMint
-        );
-
         UbiquityAlgorithmicDollar uAD =
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
+        // uAD  dollars should  be minted to address(this)
+        uAD.mint(address(this), dollarsToMint);
+
         MockAutoRedeemToken autoRedeemToken =
             MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
 
@@ -281,7 +271,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
                 );
 
             //transfer excess dollars to the distributor and tell it to distribute
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
+            uAD.transfer(
                 manager.getExcessDollarsDistributor(address(this)),
                 excessDollars
             );
