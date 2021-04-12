@@ -58,6 +58,7 @@ describe("BondingShare", () => {
       "UbiquityAlgorithmicDollarManager",
       Manager.address
     )) as UbiquityAlgorithmicDollarManager;
+
     await manager.connect(admin).setBondingShareAddress(bondingShare.address);
     const UAD = await deployments.deploy("UbiquityAlgorithmicDollar", {
       from: adminAddress,
@@ -143,9 +144,7 @@ describe("BondingShare", () => {
         await secondAccount.getAddress(),
         id
       );
-      console.log(prevBondingSharesBalance.toString());
-      console.log(newBondingSharesBalance.toString());
-      // expect(newBondingSharesBalance).to.be.gt(prevBondingSharesBalance);
+      expect(newBondingSharesBalance).to.be.gt(prevBondingSharesBalance);
     });
   });
 });

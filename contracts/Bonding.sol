@@ -3,6 +3,7 @@ pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./interfaces/IERC1155Supply.sol";
 
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
@@ -174,7 +175,7 @@ contract Bonding is CollectableDust {
 
     function currentShareValue() public view returns (uint256 pricePerShare) {
         uint256 totalShares =
-            IERC20(manager.bondingShareAddress()).totalSupply();
+            IERC1155Supply(manager.bondingShareAddress()).totalSupply(id);
 
         pricePerShare = totalShares == 0
             ? TARGET_PRICE
