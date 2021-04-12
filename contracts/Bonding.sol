@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
@@ -12,14 +11,13 @@ import "./interfaces/IBondingShare.sol";
 import "./utils/CollectableDust.sol";
 
 contract Bonding is CollectableDust {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     UbiquityAlgorithmicDollarManager public manager;
 
     uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
     // Initially set at $1,000,000 to avoid interference with growth.
-    uint256 public maxBondingPrice = uint256(1 ether).mul(1000000);
+    uint256 public maxBondingPrice = uint256(1 ether) * 1000000;
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = 0;
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
@@ -129,7 +127,7 @@ contract Bonding is CollectableDust {
         );
 
         uint256 tokenAmount =
-            _sharesAmount.mul(currentShareValue()).div(TARGET_PRICE);
+            (_sharesAmount * currentShareValue()) / TARGET_PRICE;
 
         if (redeemStreamTime == 0) {
             IERC20(manager.uADTokenAddress()).safeTransfer(
@@ -140,13 +138,13 @@ contract Bonding is CollectableDust {
             // The transaction must be processed by the Ethereum blockchain before
             // the start time of the stream, or otherwise the sablier contract
             // reverts with a "start time before block.timestamp" message.
-            uint256 streamStart = block.timestamp.add(60); // tx mining + 60 seconds
+            uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
 
-            uint256 streamStop = streamStart.add(redeemStreamTime);
+            uint256 streamStop = streamStart + redeemStreamTime;
             // The deposit must be a multiple of the difference between the stop
             // time and the start time
-            uint256 streamDuration = streamStop.sub(streamStart);
-            tokenAmount = tokenAmount.div(streamDuration).mul(streamDuration);
+            uint256 streamDuration = streamStop - streamStart;
+            tokenAmount = (tokenAmount / streamDuration) * streamDuration;
 
             IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
             IERC20(manager.uADTokenAddress()).safeApprove(
@@ -176,31 +174,31 @@ contract Bonding is CollectableDust {
 
         pricePerShare = totalShares == 0
             ? TARGET_PRICE
-            : IERC20(manager.uADTokenAddress())
-                .balanceOf(address(this))
-                .mul(TARGET_PRICE)
-                .div(totalShares);
+            : (IERC20(manager.uADTokenAddress()).balanceOf(address(this)) *
+                TARGET_PRICE) / totalShares;
     }
 
     function currentTokenPrice() public view returns (uint256) {
+        /* uint256[2] memory prices =
+            IMetaPool(manager.stableSwapMetaPoolAddress())
+                .get_price_cumulative_last();
+        return prices[0]; */
         return
             ITWAPOracle(manager.twapOracleAddress()).consult(
-                manager.uADTokenAddress(),
-                TARGET_PRICE
+                manager.uADTokenAddress()
             );
     }
 
     function _bond(uint256 _amount, uint256 currentPrice) internal {
         uint256 shareValue = currentShareValue();
-        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
+        uint256 numberOfShares = (_amount / shareValue) * TARGET_PRICE;
 
         if (bondingDiscountMultiplier != 0) {
             uint256 bonus =
-                (TARGET_PRICE.sub(currentPrice))
-                    .mul(numberOfShares)
-                    .mul(bondingDiscountMultiplier)
-                    .div(TARGET_PRICE.mul(TARGET_PRICE));
-            numberOfShares = numberOfShares.add(bonus);
+                ((TARGET_PRICE - currentPrice) *
+                    numberOfShares *
+                    bondingDiscountMultiplier) / (TARGET_PRICE * TARGET_PRICE);
+            numberOfShares = numberOfShares + bonus;
         }
 
         IBondingShare(manager.bondingShareAddress()).mint(

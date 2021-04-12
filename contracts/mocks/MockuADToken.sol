@@ -1,11 +1,11 @@
 // contracts/GLDToken.sol
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract MockStabilitasToken is ERC20 {
-    constructor(uint256 initialSupply) ERC20("STABILITAS", "STAB") {
+contract MockuADToken is ERC20 {
+    constructor(uint256 initialSupply) ERC20("ubiquityDollar", "uAD") {
         _mint(msg.sender, initialSupply);
     }
 

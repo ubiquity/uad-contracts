@@ -1,143 +1,91 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.6.6;
+pragma solidity ^0.8.3;
 
-import "hardhat/console.sol";
 import "./interfaces/IMetaPool.sol";
-import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
-import "./libs/UQ112x112.sol";
 
 contract TWAPOracle {
-    using FixedPoint for *;
-    using UQ112x112 for uint224;
-
     address public immutable pool;
     address public immutable token0;
     address public immutable token1;
 
-    uint112 private _reserve0;
-    uint112 private _reserve1;
-    uint32 public reservesBlockTimestampLast;
-    uint32 public pricesBlockTimestampLast;
-
-    uint256 public price0CumulativeLast;
-    uint256 public price1CumulativeLast;
-
-    FixedPoint.uq112x112 public price0Average;
-    FixedPoint.uq112x112 public price1Average;
+    uint256 public price0Average;
+    uint256 public price1Average;
+    uint256 public pricesBlockTimestampLast;
+    uint256[2] public priceCumulativeLast;
 
     constructor(
         address _pool,
-        address _token0,
-        address _token1
+        address _uADtoken0,
+        address _curve3CRVtoken1
     ) {
         pool = _pool;
-        token0 = _token0;
-        token1 = _token1;
+        // coin at index 0 is uAD and index 1 is 3CRV
+        require(
+            IMetaPool(_pool).coins(0) == _uADtoken0 &&
+                IMetaPool(_pool).coins(1) == _curve3CRVtoken1,
+            "TWAPOracle: COIN_ORDER_MISMATCH"
+        );
 
-        _reserve0 = uint112(IMetaPool(_pool).balances(0));
-        _reserve1 = uint112(IMetaPool(_pool).balances(1));
+        token0 = _uADtoken0;
+        token1 = _curve3CRVtoken1;
+
+        uint256 _reserve0 = uint112(IMetaPool(_pool).balances(0));
+        uint256 _reserve1 = uint112(IMetaPool(_pool).balances(1));
 
         // ensure that there's liquidity in the pair
         require(_reserve0 != 0 && _reserve1 != 0, "TWAPOracle: NO_RESERVES");
-
-        uint32 currentBlockTimestamp = _currentBlockTimestamp();
-        reservesBlockTimestampLast = currentBlockTimestamp;
-        pricesBlockTimestampLast = currentBlockTimestamp;
+        // ensure that pair balance is perfect
+        require(_reserve0 == _reserve1, "TWAPOracle: PAIR_UNBALANCED");
+        priceCumulativeLast = IMetaPool(_pool).get_price_cumulative_last();
+        pricesBlockTimestampLast = IMetaPool(_pool).block_timestamp_last();
+        price0Average = 1 ether;
+        price1Average = 1 ether;
     }
 
+    // calculate average price
     function update() external {
-        _update();
+        (uint256[2] memory priceCumulative, uint256 blockTimestamp) =
+            _currentCumulativePrices();
+        if (blockTimestamp - pricesBlockTimestampLast > 0) {
+            // get the balances between now and the last price cumulative snapshot
+            uint256[2] memory twapBalances =
+                IMetaPool(pool).get_twap_balances(
+                    priceCumulativeLast,
+                    priceCumulative,
+                    blockTimestamp - pricesBlockTimestampLast
+                );
+            // TODO ENSURE that there is sufficient time between the two snapshot balance
+            // meaning require blockTimestamp - pricesBlockTimestampLast > 3600*24 ??
 
-        (
-            uint256 price0Cumulative,
-            uint256 price1Cumulative,
-            uint32 blockTimestamp
-        ) = _currentCumulativePrices();
-
-        // overflow is desired
-        uint32 timeElapsed = blockTimestamp - pricesBlockTimestampLast;
-
-        price0Average = FixedPoint.uq112x112(
-            uint224((price0Cumulative - price0CumulativeLast) / timeElapsed)
-        );
-        price1Average = FixedPoint.uq112x112(
-            uint224((price1Cumulative - price1CumulativeLast) / timeElapsed)
-        );
-
-        price0CumulativeLast = price0Cumulative;
-        price1CumulativeLast = price1Cumulative;
-        pricesBlockTimestampLast = blockTimestamp;
+            // price to exchange amounIn uAD to 3CRV based on TWAP
+            price0Average = IMetaPool(pool).get_dy(0, 1, 1 ether, twapBalances);
+            // price to exchange amounIn 3CRV to uAD  based on TWAP
+            price1Average = IMetaPool(pool).get_dy(1, 0, 1 ether, twapBalances);
+            // we update the priceCumulative
+            priceCumulativeLast = priceCumulative;
+            pricesBlockTimestampLast = blockTimestamp;
+        }
     }
 
     // note this will always return 0 before update has been called successfully
     // for the first time.
-    function consult(address token, uint256 amountIn)
-        external
-        view
-        returns (uint256 amountOut)
-    {
+    function consult(address token) external view returns (uint256 amountOut) {
         if (token == token0) {
-            amountOut = price0Average.mul(amountIn).decode144();
+            // price to exchange amounIn uAD to 3CRV based on TWAP
+            amountOut = price0Average;
         } else {
             require(token == token1, "TWAPOracle: INVALID_TOKEN");
-            amountOut = price1Average.mul(amountIn).decode144();
+            // price to exchange amounIn 3CRV to uAD  based on TWAP
+            amountOut = price1Average;
         }
-    }
-
-    // helper function that returns the current block timestamp within the
-    // range of uint32, i.e. [0, 2**32 - 1]
-    function _currentBlockTimestamp() internal view returns (uint32) {
-        return uint32(block.timestamp % 2**32);
     }
 
     function _currentCumulativePrices()
         internal
         view
-        returns (
-            uint256 price0Cumulative,
-            uint256 price1Cumulative,
-            uint32 blockTimestamp
-        )
+        returns (uint256[2] memory priceCumulative, uint256 blockTimestamp)
     {
-        blockTimestamp = _currentBlockTimestamp();
-
-        price0Cumulative = price0CumulativeLast;
-        price1Cumulative = price1CumulativeLast;
-
-        if (pricesBlockTimestampLast != blockTimestamp) {
-            // subtraction overflow is desired
-            uint32 timeElapsed = blockTimestamp - pricesBlockTimestampLast;
-
-            // addition overflow is desired
-            price0Cumulative +=
-                uint256(FixedPoint.fraction(_reserve1, _reserve0)._x) *
-                timeElapsed;
-
-            price1Cumulative +=
-                uint256(FixedPoint.fraction(_reserve0, _reserve1)._x) *
-                timeElapsed;
-        }
-    }
-
-    // update reserves
-    function _update() private {
-        _reserve0 = uint112(IMetaPool(pool).balances(0));
-        _reserve1 = uint112(IMetaPool(pool).balances(1));
-
-        uint32 blockTimestamp = _currentBlockTimestamp();
-        // overflow is desired
-        uint32 timeElapsed = blockTimestamp - reservesBlockTimestampLast;
-
-        if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
-            // * never overflows, and + overflow is desired
-            price0CumulativeLast +=
-                uint256(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) *
-                timeElapsed;
-            price1CumulativeLast +=
-                uint256(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) *
-                timeElapsed;
-        }
-
-        reservesBlockTimestampLast = blockTimestamp;
+        priceCumulative = IMetaPool(pool).get_price_cumulative_last();
+        blockTimestamp = IMetaPool(pool).block_timestamp_last();
     }
 }

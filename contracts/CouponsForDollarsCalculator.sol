@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/ICouponsForDollarsCalculator.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
+import "./libs/ABDKMathQuad.sol";
 import "./DebtCoupon.sol";
 
 /// @title Uses the following formula: ((1/(1-R)^2) - 1)
 contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
-    using SafeMath for uint256;
-
+    using ABDKMathQuad for uint256;
+    using ABDKMathQuad for bytes16;
     UbiquityAlgorithmicDollarManager public manager;
 
     /// @param _manager the address of the manager/config contract so we can fetch variables
@@ -24,14 +24,25 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
         override
         returns (uint256)
     {
-        uint256 one = 1;
-        uint256 totalDebt =
-            DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt();
-        uint256 r =
-            totalDebt.div(IERC20(manager.uADTokenAddress()).totalSupply());
-        uint256 oneMinusRAllSquared = ((one).sub(r)).mul((one).sub(r));
+        require(
+            DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt() <
+                IERC20(manager.uADTokenAddress()).totalSupply(),
+            "coupon4Dollar: DEBT_TOO_HIGH"
+        );
+        bytes16 one = uint256(1).fromUInt();
+        bytes16 totalDebt =
+            DebtCoupon(manager.debtCouponAddress())
+                .getTotalOutstandingDebt()
+                .fromUInt();
+        bytes16 r =
+            totalDebt.div(
+                IERC20(manager.uADTokenAddress()).totalSupply().fromUInt()
+            );
 
-        //rewards per dollar is ( (1/(1-R)^2) - 1)
-        return ((dollarsToBurn).div(oneMinusRAllSquared)).sub(one);
+        bytes16 oneMinusRAllSquared = (one.sub(r)).mul(one.sub(r));
+
+        bytes16 res = one.div(oneMinusRAllSquared);
+
+        return res.mul(dollarsToBurn.fromUInt()).toUInt();
     }
 }

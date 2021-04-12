@@ -1,28 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/introspection/ERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IDebtRedemption.sol";
 import "./interfaces/ICouponsForDollarsCalculator.sol";
 import "./interfaces/IDollarMintingCalculator.sol";
 import "./interfaces/IExcessDollarsDistributor.sol";
 import "./TWAPOracle.sol";
-import "./mocks/MockStabilitasToken.sol";
+import "./UbiquityAlgorithmicDollar.sol";
 import "./mocks/MockAutoRedeemToken.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./DebtCoupon.sol";
 
 /// @title A basic debt issuing and redemption mechanism for coupon holders
-/// @notice Allows users to burn their stabilitas in exchange for coupons
+/// @notice Allows users to burn their uAD in exchange for coupons
 /// redeemable in the future
 /// @notice Allows users to redeem individual debt coupons or batch redeem
 /// coupons on a first-come first-serve basis
 contract DebtCouponManager is ERC165, IERC1155Receiver {
-    using SafeMath for uint256;
-
     UbiquityAlgorithmicDollarManager public manager;
 
     //the amount of dollars we minted this cycle, so we can calculate delta.
@@ -58,10 +54,13 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
         uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
 
-        //TODO: @Steve to call burn on stabilitas contract here
-        MockStabilitasToken(manager.uADTokenAddress()).burn(msg.sender, amount);
+        // we burn user's dollars. User needs to approve debtCouponManager first
+        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+            msg.sender,
+            amount
+        );
 
-        uint256 expiryBlockNumber = block.number.add(couponLengthBlocks);
+        uint256 expiryBlockNumber = block.number + (couponLengthBlocks);
         debtCoupon.mintCoupons(msg.sender, couponsToMint, expiryBlockNumber);
 
         //give the caller the block number of the minted nft
@@ -159,20 +158,20 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             "User doesn't have enough auto redeem pool tokens."
         );
 
-        MockStabilitasToken stabilitas =
-            MockStabilitasToken(manager.uADTokenAddress());
+        UbiquityAlgorithmicDollar uAD =
+            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         require(
-            stabilitas.balanceOf(address(this)) > 0,
-            "There aren't any stabilitas to redeem currently"
+            uAD.balanceOf(address(this)) > 0,
+            "There aren't any uAD to redeem currently"
         );
 
         // Elementary LP shares calculation. Can be updated for more complex / tailored math.
-        uint256 totalBalanceOfPool = stabilitas.balanceOf(address(this));
+        uint256 totalBalanceOfPool = uAD.balanceOf(address(this));
         uint256 amountToRedeem =
-            totalBalanceOfPool.mul(amount.div(autoRedeemToken.totalSupply()));
+            totalBalanceOfPool * (amount / (autoRedeemToken.totalSupply()));
 
         autoRedeemToken.burn(msg.sender, amount);
-        stabilitas.transfer(msg.sender, amountToRedeem);
+        uAD.transfer(msg.sender, amountToRedeem);
 
         return (autoRedeemToken.balanceOf(msg.sender));
     }
@@ -210,7 +209,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         mintClaimableDollars();
 
         uint256 maxRedeemableCoupons =
-            MockStabilitasToken(manager.uADTokenAddress()).balanceOf(
+            UbiquityAlgorithmicDollar(manager.uADTokenAddress()).balanceOf(
                 address(this)
             );
         uint256 couponsToRedeem = amount;
@@ -219,11 +218,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             couponsToRedeem = maxRedeemableCoupons;
         }
 
-        MockStabilitasToken stabilitas =
-            MockStabilitasToken(manager.uADTokenAddress());
+        UbiquityAlgorithmicDollar uAD =
+            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         require(
-            stabilitas.balanceOf(address(this)) > 0,
-            "There aren't any stabilitas to redeem currently"
+            uAD.balanceOf(address(this)) > 0,
+            "There aren't any uAD to redeem currently"
         );
 
         // BUG(?): replace `amount` with couponsToRedeem
@@ -237,9 +236,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
         debtCoupon.burnCoupons(address(this), couponsToRedeem, id);
 
-        stabilitas.transfer(msg.sender, couponsToRedeem);
+        uAD.transfer(msg.sender, couponsToRedeem);
 
-        return amount.sub(couponsToRedeem);
+        return amount - (couponsToRedeem);
     }
 
     function mintClaimableDollars() public {
@@ -250,32 +249,31 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 totalMintableDollars =
             IDollarMintingCalculator(manager.dollarCalculatorAddress())
                 .getDollarsToMint();
-        uint256 dollarsToMint =
-            totalMintableDollars.sub(dollarsMintedThisCycle);
+        uint256 dollarsToMint = totalMintableDollars - (dollarsMintedThisCycle);
 
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
 
-        //TODO: @Steve to call mint on stabilitas contract here. dollars should
+        //TODO: @Steve to call mint on uAD contract here. dollars should
         // be minted to address(this)
-        MockStabilitasToken(manager.uADTokenAddress()).mint(
+        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).mint(
             address(this),
             dollarsToMint
         );
 
-        MockStabilitasToken stabilitas =
-            MockStabilitasToken(manager.uADTokenAddress());
+        UbiquityAlgorithmicDollar uAD =
+            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         MockAutoRedeemToken autoRedeemToken =
             MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
 
-        uint256 currentRedeemableBalance = stabilitas.balanceOf(address(this));
+        uint256 currentRedeemableBalance = uAD.balanceOf(address(this));
         uint256 totalOutstandingDebt =
             debtCoupon.getTotalOutstandingDebt() +
                 autoRedeemToken.totalSupply();
 
         if (currentRedeemableBalance > totalOutstandingDebt) {
             uint256 excessDollars =
-                currentRedeemableBalance.sub(totalOutstandingDebt);
+                currentRedeemableBalance - (totalOutstandingDebt);
 
             IExcessDollarsDistributor dollarsDistributor =
                 IExcessDollarsDistributor(
@@ -283,7 +281,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
                 );
 
             //transfer excess dollars to the distributor and tell it to distribute
-            MockStabilitasToken(manager.uADTokenAddress()).transfer(
+            UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
                 manager.getExcessDollarsDistributor(address(this)),
                 excessDollars
             );
@@ -293,6 +291,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
     function _getTwapPrice() internal view returns (uint256) {
         TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        return oracle.consult(manager.uADTokenAddress(), 1 ether);
+        return oracle.consult(manager.uADTokenAddress());
     }
 }

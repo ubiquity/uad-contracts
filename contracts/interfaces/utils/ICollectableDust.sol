@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.3;
 
 interface ICollectableDust {
     event DustSent(address _to, address token, uint256 amount);

@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.7.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/ICurveFactory.sol";
 import "./interfaces/IMetaPool.sol";
-import "hardhat/console.sol";
 
 /// @title A central config for the uAD system. Also acts as a central
 /// access control manager.
@@ -37,7 +35,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     mapping(address => address) private _excessDollarDistributors;
 
     modifier onlyAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Caller is not admin");
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "uADMGR: Caller is not admin"
+        );
         _;
     }
 
@@ -133,7 +134,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         uint256 uADTokenAmount =
             IERC20(uADTokenAddress).balanceOf(address(this));
 
-        // WHY approve 0 first ?
+        // safe approve revert if approve from non-zero to non-zero allowance
         IERC20(_crv3PoolTokenAddress).safeApprove(metaPool, 0);
         IERC20(_crv3PoolTokenAddress).safeApprove(
             metaPool,
@@ -143,11 +144,17 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         IERC20(uADTokenAddress).safeApprove(metaPool, 0);
         IERC20(uADTokenAddress).safeApprove(metaPool, uADTokenAmount);
 
+        // coin at index 0 is uAD and index 1 is 3CRV
+        require(
+            IMetaPool(metaPool).coins(0) == uADTokenAddress &&
+                IMetaPool(metaPool).coins(1) == _crv3PoolTokenAddress,
+            "uADMGR: COIN_ORDER_MISMATCH"
+        );
         // Add the initial liquidity to the StableSwap meta pool
         uint256[2] memory amounts =
             [
-                IERC20(_crv3PoolTokenAddress).balanceOf(address(this)),
-                IERC20(uADTokenAddress).balanceOf(address(this))
+                IERC20(uADTokenAddress).balanceOf(address(this)),
+                IERC20(_crv3PoolTokenAddress).balanceOf(address(this))
             ];
 
         IMetaPool(metaPool).add_liquidity(amounts, 0, msg.sender);

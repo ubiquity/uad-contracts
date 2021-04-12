@@ -1,16 +1,20 @@
-import { ContractTransaction, Signer } from "ethers";
+import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { deployments, ethers, getNamedAccounts, network } from "hardhat";
 import { before, describe, it } from "mocha";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { expect } from "./setup";
+import { mineBlock } from "./utils/hardhatNode";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
+import { IMetaPool } from "../artifacts/types/IMetaPool";
+import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 
 describe("Bonding", () => {
   let bonding: Bonding;
+  let metaPool: IMetaPool;
   let manager: UbiquityAlgorithmicDollarManager;
   let admin: Signer;
   let secondAccount: Signer;
@@ -18,6 +22,8 @@ describe("Bonding", () => {
   let sablier: string;
   let DAI: string;
   let USDC: string;
+  let USDT: string;
+  let curvePoolFactory: ICurveFactory;
   let curveFactory: string;
   let curve3CrvBasePool: string;
   let curve3CrvToken: string;
@@ -30,6 +36,7 @@ describe("Bonding", () => {
       sablier,
       DAI,
       USDC,
+      USDT,
       curveFactory,
       curve3CrvBasePool,
       curve3CrvToken,
@@ -53,6 +60,7 @@ describe("Bonding", () => {
         args: [await admin.getAddress()],
       }
     );
+    // manager = new ethers.Contract(Manager.address, Manager.abi, provider);
     manager = (await ethers.getContractAt(
       "UbiquityAlgorithmicDollarManager",
       Manager.address
@@ -69,16 +77,18 @@ describe("Bonding", () => {
       UAD.address
     )) as UbiquityAlgorithmicDollar;
 
-    // mint 10000 uAD each for admin, manager and secondAccount
-    const mintings = [
-      await admin.getAddress(),
-      await secondAccount.getAddress(),
-      manager.address,
-    ].map(
+    // mint 10000 uAD each for admin and secondAccount
+    const mintings = [admin, secondAccount].map(
       async (signer): Promise<ContractTransaction> =>
-        uAD.connect(admin).mint(signer, ethers.utils.parseEther("10000"))
+        uAD
+          .connect(admin)
+          .mint(await signer.getAddress(), ethers.utils.parseEther("10000"))
     );
     await Promise.all(mintings);
+
+    await uAD
+      .connect(admin)
+      .mint(manager.address, ethers.utils.parseEther("10000"));
 
     await manager.connect(admin).setuADTokenAddress(uAD.address);
 
@@ -93,10 +103,6 @@ describe("Bonding", () => {
     });
 
     const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
-    // mint uad for whale
-    await uAD
-      .connect(admin)
-      .mint(curveWhaleAddress, ethers.utils.parseEther("10"));
 
     await crvToken
       .connect(curveWhale)
@@ -113,10 +119,14 @@ describe("Bonding", () => {
       );
 
     const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
-
+    metaPool = (await ethers.getContractAt(
+      "IMetaPool",
+      metaPoolAddr
+    )) as IMetaPool;
+    console.log(`METAPOOL :${metaPoolAddr}`);
     const TWAPOracleDeployment = await deployments.deploy("TWAPOracle", {
       from: await admin.getAddress(),
-      args: [metaPoolAddr, uAD.address, curve3CrvToken],
+      args: [metaPoolAddr, curve3CrvToken, uAD.address],
     });
 
     twapOracle = (await ethers.getContractAt(
@@ -125,6 +135,254 @@ describe("Bonding", () => {
     )) as TWAPOracle;
 
     await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
+    await twapOracle.connect(secondAccount).update();
+
+    curvePoolFactory = (await ethers.getContractAt(
+      "ICurveFactory",
+      curveFactory
+    )) as ICurveFactory;
+    // Get the number of coins and underlying coins within a pool.
+    const nCoins = await curvePoolFactory.get_n_coins(metaPoolAddr);
+    console.log(
+      `nCoins0:${nCoins[0].toString()} nCoins1:${nCoins[1].toString()}`
+    );
+    // Get a list of the swappable coins within a pool.
+    const coins = await curvePoolFactory.get_coins(metaPoolAddr);
+    console.log(`uAD.address:${uAD.address}`);
+    console.log(`curve3CrvToken:${curve3CrvToken}`);
+    console.log(`curve3CrvBasePool:${curve3CrvBasePool}`);
+    console.log(`coins0:${coins[0].toString()} coins1:${coins[1].toString()}`);
+    // Get a list of the swappable underlying coins within a pool.
+    const underCoins = await curvePoolFactory.get_underlying_coins(
+      metaPoolAddr
+    );
+    console.log(
+      `underlying Coins:${underCoins.map(
+        (c, i) => `id:${i} coin:${c.toString()}`
+      ).join(`
+        `)} `
+    );
+
+    // Get a list of decimal places for each coin within a pool.
+    const decimalCoins = await curvePoolFactory.get_underlying_decimals(
+      metaPoolAddr
+    );
+    console.log(
+      `decimalCoins: ${decimalCoins.map(
+        (c, i) => `coinId:${i} decimal:${c.toString()}`
+      ).join(`
+        `)} `
+    );
+
+    // Convert coin addresses into indices for use with pool methods.
+    const indices = await curvePoolFactory.get_coin_indices(
+      metaPoolAddr,
+      DAI,
+      USDT
+    );
+    console.log(`indices: underlying coins?${indices[2] ? "true" : "false"}
+     index of DAI:${indices[0].toString()}
+     index of USDT:${indices[1].toString()}
+     `);
+
+    // Get available balances for each coin within a pool.
+    const balances = await curvePoolFactory.get_underlying_balances(
+      metaPoolAddr
+    );
+    console.log(
+      `balances: ${balances.map(
+        (c, i) => `coinId:${i} balances:${c.toString()}`
+      ).join(`
+        `)} `
+    );
+
+    // Get the exchange rates between coins and underlying coins within a pool, normalized to a 1e18 precision.
+    const rates = await curvePoolFactory.get_rates(metaPoolAddr);
+    console.log(
+      `rates: ${rates.map((c, i) => `Id:${i} rates:${c.toString()}`).join(`
+            `)} `
+    );
+
+    // Getter for the pool balances array.
+    const pool0bal = await metaPool.balances(0);
+    const pool1bal = await metaPool.balances(1);
+    console.log(
+      `pool0bal: ${pool0bal.toString()} pool1bal: ${pool1bal.toString()} `
+    );
+
+    // Getter virtual price.
+    const virtPrice = await metaPool.get_virtual_price();
+    console.log(`virtPrice: ${virtPrice.toString()} `);
+
+    // Get the amount received (“dy”) when performing a swap between two assets within the pool.
+
+    const dyuAD2USDT = await metaPool[
+      "get_dy_underlying(int128,int128,uint256)"
+    ](0, 3, ethers.utils.parseEther("1"));
+    console.log(`dyuAD2USDT: ${dyuAD2USDT.toString()} `);
+    const dyDAI2USDT = await metaPool[
+      "get_dy_underlying(int128,int128,uint256)"
+    ](1, 3, ethers.utils.parseEther("1"));
+    console.log(` dyDAI2USDT: ${dyDAI2USDT.toString()} `);
+    const dyuAD2DAI = await metaPool[
+      "get_dy_underlying(int128,int128,uint256)"
+    ](0, 1, ethers.utils.parseEther("1"));
+    console.log(` dyuAD2DAI: ${dyuAD2DAI.toString()} `);
+    const expectedMinDai = dyuAD2DAI.div(100).mul(99);
+    console.log(`expectedMin dyuAD2DAI: ${expectedMinDai.toString()} `);
+    // Performs an exchange between two tokens.
+    const uADAdminBalbeforeSWAP = await uAD.balanceOf(await admin.getAddress());
+    const uAD2ndBalbeforeSWAP = await uAD.balanceOf(
+      await secondAccount.getAddress()
+    );
+    console.log(
+      `uADAdminBalbeforeSWAP: ${ethers.utils.formatEther(
+        uADAdminBalbeforeSWAP.toString()
+      )}  uAD2ndBalbeforeSWAP: ${ethers.utils.formatEther(
+        uAD2ndBalbeforeSWAP.toString()
+      )} `
+    );
+
+    // Exchange (swap)
+    const dyuAD23CRV = await metaPool["get_dy(int128,int128,uint256)"](
+      0,
+      1,
+      ethers.utils.parseEther("1")
+    );
+    const expectedMin3CRV = dyuAD23CRV.div(100).mul(99);
+    console.log(`expectedMin3CRV : ${expectedMin3CRV.toString()} `);
+    // secondAccount need to approve metaPool for sending its uAD
+    await uAD
+      .connect(secondAccount)
+      .approve(metaPoolAddr, ethers.utils.parseEther("1"));
+    // secondAccount swap 1uAD to 1 3CRV
+    let LastBlockTimestamp = await metaPool.block_timestamp_last();
+    console.log(`LastBlockTimestamp: ${LastBlockTimestamp.toString()} `);
+    let prices = await metaPool.get_price_cumulative_last();
+    console.log(
+      `1st prices0:${ethers.utils.formatEther(
+        prices[0]
+      )} prices1:${ethers.utils.formatEther(prices[1])}`
+    );
+    await metaPool
+      .connect(secondAccount)
+      ["exchange(int128,int128,uint256,uint256)"](
+        0,
+        1,
+        ethers.utils.parseEther("1"),
+        expectedMin3CRV
+      );
+    const secondAccount3CRVBalance = await crvToken.balanceOf(
+      await secondAccount.getAddress()
+    );
+    const secondAccountuADBalance = await uAD.balanceOf(
+      await secondAccount.getAddress()
+    );
+    console.log(
+      `secondAccountuADBalance: ${ethers.utils.formatEther(
+        secondAccountuADBalance.toString()
+      )}  secondAccount3CRVBalance: ${ethers.utils.formatEther(
+        secondAccount3CRVBalance.toString()
+      )} `
+    );
+    // admin need to approve metaPool for sending its uAD
+    await uAD.approve(metaPoolAddr, ethers.utils.parseEther("1"));
+    LastBlockTimestamp = await metaPool.block_timestamp_last();
+    console.log(`LastBlockTimestamp: ${LastBlockTimestamp.toString()} `);
+    prices = await metaPool.get_price_cumulative_last();
+    console.log(
+      `2nd prices0:${ethers.utils.formatEther(
+        prices[0]
+      )} prices1:${ethers.utils.formatEther(prices[1])}`
+    );
+    // admin swap 1uAD to 1 dai
+    await metaPool["exchange_underlying(int128,int128,uint256,uint256)"](
+      0,
+      1,
+      ethers.utils.parseEther("1"),
+      expectedMinDai
+    );
+
+    const daiToken = (await ethers.getContractAt("ERC20", DAI)) as ERC20;
+    const admuADBalance = await uAD.balanceOf(await admin.getAddress());
+    const admDAIBalance = await daiToken.balanceOf(await admin.getAddress());
+    console.log(
+      `admuADBalance: ${ethers.utils.formatEther(
+        admuADBalance.toString()
+      )}  admDAIBalance: ${ethers.utils.formatEther(admDAIBalance.toString())} `
+    );
+
+    // Getter for the pool balances array.
+    const apool0bal = await metaPool.balances(0);
+    const apool1bal = await metaPool.balances(1);
+    console.log(
+      `pool0bal: ${apool0bal.toString()} pool1bal: ${apool1bal.toString()} `
+    );
+
+    // Getter virtual price.
+    const avirtPrice = await metaPool.get_virtual_price();
+    console.log(`virtPrice: ${avirtPrice.toString()} `);
+    /*  console.log(
+      `exchange uAD for DAI amount of DAI received for 1 uAD: ${ethers.utils.formatUnits(
+        exuAD2DAI,
+        "wei"
+      )} `
+    ); */
+    /** *
+     *
+     *
+     *
+     */
+    LastBlockTimestamp = await metaPool.block_timestamp_last();
+    console.log(`LastBlockTimestamp: ${LastBlockTimestamp.toString()} `);
+    prices = await metaPool.get_price_cumulative_last();
+    console.log(
+      `3rd prices0:${ethers.utils.formatEther(
+        prices[0]
+      )} prices1:${ethers.utils.formatEther(prices[1])}`
+    );
+    const blockTimestamp = LastBlockTimestamp.toNumber() + 23 * 3600;
+    await mineBlock(blockTimestamp);
+    LastBlockTimestamp = await metaPool.block_timestamp_last();
+    const lastBlock = await ethers.provider.getBlock(
+      await ethers.provider.getBlockNumber()
+    );
+    console.log(
+      `LastBlockTimestamp: ${LastBlockTimestamp.toString()} lastBlock.Timestamp: ${lastBlock.timestamp.toString()} `
+    );
+    prices = await metaPool.get_price_cumulative_last();
+    console.log(
+      `4rd prices0:${ethers.utils.formatEther(
+        prices[0]
+      )} prices1:${ethers.utils.formatEther(prices[1])}`
+    );
+    /*  blockTimestamp =
+      (await twapOracle.reservesBlockTimestampLast()) + 23 * 3600;
+    await mineBlock(blockTimestamp);
+    await twapOracle.connect(secondAccount).update(); */
+
+    await twapOracle.connect(secondAccount).update();
+
+    // await mineBlock(blockTimestamp);
+    // await twapOracle.connect(secondAccount).update();
+
+    const oraclePriceuAD = await twapOracle.consult(uAD.address);
+    const oraclePrice3Crv = await twapOracle.consult(curve3CrvToken);
+    console.log(
+      `TWAP PRICES
+      oraclePriceuAD:${ethers.utils.formatEther(oraclePriceuAD)}
+      oraclePrice3Crv:${ethers.utils.formatEther(oraclePrice3Crv)}`
+    );
+    /*
+    let blockTimestamp =
+      (await twapOracle.reservesBlockTimestampLast()) + 23 * 3600;
+    await mineBlock(blockTimestamp);
+    await twapOracle.connect(secondAccount).update();
+
+    blockTimestamp =
+      (await twapOracle.reservesBlockTimestampLast()) + 23 * 3600;
+    await mineBlock(blockTimestamp);
+    await twapOracle.connect(secondAccount).update(); */
 
     const BondingDeployment = await deployments.deploy("Bonding", {
       from: await admin.getAddress(),
@@ -320,11 +578,18 @@ describe("Bonding", () => {
   });
 
   describe("StableSwap meta pool TWAP oracle", () => {
-    it("Oracle should return the correct initial price", async () => {
+    it.only("Oracle should return the correct initial price", async () => {
       expect(await twapOracle.consult(uAD.address)).to.equal(
         ethers.utils.parseEther("1")
       );
     });
+    /*   it.only("Oracle should return the correct initial price", async () => {
+      const prices = await metaPool.get_price_cumulative_last();
+      console.log(
+        `log prices0:${prices[0].toString()} prices1:${prices[1].toString()}`
+      );
+      expect(prices[0]).to.equal(ethers.utils.parseEther("1"));
+    }); */
   });
 
   describe("bondTokens", () => {
