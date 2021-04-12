@@ -41,9 +41,10 @@ describe("Bonding", () => {
     const adminAddress = await admin.getAddress();
 
     const factoryBondingShare = await ethers.getContractFactory("BondingShare");
-    bondingShare = (await factoryBondingShare.deploy(
-      adminAddress
-    )) as BondingShare;
+    bondingShare = (await factoryBondingShare.deploy({
+      from: adminAddress,
+      args: [adminAddress],
+    })) as BondingShare;
 
     // const BondingShareDeployment = await deployments.deploy("BondingShare", {
     //   from: await admin.getAddress(),
