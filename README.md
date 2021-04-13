@@ -1,6 +1,6 @@
 # Ubiquity Algorithmmic Dollar
 
-![Logo of the project](https://ubq.fi/image/logos/march-2021/vector/cyan.svg)
+![Logo of the project](https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg)
 
 > Smart contracts .
 
