@@ -1,8 +1,6 @@
-# Ubiquity Algorithmmic Dollar
+# Ubiquity Algorithmic Dollar
 
 ![Logo of the project](https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg)
-
-> Smart contracts .
 
 ## Table of Contents
 
