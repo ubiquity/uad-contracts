@@ -118,22 +118,20 @@ contract Bonding is CollectableDust {
 
     function redeemShares(uint256 _sharesAmount) public {
         _updateOracle();
-
         require(
-            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender) >=
-                _sharesAmount,
+            IERC1155Supply(manager.bondingShareAddress()).balanceOf(
+                msg.sender,
+                id
+            ) >= _sharesAmount,
             "Bonding: Caller does not have enough shares"
         );
-
         IBondingShare(manager.bondingShareAddress()).burn(
             msg.sender,
             id,
             _sharesAmount
         );
-
         uint256 tokenAmount =
             (_sharesAmount * currentShareValue()) / TARGET_PRICE;
-
         if (redeemStreamTime == 0) {
             IERC20(manager.uADTokenAddress()).safeTransfer(
                 msg.sender,
@@ -144,19 +142,16 @@ contract Bonding is CollectableDust {
             // the start time of the stream, or otherwise the sablier contract
             // reverts with a "start time before block.timestamp" message.
             uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
-
             uint256 streamStop = streamStart + redeemStreamTime;
             // The deposit must be a multiple of the difference between the stop
             // time and the start time
             uint256 streamDuration = streamStop - streamStart;
             tokenAmount = (tokenAmount / streamDuration) * streamDuration;
-
             IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
             IERC20(manager.uADTokenAddress()).safeApprove(
                 address(sablier),
                 tokenAmount
             );
-
             sablier.createStream(
                 msg.sender,
                 tokenAmount,

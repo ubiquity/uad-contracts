@@ -107,6 +107,7 @@ describe("BondingShare", () => {
       TWAPOracleDeployment.address
     )) as TWAPOracle;
     await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
+
     const BondingDeployment = await deployments.deploy("Bonding", {
       from: adminAddress,
       args: [manager.address, sablier],
@@ -115,6 +116,10 @@ describe("BondingShare", () => {
       "Bonding",
       BondingDeployment.address
     )) as Bonding;
+
+    // if not first test: contract is not recreated properly, sablier is not set , must redo
+    await bonding.connect(admin).setSablier(sablier);
+
     await bondingShare
       .connect(admin)
       .grantRole(ethers.utils.id("MINTER_ROLE"), bonding.address);
@@ -143,6 +148,10 @@ describe("BondingShare", () => {
   });
 
   describe("redeemShares", () => {
+    it("Should return the current Sablier address", async () => {
+      expect(await bonding.sablier()).to.equal(sablier);
+    });
+
     it("Should revert when users try to redeem more shares than they have", async () => {
       await expect(
         bonding
@@ -168,12 +177,12 @@ describe("BondingShare", () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await bondingShare
         .connect(secondAccount)
-        .approve(bonding.address, ethers.BigNumber.from("0"));
+        .setApprovalForAll(bonding.address, true);
 
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await bondingShare
         .connect(secondAccount)
-        .approve(bonding.address, prevBondingSharesBalance);
+        .setApprovalForAll(bonding.address, true);
 
       await bonding
         .connect(secondAccount)
@@ -216,12 +225,7 @@ describe("BondingShare", () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       await bondingShare
         .connect(secondAccount)
-        .approve(bonding.address, ethers.BigNumber.from("0"));
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      await bondingShare
-        .connect(secondAccount)
-        .approve(bonding.address, prevBondingSharesBalance);
+        .setApprovalForAll(bonding.address, true);
 
       await bonding
         .connect(secondAccount)
