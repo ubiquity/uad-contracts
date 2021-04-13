@@ -16,7 +16,7 @@ describe("deploy BondingShare", () => {
       .connect(admin)
       .deploy(adminAddress);
   });
-  it.only("two args with ethers.deploy should fail", async () => {
+  it("two args with ethers.deploy should fail", async () => {
     const factory = await ethers.getContractFactory("BondingShare");
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(
