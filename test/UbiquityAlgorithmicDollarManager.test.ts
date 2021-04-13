@@ -51,17 +51,14 @@ describe("UbiquityAlgorithmicDollarManager", () => {
   });
   describe("BondingShare", () => {
     it("Set should work", async () => {
-      const BondingShareFactory = await ethers.getContractFactory(
-        "BondingShare"
-      );
+      bondingShare = (await (await ethers.getContractFactory("BondingShare"))
+        .connect(admin)
+        .deploy(await admin.getAddress())) as BondingShare;
 
-      bondingShare = (await BondingShareFactory.deploy()) as BondingShare;
       await manager.connect(admin).setBondingShareAddress(bondingShare.address);
-
       const bondingShareAddr = BigNumber.from(
         await ethers.provider.getStorageAt(manager.address, 6)
       ).toHexString();
-
       expect(bondingShare.address.toLowerCase()).to.equal(
         bondingShareAddr.toLowerCase()
       );

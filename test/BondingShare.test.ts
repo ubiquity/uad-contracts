@@ -9,9 +9,9 @@ import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
 
-const id = 42;
-
 describe("BondingShare", () => {
+  const id = 42;
+
   let bonding: Bonding;
   let manager: UbiquityAlgorithmicDollarManager;
   let admin: Signer;
@@ -36,15 +36,9 @@ describe("BondingShare", () => {
     [admin, secondAccount] = await ethers.getSigners();
     const adminAddress = await admin.getAddress();
 
-    const BondingShareDeployment = await deployments.deploy("BondingShare", {
-      from: adminAddress,
-      args: [adminAddress],
-    });
-
-    bondingShare = (await ethers.getContractAt(
-      "BondingShare",
-      BondingShareDeployment.address
-    )) as BondingShare;
+    bondingShare = (await (await ethers.getContractFactory("BondingShare"))
+      .connect(admin)
+      .deploy(adminAddress)) as BondingShare;
 
     const Manager = await deployments.deploy(
       "UbiquityAlgorithmicDollarManager",
@@ -145,6 +139,101 @@ describe("BondingShare", () => {
         id
       );
       expect(newBondingSharesBalance).to.be.gt(prevBondingSharesBalance);
+    });
+  });
+
+  describe("redeemShares", () => {
+    it("Should revert when users try to redeem more shares than they have", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .redeemShares(ethers.utils.parseEther("10000"))
+      ).to.be.revertedWith("Bonding: Caller does not have enough shares");
+    });
+
+    it("Users should be able to instantaneously redeem shares when the redeemStreamTime is 0", async () => {
+      const initialRedeemStreamTime = await bonding.redeemStreamTime();
+      await bonding
+        .connect(admin)
+        .setRedeemStreamTime(ethers.BigNumber.from("0"));
+
+      const prevUADBalance = await uAD.balanceOf(
+        await secondAccount.getAddress()
+      );
+      const prevBondingSharesBalance = await bondingShare.balanceOf(
+        await secondAccount.getAddress(),
+        id
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, ethers.BigNumber.from("0"));
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, prevBondingSharesBalance);
+
+      await bonding
+        .connect(secondAccount)
+        .redeemShares(prevBondingSharesBalance);
+
+      const newUADBalance = await uAD.balanceOf(
+        await secondAccount.getAddress()
+      );
+
+      const newBondingSharesBalance = await bondingShare.balanceOf(
+        await secondAccount.getAddress(),
+        id
+      );
+
+      expect(prevUADBalance).to.be.lt(newUADBalance);
+
+      expect(prevBondingSharesBalance).to.be.gt(newBondingSharesBalance);
+
+      await bonding.connect(admin).setRedeemStreamTime(initialRedeemStreamTime);
+    });
+
+    it("Users should be able to start Sablier streams to redeem their shares", async () => {
+      const prevUADBalance = await uAD.balanceOf(
+        await secondAccount.getAddress()
+      );
+
+      const amountToBond = ethers.utils.parseEther("5000");
+      await uAD
+        .connect(secondAccount)
+        .approve(bonding.address, ethers.BigNumber.from("0"));
+      await uAD.connect(secondAccount).approve(bonding.address, amountToBond);
+
+      await bonding.connect(secondAccount).bondTokens(amountToBond);
+
+      const prevBondingSharesBalance = await bondingShare.balanceOf(
+        await secondAccount.getAddress(),
+        id
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, ethers.BigNumber.from("0"));
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      await bondingShare
+        .connect(secondAccount)
+        .approve(bonding.address, prevBondingSharesBalance);
+
+      await bonding
+        .connect(secondAccount)
+        .redeemShares(prevBondingSharesBalance);
+
+      expect(await uAD.balanceOf(await secondAccount.getAddress())).to.be.lt(
+        prevUADBalance
+      );
+
+      expect(prevBondingSharesBalance).to.be.gt(
+        await bondingShare.balanceOf(await secondAccount.getAddress(), id)
+      );
     });
   });
 });

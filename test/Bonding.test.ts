@@ -1,4 +1,4 @@
-import { ContractFactory, ContractTransaction, Signer } from "ethers";
+import { ContractTransaction, Signer } from "ethers";
 import { deployments, ethers, getNamedAccounts, network } from "hardhat";
 import { before, describe, it } from "mocha";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
@@ -9,9 +9,9 @@ import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
 
-const id = 42;
-
 describe("Bonding", () => {
+  const id = 42;
+
   let bonding: Bonding;
   let manager: UbiquityAlgorithmicDollarManager;
   let admin: Signer;
@@ -40,20 +40,9 @@ describe("Bonding", () => {
     [admin, secondAccount] = await ethers.getSigners();
     const adminAddress = await admin.getAddress();
 
-    const factoryBondingShare = await ethers.getContractFactory("BondingShare");
-    bondingShare = (await factoryBondingShare.deploy({
-      from: adminAddress,
-      args: [adminAddress],
-    })) as BondingShare;
-
-    // const BondingShareDeployment = await deployments.deploy("BondingShare", {
-    //   from: await admin.getAddress(),
-    // });
-
-    // bondingShare = (await ethers.getContractAt(
-    //   "BondingShare",
-    //   BondingShareDeployment.address
-    // )) as BondingShare;
+    bondingShare = (await (await ethers.getContractFactory("BondingShare"))
+      .connect(admin)
+      .deploy(adminAddress)) as BondingShare;
 
     const Manager = await deployments.deploy(
       "UbiquityAlgorithmicDollarManager",
