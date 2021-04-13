@@ -14,8 +14,8 @@ import "./utils/CollectableDust.sol";
 contract Bonding is CollectableDust {
     using SafeERC20 for IERC20;
 
-    uint16 id = 42;
-    bytes data = "";
+    uint16 public id = 42;
+    bytes public data = "";
 
     UbiquityAlgorithmicDollarManager public manager;
 

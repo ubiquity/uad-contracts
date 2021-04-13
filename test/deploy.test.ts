@@ -1,5 +1,5 @@
 import { Signer } from "ethers";
-import { deployments, ethers } from "hardhat";
+import { ethers, deployments } from "hardhat";
 import { expect } from "chai";
 
 let adminAddress: string;
@@ -16,13 +16,15 @@ describe("deploy BondingShare", () => {
       .connect(admin)
       .deploy(adminAddress);
   });
-  it("two args with ethers.deploy should fail", async () => {
-    // await expect(async function () {
-    await (await ethers.getContractFactory("BondingShare")).deploy({
-      from: adminAddress,
-      args: adminAddress,
-    });
-    // }).to.throw;
+  it.only("two args with ethers.deploy should fail", async () => {
+    const factory = await ethers.getContractFactory("BondingShare");
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    expect(
+      factory.deploy({
+        from: adminAddress,
+        args: adminAddress,
+      })
+    ).to.throw;
   });
   it("two args with deployment.deploy should work", async () => {
     const BondingShareDeployment = await deployments.deploy("BondingShare", {
