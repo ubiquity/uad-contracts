@@ -1,4 +1,4 @@
-# Ubiquity Algorithmic Dollar
+# Ubiquity Algorithmic Dollar Contracts
 
 ![Logo of the project](https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg)
 
