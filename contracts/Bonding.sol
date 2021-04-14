@@ -10,8 +10,11 @@ import "./interfaces/ISablier.sol";
 import "./interfaces/ITWAPOracle.sol";
 import "./interfaces/IBondingShare.sol";
 import "./utils/CollectableDust.sol";
+import "./libs/ABDKMathQuad.sol";
 
 contract Bonding is CollectableDust {
+    using ABDKMathQuad for uint256;
+    using ABDKMathQuad for bytes16;
     using SafeERC20 for IERC20;
 
     uint16 public id = 42;
@@ -19,11 +22,11 @@ contract Bonding is CollectableDust {
 
     UbiquityAlgorithmicDollarManager public manager;
 
-    uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
+    uint256 public constant TARGET_PRICE = uint256(1 ether); // 3Crv has 18 decimals
     // Initially set at $1,000,000 to avoid interference with growth.
-    uint256 public maxBondingPrice = uint256(1 ether) * 1000000;
+    uint256 public maxBondingPrice = uint256(1000000 ether);
     ISablier public sablier;
-    uint256 public bondingDiscountMultiplier = 0;
+    uint256 public bondingDiscountMultiplier = uint256(1000000 gwei);
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
 
     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
@@ -99,6 +102,40 @@ contract Bonding is CollectableDust {
     {
         redeemStreamTime = _redeemStreamTime;
         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+    }
+
+    /*
+        Desposit function (new version of bondTokens)
+        use uAD-3CRV LP tokens (not uAD tokens)
+     */
+    function deposit(uint256 _amount) public {
+        // _updateOracle();
+        // uint256 currentPrice = currentTokenPrice();
+        // require(
+        //     currentPrice < maxBondingPrice,
+        //     "Bonding: Current price is too high"
+        // );
+        // IERC20(manager.uADTokenAddress()).safeTransferFrom(
+        //     msg.sender,
+        //     address(this),
+        //     _amount
+        // );
+        // _bond(_amount, currentPrice);
+    }
+
+    // staking duration multiplier
+    // M = 0.001 * D3/2
+    function durationMultiplier(uint256 _weeks)
+        public
+        view
+        returns (uint256 M)
+    {
+        bytes16 unit = uint256(1 ether).fromUInt();
+        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
+        bytes16 D = _weeks.fromUInt();
+        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
+
+        M = m.mul(D32).mul(unit).toUInt();
     }
 
     function bondTokens(uint256 _amount) public {

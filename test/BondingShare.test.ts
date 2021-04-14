@@ -117,8 +117,11 @@ describe("BondingShare", () => {
       BondingDeployment.address
     )) as Bonding;
 
-    // if not first test: contract is not recreated properly, sablier is not set , must redo
+    // if not first test: contract is not recreated properly, reset things
     await bonding.connect(admin).setSablier(sablier);
+    await bonding
+      .connect(admin)
+      .setBondingDiscountMultiplier(BigNumber.from(10).pow(15));
 
     await bondingShare
       .connect(admin)
@@ -159,6 +162,60 @@ describe("BondingShare", () => {
       const targetPrice: BigNumber = await bonding.TARGET_PRICE();
 
       expect(currentTokenPrice).to.eq(targetPrice);
+    });
+  });
+
+  describe("durationMultiplier", () => {
+    it("durationMultiplier of 0 should be 0", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment , @typescript-eslint/no-unsafe-call
+      const durationMultiplier = await bonding.durationMultiplier(0);
+      expect(durationMultiplier).to.eq(0);
+    });
+
+    it("durationMultiplier of 1 should be 0.001", async () => {
+      // 0.001 * 10**18 = 10**15
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const mult = BigNumber.from(await bonding.durationMultiplier(1));
+      const delta = BigNumber.from(10).pow(15).sub(mult);
+
+      // 10**-9 expected presision on following calculations
+      expect(delta.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+    });
+
+    it("durationMultiplier of 4 should be 0.008", async () => {
+      // 0.008 * 10**18 = 8 * 10**15
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const mult = BigNumber.from(await bonding.durationMultiplier(4));
+      const delta = BigNumber.from(10).pow(15).mul(8).sub(mult);
+
+      expect(delta.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+    });
+
+    it("durationMultiplier of 24 should be 0.1175755077", async () => {
+      // 0.1175755077 * 10**18 = 117575507 * 10**9
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const mult = BigNumber.from(await bonding.durationMultiplier(24));
+      const delta = BigNumber.from(10).pow(9).mul(117575507).sub(mult);
+
+      expect(delta.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+    });
+
+    it("durationMultiplier of 52 should be 0.3749773326", async () => {
+      // 0.3749773326 * 10**18 = 374977332 * 10**9
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const mult = BigNumber.from(await bonding.durationMultiplier(52));
+      const delta = BigNumber.from(10).pow(9).mul(374977332).sub(mult);
+
+      expect(delta.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+    });
+
+    it("durationMultiplier of 520 should be 11.857824421", async () => {
+      // 11.857824421 * 10**18 = 11857824421 * 10**9
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const mult = BigNumber.from(await bonding.durationMultiplier(520));
+      const delta = BigNumber.from(10).pow(9).mul(11857824421).sub(mult);
+
+      expect(delta.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
     });
   });
 
