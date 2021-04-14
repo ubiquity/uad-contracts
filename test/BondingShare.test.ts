@@ -1,4 +1,4 @@
-import { ContractTransaction, Signer } from "ethers";
+import { ContractTransaction, Signer, BigNumber } from "ethers";
 import { deployments, ethers, getNamedAccounts, network } from "hardhat";
 import { before, describe, it } from "mocha";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
@@ -125,6 +125,62 @@ describe("BondingShare", () => {
       .grantRole(ethers.utils.id("MINTER_ROLE"), bonding.address);
   });
 
+  describe("initialValues", () => {
+    it("TARGET_PRICE should always be 1", async () => {
+      const targetPrice: BigNumber = await bonding.TARGET_PRICE();
+      const one: BigNumber = BigNumber.from(10).pow(18);
+
+      expect(targetPrice).to.eq(one);
+    });
+
+    it("initial uAD totalSupply should be more than 30 010 (3 * 10 000 + 10)", async () => {
+      const uADtotalSupply: BigNumber = await uAD.totalSupply();
+      const uADinitialSupply: BigNumber = BigNumber.from(10).pow(18).mul(30010);
+
+      expect(uADtotalSupply).to.gte(uADinitialSupply);
+    });
+
+    it("initial bonding totalSupply should be 0", async () => {
+      const bondTotalSupply: BigNumber = await bondingShare.totalSupply(id);
+      const zero: BigNumber = BigNumber.from(0);
+
+      expect(bondTotalSupply).to.eq(zero);
+    });
+
+    it("initial currentShareValue should be TARGET_PRICE", async () => {
+      const currentShareValue: BigNumber = await bonding.currentShareValue();
+      const targetPrice: BigNumber = await bonding.TARGET_PRICE();
+
+      expect(currentShareValue).to.eq(targetPrice);
+    });
+
+    it("initial currentTokenPrice should be TARGET_PRICE", async () => {
+      const currentTokenPrice: BigNumber = await bonding.currentTokenPrice();
+      const targetPrice: BigNumber = await bonding.TARGET_PRICE();
+
+      expect(currentTokenPrice).to.eq(targetPrice);
+    });
+  });
+
+  describe("afterBondingValues", () => {
+    it("bonding 100 uAD should initially gives 100 bondingShares", async () => {
+      const addr: string = await secondAccount.getAddress();
+      const amount: BigNumber = BigNumber.from(10).pow(18).mul(100);
+      // console.log((await bonding.currentShareValue()).toString());
+
+      const initialBondBalance = await bondingShare.balanceOf(addr, id);
+      expect(initialBondBalance).to.be.eq(0);
+
+      await uAD.connect(secondAccount).approve(bonding.address, amount);
+      await bonding.connect(secondAccount).bondTokens(amount);
+      const finalBondBalance = await bondingShare.balanceOf(addr, id);
+
+      expect(finalBondBalance).to.be.eq(amount.toString());
+
+      // console.log((await bonding.currentShareValue()).toString());
+    });
+  });
+
   describe("bondTokens", () => {
     it("User should be able to bond uAD tokens", async () => {
       const prevBondingSharesBalance = await bondingShare.balanceOf(
@@ -148,10 +204,6 @@ describe("BondingShare", () => {
   });
 
   describe("redeemShares", () => {
-    it("Should return the current Sablier address", async () => {
-      expect(await bonding.sablier()).to.equal(sablier);
-    });
-
     it("Should revert when users try to redeem more shares than they have", async () => {
       await expect(
         bonding
@@ -202,6 +254,10 @@ describe("BondingShare", () => {
       expect(prevBondingSharesBalance).to.be.gt(newBondingSharesBalance);
 
       await bonding.connect(admin).setRedeemStreamTime(initialRedeemStreamTime);
+    });
+
+    it("Should return the current Sablier address", async () => {
+      expect(await bonding.sablier()).to.equal(sablier);
     });
 
     it("Users should be able to start Sablier streams to redeem their shares", async () => {
