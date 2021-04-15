@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./interfaces/IUbiquityAlgorithmicDollar.sol";
 import "./interfaces/ICurveFactory.sol";
 import "./interfaces/IMetaPool.sol";
 
@@ -18,9 +19,16 @@ import "./interfaces/IMetaPool.sol";
 contract UbiquityAlgorithmicDollarManager is AccessControl {
     using SafeERC20 for IERC20;
 
+    bytes32 public constant UAD_MINTER_ROLE = keccak256("UAD_MINTER_ROLE");
+    bytes32 public constant UAD_BURNER_ROLE = keccak256("UAD_BURNER_ROLE");
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant COUPON_MANAGER_ROLE = keccak256("COUPON_MANAGER");
     bytes32 public constant BONDING_MANAGER_ROLE = keccak256("BONDING_MANAGER");
-
+    bytes32 public constant INCENTIVE_MANAGER_ROLE =
+        keccak256("INCENTIVE_MANAGER");
+    bytes32 public constant UAD_TOKEN_MANAGER_ROLE =
+        keccak256("UAD_TOKEN_MANAGER_ROLE");
     address public twapOracleAddress;
     address public debtCouponAddress;
     address public uADTokenAddress;
@@ -30,7 +38,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public bondingShareAddress;
     address public stableSwapMetaPoolAddress;
     address public autoRedeemPoolTokenAddress;
-
+    address public curveIncentiveAddress;
     address public treasuryAddress;
     address public uGovFundAddress;
     address public lpRewardsAddress;
@@ -48,9 +56,15 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
 
     constructor(address _admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        _setupRole(UAD_MINTER_ROLE, _admin);
+        _setupRole(PAUSER_ROLE, _admin);
         _setupRole(COUPON_MANAGER_ROLE, _admin);
         _setupRole(BONDING_MANAGER_ROLE, _admin);
+        _setupRole(INCENTIVE_MANAGER_ROLE, _admin);
+        _setupRole(UAD_TOKEN_MANAGER_ROLE, address(this));
     }
+
+    // TODO Add a generic setter for extra addresses that needs to be linked
 
     function setTwapOracleAddress(address _twapOracleAddress)
         external
@@ -64,6 +78,16 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         onlyAdmin
     {
         debtCouponAddress = _debtCouponAddress;
+    }
+
+    function setIncentiveToUAD(address _account, address _incentiveAddress)
+        external
+        onlyAdmin
+    {
+        IUbiquityAlgorithmicDollar(uADTokenAddress).setIncentiveContract(
+            _account,
+            _incentiveAddress
+        );
     }
 
     function setuADTokenAddress(address _uADTokenAddress) external onlyAdmin {

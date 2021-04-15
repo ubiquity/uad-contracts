@@ -2,6 +2,7 @@ import { Signer } from "ethers";
 import { ethers } from "hardhat";
 import { expect } from "chai";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
 describe("UbiquityAlgorithmicDollar", () => {
   let admin: Signer;
@@ -11,9 +12,15 @@ describe("UbiquityAlgorithmicDollar", () => {
 
   beforeEach(async () => {
     [admin, secondAccount, thirdAccount] = await ethers.getSigners();
+    const Manager = await ethers.getContractFactory(
+      "UbiquityAlgorithmicDollarManager"
+    );
+    const manager = (await Manager.deploy(
+      await admin.getAddress()
+    )) as UbiquityAlgorithmicDollarManager;
 
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
-    uAD = (await UAD.deploy()) as UbiquityAlgorithmicDollar;
+    uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
   });
   describe("Transfer", () => {
     it("should work", async () => {
@@ -64,9 +71,7 @@ describe("UbiquityAlgorithmicDollar", () => {
         uAD
           .connect(secondAccount)
           .mint(thirdAdr, ethers.utils.parseEther("10000"))
-      ).to.revertedWith(
-        "ERC20PresetMinterPauser: must have minter role to mint"
-      );
+      ).to.revertedWith("uAD: not minter");
     });
   });
   describe("Burn", () => {

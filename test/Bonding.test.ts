@@ -61,6 +61,7 @@ describe("Bonding", () => {
     await manager.connect(admin).setBondingShareAddress(bondingShare.address);
 
     const UAD = await deployments.deploy("UbiquityAlgorithmicDollar", {
+      args: [manager.address],
       from: await admin.getAddress(),
     });
 

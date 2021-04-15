@@ -7,7 +7,6 @@ contract TWAPOracle {
     address public immutable pool;
     address public immutable token0;
     address public immutable token1;
-
     uint256 public price0Average;
     uint256 public price1Average;
     uint256 public pricesBlockTimestampLast;
@@ -38,12 +37,6 @@ contract TWAPOracle {
         require(_reserve0 == _reserve1, "TWAPOracle: PAIR_UNBALANCED");
         priceCumulativeLast = IMetaPool(_pool).get_price_cumulative_last();
         pricesBlockTimestampLast = IMetaPool(_pool).block_timestamp_last();
-        console.log(
-            "##CONSTRUCTOR priceCumulativeLast 0:%s 1:%s blockTimestamp:%s",
-            priceCumulativeLast[0],
-            priceCumulativeLast[1],
-            pricesBlockTimestampLast
-        );
 
         price0Average = 1 ether;
         price1Average = 1 ether;
@@ -53,20 +46,7 @@ contract TWAPOracle {
     function update() external {
         (uint256[2] memory priceCumulative, uint256 blockTimestamp) =
             _currentCumulativePrices();
-        console.log(
-            "##_currentCumulativePrices 0:%s 1:%s blockTimestamp:%s",
-            priceCumulative[0],
-            priceCumulative[1],
-            blockTimestamp
-        );
-
         if (blockTimestamp - pricesBlockTimestampLast > 0) {
-            console.log(
-                "##priceCumulativeLast 0:%s 1:%s pricesBlockTimestampLast:%s",
-                priceCumulativeLast[0],
-                priceCumulativeLast[1],
-                pricesBlockTimestampLast
-            );
             // get the balances between now and the last price cumulative snapshot
             uint256[2] memory twapBalances =
                 IMetaPool(pool).get_twap_balances(
@@ -81,7 +61,6 @@ contract TWAPOracle {
             price0Average = IMetaPool(pool).get_dy(0, 1, 1 ether, twapBalances);
             // price to exchange amounIn 3CRV to uAD  based on TWAP
             price1Average = IMetaPool(pool).get_dy(1, 0, 1 ether, twapBalances);
-
             // we update the priceCumulative
             priceCumulativeLast = priceCumulative;
             pricesBlockTimestampLast = blockTimestamp;

@@ -56,7 +56,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
         uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
 
-        // we burn user's dollars. User needs to approve debtCouponManager first
+        // we burn user's dollars.
         UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
             msg.sender,
             amount

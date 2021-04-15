@@ -10,9 +10,9 @@ import "./libs/ABDKMathQuad.sol";
 /// @title An excess dollar distributor which sends dollars to treasury,
 /// lp rewards and inflation rewards
 contract ExcessDollarsDistributor is IExcessDollarsDistributor {
-    UbiquityAlgorithmicDollarManager public manager;
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;
+    UbiquityAlgorithmicDollarManager public manager;
 
     /// @param _manager the address of the manager contract so we can fetch variables
     constructor(address _manager) {
@@ -35,42 +35,20 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         address lpRewardsAddress = manager.lpRewardsAddress();
         uint256 tenPercent =
             excessDollars.fromUInt().div(uint256(10).fromUInt()).toUInt();
-        console.log(
-            "## * excessDollars:%s tenPercent:%s msg.sender:%s",
-            excessDollars,
-            tenPercent,
-            msg.sender
-        );
+
         UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
             treasuryAddress,
             tenPercent
         );
-        console.log(
-            "## * TRASNFER TO treasury:%s tenPercent:%s msg.sender:%s",
-            treasuryAddress,
-            tenPercent,
-            msg.sender
-        );
+
         UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
             uGovFundAddress,
             tenPercent
         );
-        console.log(
-            "## * TRASNFER TO uGovFundAddress:%s tenPercent:%s msg.sender:%s",
-            uGovFundAddress,
-            tenPercent,
-            msg.sender
-        );
-        // TODO should be vested for a certain duration
+
         UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
             lpRewardsAddress,
             excessDollars - tenPercent - tenPercent
-        );
-        console.log(
-            "## * TRASNFER TO lpRewardsAddress:%s 80Percent:%s msg.sender:%s",
-            lpRewardsAddress,
-            excessDollars - tenPercent - tenPercent,
-            msg.sender
         );
     }
 }

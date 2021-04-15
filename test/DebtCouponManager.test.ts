@@ -8,7 +8,7 @@ import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmi
 import { DebtCoupon } from "../artifacts/types/DebtCoupon";
 import { DebtCouponManager } from "../artifacts/types/DebtCouponManager";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
-import { mineBlock, mineNBlock } from "./utils/hardhatNode";
+import { mineNBlock } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { CouponsForDollarsCalculator } from "../artifacts/types/CouponsForDollarsCalculator";
 import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
@@ -29,9 +29,6 @@ describe("DebtCouponManager", () => {
   let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
   let crvToken: ERC20;
-  let sablier: string;
-  let USDC: string;
-  let DAI: string;
   let curveFactory: string;
   let curve3CrvBasePool: string;
   let curve3CrvToken: string;
@@ -88,12 +85,6 @@ describe("DebtCouponManager", () => {
     const value = new Big(amount);
     const one = new Big(ethers.utils.parseEther("1").toString());
     const percent = new Big(percentage).div(one);
-    console.log(
-      `percent:${percent.toString()}
-
-      value.mul(percent).toString(): ${value.mul(percent).toString()}
-       `
-    );
     return BigNumber.from(
       value.mul(percent).round(0, RoundingMode.RoundDown).toString()
     );
@@ -112,8 +103,6 @@ describe("DebtCouponManager", () => {
     );
     return BigNumber.from(prem.round(0, RoundingMode.RoundDown).toString());
   };
-  // let twapOracle: TWAPOracle;
-  let bondingShare: BondingShare;
   const couponLengthBlocks = 100;
   beforeEach(async () => {
     // list of accounts
@@ -138,8 +127,9 @@ describe("DebtCouponManager", () => {
     manager = (await UADMgr.deploy(
       await admin.getAddress()
     )) as UbiquityAlgorithmicDollarManager;
+
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
-    uAD = (await UAD.deploy()) as UbiquityAlgorithmicDollar;
+    uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
     await manager.connect(admin).setuADTokenAddress(uAD.address);
 
     // set twap Oracle Address
@@ -163,12 +153,6 @@ describe("DebtCouponManager", () => {
     );
     await Promise.all(mintings);
 
-    console.log(
-      `CurveFactory:${curveFactory}
-
-         curve3CrvBasePool: ${curve3CrvBasePool}
-         crvToken:${crvToken.address}`
-    );
     await manager
       .connect(admin)
       .deployStableSwapPool(
@@ -229,18 +213,29 @@ describe("DebtCouponManager", () => {
       manager.address,
       couponLengthBlocks
     )) as DebtCouponManager;
+
     // debtCouponMgr should have the COUPON_MANAGER role to mint debtCoupon
     const COUPON_MANAGER_ROLE = ethers.utils.keccak256(
       ethers.utils.toUtf8Bytes("COUPON_MANAGER")
     );
+    // debtCouponMgr should have the UAD_MINTER_ROLE to mint uAD for debtCoupon Redeem
+    const UAD_MINTER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UAD_MINTER_ROLE")
+    );
+    // debtCouponMgr should have the UAD_BURNER_ROLE to burn uAD when minting debtCoupon
+    const UAD_BURNER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UAD_BURNER_ROLE")
+    );
     await manager
       .connect(admin)
       .grantRole(COUPON_MANAGER_ROLE, debtCouponMgr.address);
-    // debtCouponMgr should have the MINTER_ROLE to mint uAD for debtCoupon Redeem
-    const MINTER_ROLE = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("MINTER_ROLE")
-    );
-    await uAD.connect(admin).grantRole(MINTER_ROLE, debtCouponMgr.address);
+    await manager
+      .connect(admin)
+      .grantRole(UAD_MINTER_ROLE, debtCouponMgr.address);
+    await manager
+      .connect(admin)
+      .grantRole(UAD_BURNER_ROLE, debtCouponMgr.address);
+
     // to calculate the totalOutstanding debt we need to take into account autoRedeemToken.totalSupply
     const mockAutoRedeemTokenFactory = await ethers.getContractFactory(
       "MockAutoRedeemToken"
@@ -281,6 +276,13 @@ describe("DebtCouponManager", () => {
       .setLpRewardsAddress(await lpReward.getAddress());
   });
   describe("DebtCouponManager", () => {
+    //  TODO add a test to make sure that calling  getDollarsToMint twice doesn't mint
+    // dollars twice
+
+    // TODO Only debCouponManager can mint
+    // TODO TEST can't redeem all coupon
+    // TODO TEST reset dollarsMintedThisCycle to zero when we mint debt coupon in a debt cycle
+    // TODO TEST excess of minted uAD by the debtManager is distributed */
     it("exchangeDollarsForCoupons should fail if uAD price is >= 1", async () => {
       await expect(
         debtCouponMgr.connect(secondAccount).exchangeDollarsForCoupons(1)
@@ -320,15 +322,14 @@ describe("DebtCouponManager", () => {
       // check that total debt is null
       const totalDebt = await debtCoupon.getTotalOutstandingDebt();
       expect(totalDebt).to.equal(0);
-      console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
       const amountToExchangeForCoupon = oneETH;
       const secondAccountAdr = await secondAccount.getAddress();
       const balanceBefore = await uAD.balanceOf(secondAccountAdr);
 
       // approve debtCouponManager to burn user's token
-      await uAD
+      /*   await uAD
         .connect(secondAccount)
-        .approve(debtCouponMgr.address, amountToExchangeForCoupon);
+        .approve(debtCouponMgr.address, amountToExchangeForCoupon); */
       const lastBlock = await ethers.provider.getBlock(
         await ethers.provider.getBlockNumber()
       );
@@ -336,6 +337,7 @@ describe("DebtCouponManager", () => {
         amountToExchangeForCoupon
       );
       const expiryBlock = lastBlock.number + 1 + couponLengthBlocks;
+
       await expect(
         debtCouponMgr
           .connect(secondAccount)
@@ -343,8 +345,6 @@ describe("DebtCouponManager", () => {
       )
         .to.emit(debtCoupon, "MintedCoupons")
         .withArgs(secondAccountAdr, expiryBlock, couponToMint);
-      //  emit TransferSingle(operator, address(0), account, id, amount);
-      //    event MintedCoupons(address recipient, uint256 expiryBlock, uint256 amount);
 
       const balanceAfter = await uAD.balanceOf(secondAccountAdr);
 
@@ -424,13 +424,7 @@ describe("DebtCouponManager", () => {
       const pool1bal = await metaPool.balances(1);
       expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
       expect(pool1bal).to.equal(ethers.utils.parseEther("10000"));
-      console.log(
-        `**pool0bal:${pool0bal.toString()} pool1bal:${pool1bal.toString()} `
-      );
-      // Price must be below 1 to mint coupons
-      // await twapOracle.update();
-      const uADPrice = await twapOracle.consult(uAD.address);
-      console.log("uADPrice", ethers.utils.formatEther(uADPrice.toString()));
+
       // remove liquidity one coin 3CRV only so that uAD will be worth less
       const admBalance = await metaPool.balanceOf(await admin.getAddress());
       // calculation to withdraw 1e18 LP token
@@ -445,29 +439,20 @@ describe("DebtCouponManager", () => {
       // approve metapool to burn LP on behalf of admin
       await metaPool.approve(metaPool.address, admBalance);
 
-      //  StableSwap.remove_liquidity_one_coin
-      //        (_burn_amount: uint256, i: int128,
-      //         _min_received: uint256, _receiver: address = msg.sender) → uint256: nonpayable
       // Withdraw a single asset from the pool.
       await metaPool["remove_liquidity_one_coin(uint256,int128,uint256)"](
         oneETH,
         1,
         expected
       );
-      const pool0balAfter = await metaPool.balances(0);
-      const pool1balAfter = await metaPool.balances(1);
-      /*
-      expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
-      expect(pool1bal).to.equal(ethers.utils.parseEther("10000")); */
-      console.log(
-        `**pool0balAfter:${pool0balAfter.toString()} pool1balAfter:${pool1balAfter.toString()} `
-      );
-      await twapOracle.update();
 
+      await twapOracle.update();
+      // Price must be below 1 to mint coupons
+      const uADPrice = await twapOracle.consult(uAD.address);
+      expect(uADPrice).to.be.lt(oneETH);
       // check that total debt is null
       const totalDebt = await debtCoupon.getTotalOutstandingDebt();
       expect(totalDebt).to.equal(0);
-      console.log("totalDebt", ethers.utils.formatEther(totalDebt.toString()));
       const amountToExchangeForCoupon = oneETH;
       const secondAccountAdr = await secondAccount.getAddress();
       const balanceBefore = await uAD.balanceOf(secondAccountAdr);
@@ -490,8 +475,6 @@ describe("DebtCouponManager", () => {
       )
         .to.emit(debtCoupon, "MintedCoupons")
         .withArgs(secondAccountAdr, expiryBlock, couponToMint);
-      //  emit TransferSingle(operator, address(0), account, id, amount);
-      //    event MintedCoupons(address recipient, uint256 expiryBlock, uint256 amount);
 
       const balanceAfter = await uAD.balanceOf(secondAccountAdr);
 
@@ -504,8 +487,6 @@ describe("DebtCouponManager", () => {
         expiryBlock
       );
       expect(debtCoupons).to.equal(couponToMint);
-      console.log(`
-      debtCoupons:${debtCoupons} `);
 
       // check outstanding debt now
       const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
@@ -520,30 +501,7 @@ describe("DebtCouponManager", () => {
       const whale3CRVBalanceBeforeSwap = await crvToken.balanceOf(
         curveWhaleAddress
       );
-      const whaleuADBalanceBeforeSwap = await uAD.balanceOf(curveWhaleAddress);
       const CRVAmountToSwap = ethers.utils.parseEther("1000");
-      console.log(
-        `whaleBalance of 3CRV token:${ethers.utils.formatEther(
-          whale3CRVBalanceBeforeSwap.toString()
-        )}
-        whaleBalance of uAD token:${ethers.utils.formatEther(
-          whaleuADBalanceBeforeSwap.toString()
-        )}
-        `
-      );
-      // await twapOracle.update();
-      const uADPriceBeforeSwap = await twapOracle.consult(uAD.address);
-      const crvPriceBeforeSwap = await twapOracle.consult(crvToken.address);
-      console.log(
-        `uADPriceBeforeSwap:${ethers.utils.formatEther(
-          uADPriceBeforeSwap.toString()
-        )}
-        crvPriceBeforeSwap:${ethers.utils.formatEther(
-          crvPriceBeforeSwap.toString()
-        )}
-
-        `
-      );
 
       // Exchange (swap)
       let dy3CRVtouAD = await swap3CRVtoUAD(
@@ -554,68 +512,18 @@ describe("DebtCouponManager", () => {
       await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
       dy3CRVtouAD = dy3CRVtouAD.add(BigNumber.from(1));
       await twapOracle.update();
-      /*  const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
-        1,
-        0,
-        CRVAmountToSwap
-      );
-      const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
-      console.log(
-        "expectedMinuAD",
-        ethers.utils.formatEther(expectedMinuAD.toString())
-      );
-      // whale need to approve metaPool for sending its 3CRV
-      await crvToken
-        .connect(curveWhale)
-        .approve(metaPool.address, CRVAmountToSwap);
-      console.log(
-        "APPROVED",
-        ethers.utils.formatEther(expectedMinuAD.toString())
-      );
-      // whale swap 1 3CRV to uAD
-      await metaPool
-        .connect(curveWhale)
-        ["exchange(int128,int128,uint256,uint256)"](
-          1,
-          0,
-          CRVAmountToSwap,
-          expectedMinuAD
-        ); */
       const whale3CRVBalance = await crvToken.balanceOf(curveWhaleAddress);
       const whaleuADBalance = await uAD.balanceOf(curveWhaleAddress);
-      console.log(
-        `whaleBalance of 3CRV token:${ethers.utils.formatEther(
-          whale3CRVBalance.toString()
-        )}
-        whaleBalance of uAD token:${ethers.utils.formatEther(
-          whaleuADBalance.toString()
-        )}
-        `
-      );
+
       expect(whaleuADBalance).to.equal(dy3CRVtouAD);
       expect(whale3CRVBalance).to.equal(
         whale3CRVBalanceBeforeSwap.sub(CRVAmountToSwap)
       );
-      /*      const pool0balAfterSwap = await metaPool.balances(0);
-      const pool1balAfterSwap = await metaPool.balances(1);
-      console.log(
-        `**pool0balAfterSwap:${pool0balAfterSwap.toString()} pool1balAfterSwap:${pool1balAfterSwap.toString()} `
-      );
-      await mineNBlock(couponLengthBlocks); */
+
       await twapOracle.update();
       const uADPriceAfterSwap = await twapOracle.consult(uAD.address);
-      const crvPriceAfterSwap = await twapOracle.consult(crvToken.address);
       expect(uADPriceAfterSwap).to.be.gt(oneETH);
-      console.log(
-        `uADPriceAfterSwap:${ethers.utils.formatEther(
-          uADPriceAfterSwap.toString()
-        )}
-        crvPriceAfterSwap:${ethers.utils.formatEther(
-          crvPriceAfterSwap.toString()
-        )}
 
-        `
-      );
       // now we can redeem the coupon
       // 1. this will update the total debt by going through all the debt coupon that are
       // not expired it should be equal to debtCoupons here as we don't have uAR
@@ -635,34 +543,7 @@ describe("DebtCouponManager", () => {
       const mintableUAD = await dollarMintingCalculator.getDollarsToMint();
       const excessUAD = mintableUAD.sub(debtCoupons);
       const totalSupply = await uAD.totalSupply();
-      console.log(
-        `mintableUAD:${ethers.utils.formatEther(mintableUAD.toString())}
-        debtCoupons:${debtCoupons.toString()}
-        excessUAD:${excessUAD.toString()}
-        uADPriceAfterSwap:${uADPriceAfterSwap.toString()}
-        uAD.totalSupply():${totalSupply.toString()}
 
-          debtCoupons:${ethers.utils.formatEther(debtCoupons.toString())}
-          excessUAD:${ethers.utils.formatEther(excessUAD.toString())}
-          uADPriceAfterSwap:${ethers.utils.formatEther(
-            uADPriceAfterSwap.toString()
-          )}
-          uAD.totalSupply():${ethers.utils.formatEther(totalSupply)}
-          calcSUB:${ethers.utils.formatEther(uADPriceAfterSwap.sub(oneETH))}
-            calc:${ethers.utils.formatEther(
-              uADPriceAfterSwap.sub(oneETH).mul(totalSupply)
-            )}
-          `
-      );
-      /*  const res = calcPercentage(
-        totalSupply.toString(),
-        uADPriceAfterSwap.sub(oneETH).toString()
-      );
-      console.log(
-        `---resres:${ethers.utils.formatEther(res.toString())}
-
-          `
-      ); */
       expect(mintableUAD).to.equal(
         calcPercentage(
           totalSupply.toString(),
@@ -680,29 +561,6 @@ describe("DebtCouponManager", () => {
         .to.emit(debtCoupon, "ApprovalForAll")
         .withArgs(secondAccountAdr, debtCouponMgr.address, true);
 
-      console.log(
-        `mintableUAD:${ethers.utils.formatEther(mintableUAD.toString())}
-          debtCoupons:${ethers.utils.formatEther(debtCoupons.toString())}
-          excessUAD:${ethers.utils.formatEther(excessUAD.toString())}
-
-          tx from:${
-            debtCouponMgr.address
-          } to :${await treasury.getAddress()} 10%:${excessUAD
-          .div(10)
-          .toString()}
-          debtMgr addr:${debtCouponMgr.address}
-          secondAccountAdr:${secondAccountAdr}
-          `
-      );
-
-      /*    const sx = await debtCouponMgr
-        .connect(secondAccount)
-        .redeemCoupons(expiryBlock, debtCoupons);
-      const y = await sx.wait(1);
-      console.log(
-        `y:${JSON.stringify(y)}
-        `
-      ); */
       await expect(
         debtCouponMgr
           .connect(secondAccount)
@@ -774,18 +632,10 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address
       );
       expect(excessDistributoUADBalance).to.equal(0);
-      //  TODO add a test to make sure that calling  getDollarsToMint twice doesn't mint
-      // dollars twice
-
-      // TODO Only debCouponManager can mint
-      // TODO TEST can't redeem all coupon
-      // TODO TEST reset dollarsMintedThisCycle to zero when we mint debt coupon in a debt cycle
-      // TODO TEST excess of minted uAD by the debtManager is distributed */
     });
     it("calling exchangeDollarsForCoupons twice in up cycle should mint uAD a second time only based on the inflation", async () => {
       // Price must be below 1 to mint coupons
       const uADPrice = await twapOracle.consult(uAD.address);
-      console.log("uADPrice", ethers.utils.formatEther(uADPrice.toString()));
       // remove liquidity one coin 3CRV only so that uAD will be worth less
       const admBalance = await metaPool.balanceOf(await admin.getAddress());
 
@@ -964,48 +814,13 @@ describe("DebtCouponManager", () => {
       const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
       const dollarsToMint = mintableUADThisTime.sub(mintableUAD);
       // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
-      console.log(
-        `
-        uADPriceAfterSwap:${uADPriceAfterSwap.sub(oneETH).toString()}`
-      );
+
       const newCalculatedMintedUAD = calcPercentage(
         mintableUAD.toString(),
         uADPriceAfterSwap.sub(oneETH).toString()
       );
       expect(newCalculatedMintedUAD).to.equal(dollarsToMint);
-      console.log(
-        `
-        newMintedUAD:${ethers.utils.formatEther(
-          newCalculatedMintedUAD.toString()
-        )}
-        mintableUAD:${ethers.utils.formatEther(mintableUAD.toString())}
-        mintableUADThisTime:${ethers.utils.formatEther(
-          mintableUADThisTime.toString()
-        )}
-        dollarsToMint:${ethers.utils.formatEther(dollarsToMint.toString())}
-        dollarsToMint.sub(dollarsToMint.mul(2).div(10)):${ethers.utils.formatEther(
-          dollarsToMint.sub(dollarsToMint.mul(2).div(10)).toString()
-        )}
-        dollarsToMint.sub(dollarsToMint.div(10)).sub(dollarsToMint.div(10)):$[]
-          debtCoupons:${ethers.utils.formatEther(debtCoupons.toString())}
-          excessUAD:${ethers.utils.formatEther(excessUAD.toString())}
 
-          tx from:${
-            debtCouponMgr.address
-          } to :${await treasury.getAddress()} 10%:${excessUAD
-          .div(10)
-          .toString()}
-          debtMgr addr:${debtCouponMgr.address}
-          secondAccountAdr:${secondAccountAdr}
-          userUADBalanceAfterRedeem:${ethers.utils.formatEther(
-            userUADBalanceAfterRedeem.toString()
-          )}
-          userUADBalanceBeforeRedeem:${ethers.utils.formatEther(
-            userUADBalanceBeforeRedeem.toString()
-          )}
-          excessDollarsDistributor.address:${excessDollarsDistributor.address}
-          `
-      );
       // redeem the last 1 coupon
       await expect(
         debtCouponMgr.connect(secondAccount).redeemCoupons(expiryBlock, oneETH)
@@ -1052,15 +867,10 @@ describe("DebtCouponManager", () => {
           expiryBlock,
           oneETH
         );
-      // TODO Only debCouponManager can mint
-      // TODO TEST can't redeem all coupon
-      // TODO TEST reset dollarsMintedThisCycle to zero when we mint debt coupon in a debt cycle
-      // TODO TEST excess of minted uAD by the debtManager is distributed */
     });
-    it.only("calling exchangeDollarsForCoupons twice after up and down cycle should reset dollarsMintedThisCycle to zero", async () => {
+    it("calling exchangeDollarsForCoupons twice after up and down cycle should reset dollarsMintedThisCycle to zero", async () => {
       // Price must be below 1 to mint coupons
       const uADPrice = await twapOracle.consult(uAD.address);
-      console.log("uADPrice", ethers.utils.formatEther(uADPrice.toString()));
       // remove liquidity one coin 3CRV only so that uAD will be worth less
       const admBalance = await metaPool.balanceOf(await admin.getAddress());
 
@@ -1283,44 +1093,13 @@ describe("DebtCouponManager", () => {
       const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
       // const dollarsToMint = mintableUADThisTime.sub(mintableUAD);
       // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
-      console.log(
-        `
-         uADPriceAfterSwap:${uADPriceAfterSwap.sub(oneETH).toString()}`
-      );
+
       totalSupply = await uAD.totalSupply();
       const newCalculatedMintedUAD = calcPercentage(
         totalSupply.toString(),
         uADPriceAfterSwap.sub(oneETH).toString()
       );
       expect(newCalculatedMintedUAD).to.equal(mintableUADThisTime);
-
-      console.log(
-        `
-         mintableUADThisTime:${ethers.utils.formatEther(
-           mintableUADThisTime.toString()
-         )}
-
-
-           debtCoupons:${ethers.utils.formatEther(debtCoupons.toString())}
-           newDebtCoupons:${ethers.utils.formatEther(newDebtCoupons.toString())}
-           excessUAD:${ethers.utils.formatEther(excessUAD.toString())}
-
-           tx from:${
-             debtCouponMgr.address
-           } to :${await treasury.getAddress()} 10%:${excessUAD
-          .div(10)
-          .toString()}
-           debtMgr addr:${debtCouponMgr.address}
-           secondAccountAdr:${secondAccountAdr}
-           userUADBalanceAfterRedeem:${ethers.utils.formatEther(
-             userUADBalanceAfterRedeem.toString()
-           )}
-           userUADBalanceBeforeRedeem:${ethers.utils.formatEther(
-             userUADBalanceBeforeRedeem.toString()
-           )}
-           excessDollarsDistributor.address:${excessDollarsDistributor.address}
-           `
-      );
 
       // redeem the last 1 coupon
       await expect(
@@ -1373,10 +1152,6 @@ describe("DebtCouponManager", () => {
           expiryBlock,
           debtCoupons
         );
-      // TODO Only debCouponManager can mint
-      // TODO TEST can't redeem all coupon
-      // TODO TEST reset dollarsMintedThisCycle to zero when we mint debt coupon in a debt cycle
-      // TODO TEST excess of minted uAD by the debtManager is distributed */
     });
   });
 });
