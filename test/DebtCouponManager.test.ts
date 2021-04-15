@@ -1,4 +1,4 @@
-import { ContractTransaction, Signer } from "ethers";
+import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
 import { Big, RoundingMode } from "big.js";
