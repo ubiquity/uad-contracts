@@ -42,6 +42,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public treasuryAddress;
     address public uGovFundAddress;
     address public lpRewardsAddress;
+    address public uGOVTokenAddress;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -92,6 +93,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
 
     function setuADTokenAddress(address _uADTokenAddress) external onlyAdmin {
         uADTokenAddress = _uADTokenAddress;
+    }
+
+    function setuGOVTokenAddress(address _uGOVTokenAddress) external onlyAdmin {
+        uGOVTokenAddress = _uGOVTokenAddress;
     }
 
     function setComparisonTokenAddress(address _comparisonTokenAddress)

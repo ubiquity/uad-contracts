@@ -5,6 +5,7 @@ import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlg
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
+import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { DebtCoupon } from "../artifacts/types/DebtCoupon";
 
 describe("UbiquityAlgorithmicDollarManager", () => {
@@ -13,6 +14,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
   let manager: UbiquityAlgorithmicDollarManager;
   let admin: Signer;
   let uAD: UbiquityAlgorithmicDollar;
+  let uGOV: UbiquityGovernance;
   let curveFactory: string;
   let curve3CrvBasePool: string;
   let curve3CrvToken: string;
@@ -34,8 +36,13 @@ describe("UbiquityAlgorithmicDollarManager", () => {
     manager = (await UADMgr.deploy(
       await admin.getAddress()
     )) as UbiquityAlgorithmicDollarManager;
+
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
+
+    const UGOV = await ethers.getContractFactory("UbiquityGovernance");
+    uGOV = (await UGOV.deploy()) as UbiquityGovernance;
+
     const debtCouponFactory = await ethers.getContractFactory("DebtCoupon");
     debtCoupon = (await debtCouponFactory.deploy(
       await admin.getAddress()
@@ -46,6 +53,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       const BondingShareFactory = await ethers.getContractFactory(
         "BondingShare"
       );
+
       bondingShare = (await BondingShareFactory.deploy()) as BondingShare;
       await manager.connect(admin).setBondingShareAddress(bondingShare.address);
 
@@ -67,6 +75,17 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       ).toHexString();
 
       expect(uAD.address.toLowerCase()).to.equal(uADTokenAddr.toLowerCase());
+    });
+  });
+  describe("uGOVTokenAddress", () => {
+    it("Set should work", async () => {
+      await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
+
+      const uGOVTokenAddr = BigNumber.from(
+        await ethers.provider.getStorageAt(manager.address, 10)
+      ).toHexString();
+
+      expect(uGOV.address.toLowerCase()).to.equal(uGOVTokenAddr.toLowerCase());
     });
   });
   describe("debtCouponAddress", () => {
