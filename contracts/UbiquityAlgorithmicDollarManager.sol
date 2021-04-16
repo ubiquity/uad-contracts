@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./interfaces/IUbiquityAlgorithmicDollar.sol";
 import "./interfaces/ICurveFactory.sol";
 import "./interfaces/IMetaPool.sol";
 
@@ -18,9 +19,16 @@ import "./interfaces/IMetaPool.sol";
 contract UbiquityAlgorithmicDollarManager is AccessControl {
     using SafeERC20 for IERC20;
 
+    bytes32 public constant UAD_MINTER_ROLE = keccak256("UAD_MINTER_ROLE");
+    bytes32 public constant UAD_BURNER_ROLE = keccak256("UAD_BURNER_ROLE");
+
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant COUPON_MANAGER_ROLE = keccak256("COUPON_MANAGER");
     bytes32 public constant BONDING_MANAGER_ROLE = keccak256("BONDING_MANAGER");
-
+    bytes32 public constant INCENTIVE_MANAGER_ROLE =
+        keccak256("INCENTIVE_MANAGER");
+    bytes32 public constant UAD_TOKEN_MANAGER_ROLE =
+        keccak256("UAD_TOKEN_MANAGER_ROLE");
     address public twapOracleAddress;
     address public debtCouponAddress;
     address public uADTokenAddress;
@@ -30,6 +38,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public bondingShareAddress;
     address public stableSwapMetaPoolAddress;
     address public autoRedeemPoolTokenAddress;
+    address public curveIncentiveAddress;
+    address public treasuryAddress;
+    address public uGovFundAddress;
+    address public lpRewardsAddress;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -44,9 +56,15 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
 
     constructor(address _admin) {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
+        _setupRole(UAD_MINTER_ROLE, _admin);
+        _setupRole(PAUSER_ROLE, _admin);
         _setupRole(COUPON_MANAGER_ROLE, _admin);
         _setupRole(BONDING_MANAGER_ROLE, _admin);
+        _setupRole(INCENTIVE_MANAGER_ROLE, _admin);
+        _setupRole(UAD_TOKEN_MANAGER_ROLE, address(this));
     }
+
+    // TODO Add a generic setter for extra addresses that needs to be linked
 
     function setTwapOracleAddress(address _twapOracleAddress)
         external
@@ -60,6 +78,16 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         onlyAdmin
     {
         debtCouponAddress = _debtCouponAddress;
+    }
+
+    function setIncentiveToUAD(address _account, address _incentiveAddress)
+        external
+        onlyAdmin
+    {
+        IUbiquityAlgorithmicDollar(uADTokenAddress).setIncentiveContract(
+            _account,
+            _incentiveAddress
+        );
     }
 
     function setuADTokenAddress(address _uADTokenAddress) external onlyAdmin {
@@ -106,7 +134,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     @param _amplificationCoefficient amplification coefficient. The smaller
      it is the closer to a constant product we are.
     @param _fee Trade fee, given as an integer with 1e10 precision.
-
     */
     function deployStableSwapPool(
         address _curveFactory,
@@ -179,6 +206,35 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         onlyAdmin
     {
         autoRedeemPoolTokenAddress = _autoRedeemPoolTokenAddress;
+    }
+
+    /**
+     @notice set the lpRewards smart contract address
+    @dev rewards for bonding contract participants
+         that provided liquidity to uGOV pool for a certain duration
+    @param _lpRewardsAddress lpReward address
+     */
+    function setLpRewardsAddress(address _lpRewardsAddress) external onlyAdmin {
+        lpRewardsAddress = _lpRewardsAddress;
+    }
+
+    /**
+     @notice set the uGOV fund address
+    @dev All funds deposited in the uGOV fund will be used
+         to buyback & LP on our uAD-uGOV primary market
+    @param _uGovFundAddress uGOV fund address
+     */
+    function setuGovFundAddress(address _uGovFundAddress) external onlyAdmin {
+        uGovFundAddress = _uGovFundAddress;
+    }
+
+    /**
+     @notice set the treasury address
+    @dev the treasury fund is used to maintain the protocol
+    @param _treasuryAddress treasury fund address
+     */
+    function setTreasuryAddress(address _treasuryAddress) external onlyAdmin {
+        treasuryAddress = _treasuryAddress;
     }
 
     function getExcessDollarsDistributor(address _debtCouponManagerAddress)

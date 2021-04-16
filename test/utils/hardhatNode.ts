@@ -1,4 +1,4 @@
-import { network } from "hardhat";
+import { network, ethers } from "hardhat";
 
 export async function passOneHour(): Promise<void> {
   await network.provider.request({
@@ -12,6 +12,19 @@ export async function mineBlock(timestamp: number): Promise<void> {
     method: "evm_mine",
     params: [timestamp],
   });
+}
+export async function mineNBlock(
+  blockCount: number,
+  secondsBetweenBlock?: number
+): Promise<void> {
+  const blockBefore = await ethers.provider.getBlock(
+    await ethers.provider.getBlockNumber()
+  );
+  const minings = [...Array(blockCount).keys()].map((v, i) => {
+    const newTs = blockBefore.timestamp + i + (secondsBetweenBlock || 1);
+    return mineBlock(newTs);
+  });
+  await Promise.all(minings);
 }
 export async function resetFork(blockNumber: number): Promise<void> {
   await network.provider.request({

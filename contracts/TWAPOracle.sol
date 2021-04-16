@@ -7,7 +7,6 @@ contract TWAPOracle {
     address public immutable pool;
     address public immutable token0;
     address public immutable token1;
-
     uint256 public price0Average;
     uint256 public price1Average;
     uint256 public pricesBlockTimestampLast;
@@ -38,6 +37,7 @@ contract TWAPOracle {
         require(_reserve0 == _reserve1, "TWAPOracle: PAIR_UNBALANCED");
         priceCumulativeLast = IMetaPool(_pool).get_price_cumulative_last();
         pricesBlockTimestampLast = IMetaPool(_pool).block_timestamp_last();
+
         price0Average = 1 ether;
         price1Average = 1 ether;
     }

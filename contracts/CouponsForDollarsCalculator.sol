@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,6 +12,9 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;
     UbiquityAlgorithmicDollarManager public manager;
+
+    /*   using ABDKMath64x64 for uint256;
+    using ABDKMath64x64 for int128;*/
 
     /// @param _manager the address of the manager/config contract so we can fetch variables
     constructor(address _manager) {
@@ -45,4 +48,47 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
 
         return res.mul(dollarsToBurn.fromUInt()).toUInt();
     }
+    // ABDKMath64x64 get 52414814814814820000 instead of 52414814814814814809
+    /*     int128 one = uint256(1).fromUInt();
+        uint256 totalDebt =
+            DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt();
+        console.log(
+            "##getCouponAmount totalDebt:%s  totalSupply:%s dollartoBurn:%s",
+            totalDebt,
+            IERC20(manager.uADTokenAddress()).totalSupply(),
+            dollarsToBurn
+        );
+        int128 r =
+            totalDebt.divu(IERC20(manager.uADTokenAddress()).totalSupply());
+        console.logInt(r);
+
+        int128 oneMinusRAllSquared = (one.sub(r)).pow(2);
+        console.logInt(oneMinusRAllSquared);
+        console.log(
+            "##getCouponAmount r:%s  oneMinusRAllSquared:%s",
+            r.mulu(uint256(100)),
+            oneMinusRAllSquared.mulu(uint256(100))
+        );
+
+        int128 res = (oneMinusRAllSquared.inv()).sub(one);
+        console.logInt(res);
+
+        return dollarsToBurn + res.mulu(dollarsToBurn); */
+    //normal
+    /*  uint256 r =
+            (totalDebt * 100) /
+                (IERC20(manager.uADTokenAddress()).totalSupply());
+        uint256 oneMinusRAllSquared = (((one) - (r))**2) / 100; */
+    // uint256 oneMinusRAllSquared = ((one).sub(r)).mul((one).sub(r));
+    /*    console.log(
+            "##getCouponAmount r:%s  oneMinusRAllSquared:%s",
+            r,
+            oneMinusRAllSquared
+        ); */
+    //rewards per dollar is ( (1/(1-R)^2) - 1)
+    /*   return
+            (dollarsToBurn +
+                dollarsToBurn *
+                (10**8 / oneMinusRAllSquared) -
+                10**6) / 10**6; */
 }

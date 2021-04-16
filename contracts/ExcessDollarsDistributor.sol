@@ -1,14 +1,16 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-import "hardhat/console.sol";
 import "./interfaces/IExcessDollarsDistributor.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./UbiquityAlgorithmicDollar.sol";
+import "./libs/ABDKMathQuad.sol";
 
 /// @title An excess dollar distributor which sends dollars to treasury,
 /// lp rewards and inflation rewards
 contract ExcessDollarsDistributor is IExcessDollarsDistributor {
+    using ABDKMathQuad for uint256;
+    using ABDKMathQuad for bytes16;
     UbiquityAlgorithmicDollarManager public manager;
 
     /// @param _manager the address of the manager contract so we can fetch variables
@@ -25,23 +27,27 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
 
         // TODO: put the real addresses in here when these bits are built.
         // they should live in manager...
-        address treasuryAddress = address(0);
-        address inflationRewardsAddress = address(0);
-        address lpRewardsAddress = address(0);
+        address treasuryAddress = manager.treasuryAddress();
+        // buy-back and burn uGOV
+        address uGovFundAddress = manager.uGovFundAddress();
+        // curve uAD-3CRV liquidity pool
+        address lpRewardsAddress = manager.lpRewardsAddress();
+        uint256 tenPercent =
+            excessDollars.fromUInt().div(uint256(10).fromUInt()).toUInt();
 
         UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
             treasuryAddress,
-            excessDollars / (10)
+            tenPercent
         );
 
         UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
-            inflationRewardsAddress,
-            (excessDollars * (55)) / (100)
+            uGovFundAddress,
+            tenPercent
         );
 
         UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
             lpRewardsAddress,
-            (excessDollars * (35)) / (100)
+            excessDollars - tenPercent - tenPercent
         );
     }
 }
