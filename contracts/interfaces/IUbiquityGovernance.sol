@@ -3,9 +3,9 @@ pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title UAD stablecoin interface
+/// @title uGOV interface
 /// @author Ubiquity Algorithmic Dollar
-interface IUbiquityAlgorithmicDollar is IERC20 {
+interface IUbiquityGovernance is IERC20 {
     // ----------- Events -----------
     event Minting(
         address indexed _to,
@@ -19,13 +19,7 @@ interface IUbiquityAlgorithmicDollar is IERC20 {
         uint256 _amount
     );
 
-    event IncentiveContractUpdate(
-        address indexed _incentivized,
-        address indexed _incentiveContract
-    );
-
     // ----------- State changing api -----------
-
     function burn(uint256 amount) external;
 
     function permit(
@@ -39,18 +33,8 @@ interface IUbiquityAlgorithmicDollar is IERC20 {
     ) external;
 
     // ----------- Burner only state changing api -----------
-
     function burnFrom(address account, uint256 amount) external;
 
     // ----------- Minter only state changing api -----------
-
     function mint(address account, uint256 amount) external;
-
-    // ----------- Governor only state changing api -----------
-
-    function setIncentiveContract(address account, address incentive) external;
-
-    // ----------- Getters -----------
-
-    function incentiveContract(address account) external view returns (address);
 }

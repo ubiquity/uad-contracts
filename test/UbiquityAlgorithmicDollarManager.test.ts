@@ -41,7 +41,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
 
     const UGOV = await ethers.getContractFactory("UbiquityGovernance");
-    uGOV = (await UGOV.deploy()) as UbiquityGovernance;
+    uGOV = (await UGOV.deploy(manager.address)) as UbiquityGovernance;
 
     const debtCouponFactory = await ethers.getContractFactory("DebtCoupon");
     debtCoupon = (await debtCouponFactory.deploy(
