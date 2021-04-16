@@ -82,7 +82,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
 
       const uGOVTokenAddr = BigNumber.from(
-        await ethers.provider.getStorageAt(manager.address, 10)
+        await ethers.provider.getStorageAt(manager.address, 14)
       ).toHexString();
 
       expect(uGOV.address.toLowerCase()).to.equal(uGOVTokenAddr.toLowerCase());
