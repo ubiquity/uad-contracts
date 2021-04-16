@@ -113,9 +113,9 @@ describe("DollarMintingCalculator", () => {
     expect(toMint).to.equal(calculatedToMint);
   });
   it("getDollarsToMint lose precision if supply is too large", async () => {
-    const totSupply = ethers.utils.parseEther("999999999999999999");
+    const totSupply = ethers.utils.parseEther("99999999999999999999");
 
-    const uadPrice = ethers.utils.parseEther("1.054678911145683254");
+    const uadPrice = ethers.utils.parseEther("1.05467891114568354");
     await setup(totSupply, uadPrice, uadPrice);
     // check tfor overflow revert
     const toMint = await dollarMintingCalculator.getDollarsToMint();
@@ -123,6 +123,10 @@ describe("DollarMintingCalculator", () => {
       new Big(totSupply.toString()),
       new Big(uadPrice.toString())
     );
+    const delta = calculatedToMint.sub(toMint);
+
+    // assert expected presision
+    expect(delta.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
     expect(toMint).not.to.equal(calculatedToMint);
   });
   it("getDollarsToMint should work if supply is no too large", async () => {
