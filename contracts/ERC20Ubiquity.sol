@@ -38,16 +38,16 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
     // ----------- Modifiers -----------
     modifier onlyMinter() {
         require(
-            manager.hasRole(manager.UAD_MINTER_ROLE(), msg.sender),
-            "uAD: not minter"
+            manager.hasRole(manager.UBQ_MINTER_ROLE(), msg.sender),
+            "UBQ token: not minter"
         );
         _;
     }
 
     modifier onlyBurner() {
         require(
-            manager.hasRole(manager.UAD_BURNER_ROLE(), msg.sender),
-            "uAD: not burner"
+            manager.hasRole(manager.UBQ_BURNER_ROLE(), msg.sender),
+            "UBQ token: not burner"
         );
         _;
     }
@@ -55,7 +55,7 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
     modifier onlyPauser() {
         require(
             manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
-            "uAD: not pauser"
+            "UBQ token: not pauser"
         );
         _;
     }

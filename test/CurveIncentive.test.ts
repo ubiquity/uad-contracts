@@ -208,25 +208,25 @@ describe("CurveIncentive", () => {
     const COUPON_MANAGER_ROLE = ethers.utils.keccak256(
       ethers.utils.toUtf8Bytes("COUPON_MANAGER")
     );
-    // debtCouponMgr should have the UAD_MINTER_ROLE to mint uAD for debtCoupon Redeem
-    const UAD_MINTER_ROLE = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("UAD_MINTER_ROLE")
+    // debtCouponMgr should have the UBQ_MINTER_ROLE to mint uAD for debtCoupon Redeem
+    const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
     );
-    // debtCouponMgr should have the UAD_BURNER_ROLE to burn uAD when minting debtCoupon
-    const UAD_BURNER_ROLE = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("UAD_BURNER_ROLE")
+    // debtCouponMgr should have the UBQ_BURNER_ROLE to burn uAD when minting debtCoupon
+    const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
     );
     await manager.grantRole(COUPON_MANAGER_ROLE, debtCouponMgr.address);
-    await manager.grantRole(UAD_MINTER_ROLE, debtCouponMgr.address);
-    await manager.grantRole(UAD_BURNER_ROLE, debtCouponMgr.address);
+    await manager.grantRole(UBQ_MINTER_ROLE, debtCouponMgr.address);
+    await manager.grantRole(UBQ_BURNER_ROLE, debtCouponMgr.address);
 
     // Incentive
     const incentiveFactory = await ethers.getContractFactory("CurveIncentive");
     curveIncentive = (await incentiveFactory.deploy(
       manager.address
     )) as CurveIncentive;
-    // curveIncentive should have the UAD_BURNER_ROLE to burn uAD during incentive
-    await manager.grantRole(UAD_BURNER_ROLE, curveIncentive.address);
+    // curveIncentive should have the UBQ_BURNER_ROLE to burn uAD during incentive
+    await manager.grantRole(UBQ_BURNER_ROLE, curveIncentive.address);
     // set the incentive contract to act upon transfer from and to the curve pool
     await manager.setIncentiveToUAD(metaPool.address, curveIncentive.address);
 

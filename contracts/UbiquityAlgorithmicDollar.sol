@@ -22,7 +22,7 @@ contract UbiquityAlgorithmicDollar is ERC20Ubiquity {
     function setIncentiveContract(address account, address incentive) external {
         require(
             ERC20Ubiquity.manager.hasRole(
-                ERC20Ubiquity.manager.UAD_TOKEN_MANAGER_ROLE(),
+                ERC20Ubiquity.manager.UBQ_TOKEN_MANAGER_ROLE(),
                 msg.sender
             ),
             "uAD: must have admin role"

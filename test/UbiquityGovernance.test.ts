@@ -72,7 +72,7 @@ describe("UbiquityGovernance", () => {
         uGOV
           .connect(secondAccount)
           .mint(thirdAdr, ethers.utils.parseEther("10000"))
-      ).to.revertedWith("uGOV: not minter");
+      ).to.revertedWith("UBQ token: not minter");
     });
   });
   describe("Burn", () => {

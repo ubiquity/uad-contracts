@@ -71,7 +71,7 @@ describe("UbiquityAlgorithmicDollar", () => {
         uAD
           .connect(secondAccount)
           .mint(thirdAdr, ethers.utils.parseEther("10000"))
-      ).to.revertedWith("uAD: not minter");
+      ).to.revertedWith("UBQ token: not minter");
     });
   });
   describe("Burn", () => {
