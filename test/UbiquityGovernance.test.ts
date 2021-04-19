@@ -10,6 +10,9 @@ describe("UbiquityGovernance", () => {
   let thirdAccount: Signer;
   let manager: UbiquityAlgorithmicDollarManager;
   let uGOV: UbiquityGovernance;
+  const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
+  );
 
   beforeEach(async () => {
     [admin, secondAccount, thirdAccount] = await ethers.getSigners();
@@ -28,17 +31,17 @@ describe("UbiquityGovernance", () => {
       const sndAdr = await secondAccount.getAddress();
       const thirdAdr = await thirdAccount.getAddress();
       await uGOV.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uGOV.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
       // transfer uGOV
       await uGOV
         .connect(secondAccount)
         .transfer(thirdAdr, ethers.utils.parseEther("42"));
-      expect(await uGOV.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("9958")
       );
-      expect(await uGOV.connect(thirdAdr).balanceOf(thirdAdr)).to.equal(
+      expect(await uGOV.balanceOf(thirdAdr)).to.equal(
         ethers.utils.parseEther("42")
       );
     });
@@ -46,7 +49,7 @@ describe("UbiquityGovernance", () => {
       const sndAdr = await secondAccount.getAddress();
       const thirdAdr = await thirdAccount.getAddress();
       await uGOV.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uGOV.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
       // transfer uGOV
@@ -61,7 +64,7 @@ describe("UbiquityGovernance", () => {
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();
       await uGOV.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uGOV.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
     });
@@ -79,11 +82,11 @@ describe("UbiquityGovernance", () => {
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();
       await uGOV.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uGOV.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
       await uGOV.connect(secondAccount).burn(ethers.utils.parseEther("10000"));
-      expect(await uGOV.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("0")
       );
     });
@@ -91,6 +94,34 @@ describe("UbiquityGovernance", () => {
       await expect(
         uGOV.connect(secondAccount).burn(ethers.utils.parseEther("10000"))
       ).to.revertedWith("ERC20: burn amount exceeds balance");
+    });
+  });
+  describe("BurnFrom", () => {
+    it("should fail", async () => {
+      const sndAdr = await secondAccount.getAddress();
+      await uGOV.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
+        ethers.utils.parseEther("10000")
+      );
+      await expect(
+        uGOV.connect(admin).burnFrom(sndAdr, ethers.utils.parseEther("10000"))
+      ).to.revertedWith("UBQ token: not burner");
+    });
+    it("should work", async () => {
+      const sndAdr = await secondAccount.getAddress();
+      const admAdr = await admin.getAddress();
+
+      await uGOV.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
+        ethers.utils.parseEther("10000")
+      );
+      await manager.grantRole(UBQ_BURNER_ROLE, admAdr);
+      await uGOV
+        .connect(admin)
+        .burnFrom(sndAdr, ethers.utils.parseEther("10000"));
+      expect(await uGOV.balanceOf(sndAdr)).to.equal(
+        ethers.utils.parseEther("0")
+      );
     });
   });
 });

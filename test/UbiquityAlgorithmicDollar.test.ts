@@ -8,14 +8,18 @@ describe("UbiquityAlgorithmicDollar", () => {
   let admin: Signer;
   let secondAccount: Signer;
   let thirdAccount: Signer;
+  let manager: UbiquityAlgorithmicDollarManager;
   let uAD: UbiquityAlgorithmicDollar;
+  const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
+  );
 
   beforeEach(async () => {
     [admin, secondAccount, thirdAccount] = await ethers.getSigners();
     const Manager = await ethers.getContractFactory(
       "UbiquityAlgorithmicDollarManager"
     );
-    const manager = (await Manager.deploy(
+    manager = (await Manager.deploy(
       await admin.getAddress()
     )) as UbiquityAlgorithmicDollarManager;
 
@@ -27,17 +31,17 @@ describe("UbiquityAlgorithmicDollar", () => {
       const sndAdr = await secondAccount.getAddress();
       const thirdAdr = await thirdAccount.getAddress();
       await uAD.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uAD.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
       // transfer uad
       await uAD
         .connect(secondAccount)
         .transfer(thirdAdr, ethers.utils.parseEther("42"));
-      expect(await uAD.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("9958")
       );
-      expect(await uAD.connect(thirdAdr).balanceOf(thirdAdr)).to.equal(
+      expect(await uAD.balanceOf(thirdAdr)).to.equal(
         ethers.utils.parseEther("42")
       );
     });
@@ -45,7 +49,7 @@ describe("UbiquityAlgorithmicDollar", () => {
       const sndAdr = await secondAccount.getAddress();
       const thirdAdr = await thirdAccount.getAddress();
       await uAD.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uAD.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
       // transfer uad
@@ -60,7 +64,7 @@ describe("UbiquityAlgorithmicDollar", () => {
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();
       await uAD.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uAD.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
     });
@@ -78,11 +82,11 @@ describe("UbiquityAlgorithmicDollar", () => {
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();
       await uAD.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
-      expect(await uAD.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("10000")
       );
       await uAD.connect(secondAccount).burn(ethers.utils.parseEther("10000"));
-      expect(await uAD.connect(secondAccount).balanceOf(sndAdr)).to.equal(
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
         ethers.utils.parseEther("0")
       );
     });
@@ -90,6 +94,34 @@ describe("UbiquityAlgorithmicDollar", () => {
       await expect(
         uAD.connect(secondAccount).burn(ethers.utils.parseEther("10000"))
       ).to.revertedWith("ERC20: burn amount exceeds balance");
+    });
+  });
+  describe("BurnFrom", () => {
+    it("should fail", async () => {
+      const sndAdr = await secondAccount.getAddress();
+      await uAD.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
+        ethers.utils.parseEther("10000")
+      );
+      await expect(
+        uAD.connect(admin).burnFrom(sndAdr, ethers.utils.parseEther("10000"))
+      ).to.revertedWith("UBQ token: not burner");
+    });
+    it("should work", async () => {
+      const sndAdr = await secondAccount.getAddress();
+      const admAdr = await admin.getAddress();
+
+      await uAD.connect(admin).mint(sndAdr, ethers.utils.parseEther("10000"));
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
+        ethers.utils.parseEther("10000")
+      );
+      await manager.grantRole(UBQ_BURNER_ROLE, admAdr);
+      await uAD
+        .connect(admin)
+        .burnFrom(sndAdr, ethers.utils.parseEther("10000"));
+      expect(await uAD.balanceOf(sndAdr)).to.equal(
+        ethers.utils.parseEther("0")
+      );
     });
   });
 });
