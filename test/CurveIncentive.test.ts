@@ -29,9 +29,9 @@ describe("CurveIncentive", () => {
   let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
   let crvToken: ERC20;
-  let sablier: string;
-  let USDC: string;
-  let DAI: string;
+  // let sablier: string;
+  // let USDC: string;
+  // let DAI: string;
   let curveFactory: string;
   let curve3CrvBasePool: string;
   let curve3CrvToken: string;
@@ -41,25 +41,25 @@ describe("CurveIncentive", () => {
   let mockAutoRedeemToken: MockAutoRedeemToken;
   let excessDollarsDistributor: ExcessDollarsDistributor;
   const oneETH = ethers.utils.parseEther("1");
-  const swap3CRVtoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
-      1,
-      0,
-      amount
-    );
-    const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
+  // const swap3CRVtoUAD = async (
+  //   amount: BigNumber,
+  //   signer: Signer
+  // ): Promise<BigNumber> => {
+  //   const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
+  //     1,
+  //     0,
+  //     amount
+  //   );
+  //   const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
 
-    // signer need to approve metaPool for sending its coin
-    await crvToken.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
-    return dy3CRVtouAD;
-  };
+  //   // signer need to approve metaPool for sending its coin
+  //   await crvToken.connect(signer).approve(metaPool.address, amount);
+  //   // secondAccount swap   3CRV=> x uAD
+  //   await metaPool
+  //     .connect(signer)
+  //     ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
+  //   return dy3CRVtouAD;
+  // };
   const swapUADto3CRV = async (
     amount: BigNumber,
     signer: Signer
@@ -89,9 +89,9 @@ describe("CurveIncentive", () => {
   beforeEach(async () => {
     // list of accounts
     ({
-      sablier,
-      USDC,
-      DAI,
+      // sablier,
+      // USDC,
+      // DAI,
       curveFactory,
       curve3CrvBasePool,
       curve3CrvToken,
@@ -208,25 +208,25 @@ describe("CurveIncentive", () => {
     const COUPON_MANAGER_ROLE = ethers.utils.keccak256(
       ethers.utils.toUtf8Bytes("COUPON_MANAGER")
     );
-    // debtCouponMgr should have the UAD_MINTER_ROLE to mint uAD for debtCoupon Redeem
-    const UAD_MINTER_ROLE = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("UAD_MINTER_ROLE")
+    // debtCouponMgr should have the UBQ_MINTER_ROLE to mint uAD for debtCoupon Redeem
+    const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
     );
-    // debtCouponMgr should have the UAD_BURNER_ROLE to burn uAD when minting debtCoupon
-    const UAD_BURNER_ROLE = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("UAD_BURNER_ROLE")
+    // debtCouponMgr should have the UBQ_BURNER_ROLE to burn uAD when minting debtCoupon
+    const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
     );
     await manager.grantRole(COUPON_MANAGER_ROLE, debtCouponMgr.address);
-    await manager.grantRole(UAD_MINTER_ROLE, debtCouponMgr.address);
-    await manager.grantRole(UAD_BURNER_ROLE, debtCouponMgr.address);
+    await manager.grantRole(UBQ_MINTER_ROLE, debtCouponMgr.address);
+    await manager.grantRole(UBQ_BURNER_ROLE, debtCouponMgr.address);
 
     // Incentive
     const incentiveFactory = await ethers.getContractFactory("CurveIncentive");
     curveIncentive = (await incentiveFactory.deploy(
       manager.address
     )) as CurveIncentive;
-    // curveIncentive should have the UAD_BURNER_ROLE to burn uAD during incentive
-    await manager.grantRole(UAD_BURNER_ROLE, curveIncentive.address);
+    // curveIncentive should have the UBQ_BURNER_ROLE to burn uAD during incentive
+    await manager.grantRole(UBQ_BURNER_ROLE, curveIncentive.address);
     // set the incentive contract to act upon transfer from and to the curve pool
     await manager.setIncentiveToUAD(metaPool.address, curveIncentive.address);
 

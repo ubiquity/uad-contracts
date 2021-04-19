@@ -218,23 +218,23 @@ describe("DebtCouponManager", () => {
     const COUPON_MANAGER_ROLE = ethers.utils.keccak256(
       ethers.utils.toUtf8Bytes("COUPON_MANAGER")
     );
-    // debtCouponMgr should have the UAD_MINTER_ROLE to mint uAD for debtCoupon Redeem
-    const UAD_MINTER_ROLE = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("UAD_MINTER_ROLE")
+    // debtCouponMgr should have the UBQ_MINTER_ROLE to mint uAD for debtCoupon Redeem
+    const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
     );
-    // debtCouponMgr should have the UAD_BURNER_ROLE to burn uAD when minting debtCoupon
-    const UAD_BURNER_ROLE = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("UAD_BURNER_ROLE")
+    // debtCouponMgr should have the UBQ_BURNER_ROLE to burn uAD when minting debtCoupon
+    const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
     );
     await manager
       .connect(admin)
       .grantRole(COUPON_MANAGER_ROLE, debtCouponMgr.address);
     await manager
       .connect(admin)
-      .grantRole(UAD_MINTER_ROLE, debtCouponMgr.address);
+      .grantRole(UBQ_MINTER_ROLE, debtCouponMgr.address);
     await manager
       .connect(admin)
-      .grantRole(UAD_BURNER_ROLE, debtCouponMgr.address);
+      .grantRole(UBQ_BURNER_ROLE, debtCouponMgr.address);
 
     // to calculate the totalOutstanding debt we need to take into account autoRedeemToken.totalSupply
     const mockAutoRedeemTokenFactory = await ethers.getContractFactory(
