@@ -4,7 +4,6 @@ pragma solidity ^0.8.3;
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
-import "./interfaces/IERC20Ubiquity.sol";
 
 /// @title ERC20 Ubiquity preset
 /// @author Ubiquity Algorithmic Dollar
@@ -14,6 +13,14 @@ import "./interfaces/IERC20Ubiquity.sol";
 /// - Ubiquity Manager access control
 contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
     UbiquityAlgorithmicDollarManager public manager;
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 public DOMAIN_SEPARATOR;
+    // keccak256("Permit(address owner,address spender,
+    //                   uint256 value,uint256 nonce,uint256 deadline)");
+    bytes32 public constant PERMIT_TYPEHASH =
+        0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
+    mapping(address => uint256) public nonces;
 
     event Minting(
         address indexed _to,
@@ -26,14 +33,6 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
         address indexed _burner,
         uint256 _amount
     );
-
-    // solhint-disable-next-line var-name-mixedcase
-    bytes32 public DOMAIN_SEPARATOR;
-    // keccak256("Permit(address owner,address spender,
-    //                   uint256 value,uint256 nonce,uint256 deadline)");
-    bytes32 public constant PERMIT_TYPEHASH =
-        0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
-    mapping(address => uint256) public nonces;
 
     // ----------- Modifiers -----------
     modifier onlyMinter() {

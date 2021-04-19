@@ -29,9 +29,9 @@ describe("CurveIncentive", () => {
   let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
   let crvToken: ERC20;
-  let sablier: string;
-  let USDC: string;
-  let DAI: string;
+  // let sablier: string;
+  // let USDC: string;
+  // let DAI: string;
   let curveFactory: string;
   let curve3CrvBasePool: string;
   let curve3CrvToken: string;
@@ -41,25 +41,25 @@ describe("CurveIncentive", () => {
   let mockAutoRedeemToken: MockAutoRedeemToken;
   let excessDollarsDistributor: ExcessDollarsDistributor;
   const oneETH = ethers.utils.parseEther("1");
-  const swap3CRVtoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
-      1,
-      0,
-      amount
-    );
-    const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
+  // const swap3CRVtoUAD = async (
+  //   amount: BigNumber,
+  //   signer: Signer
+  // ): Promise<BigNumber> => {
+  //   const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
+  //     1,
+  //     0,
+  //     amount
+  //   );
+  //   const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
 
-    // signer need to approve metaPool for sending its coin
-    await crvToken.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
-    return dy3CRVtouAD;
-  };
+  //   // signer need to approve metaPool for sending its coin
+  //   await crvToken.connect(signer).approve(metaPool.address, amount);
+  //   // secondAccount swap   3CRV=> x uAD
+  //   await metaPool
+  //     .connect(signer)
+  //     ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
+  //   return dy3CRVtouAD;
+  // };
   const swapUADto3CRV = async (
     amount: BigNumber,
     signer: Signer
@@ -89,9 +89,9 @@ describe("CurveIncentive", () => {
   beforeEach(async () => {
     // list of accounts
     ({
-      sablier,
-      USDC,
-      DAI,
+      // sablier,
+      // USDC,
+      // DAI,
       curveFactory,
       curve3CrvBasePool,
       curve3CrvToken,

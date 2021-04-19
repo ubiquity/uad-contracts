@@ -15,7 +15,7 @@ contract UbiquityAlgorithmicDollar is ERC20Ubiquity {
 
     constructor(address _manager)
         ERC20Ubiquity(_manager, "UbiquityAlgorithmicDollar", "uAD")
-    {}
+    {} // solhint-disable-line no-empty-blocks
 
     /// @param account the account to incentivize
     /// @param incentive the associated incentive contract
