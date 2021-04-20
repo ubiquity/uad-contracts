@@ -8,11 +8,23 @@ import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlg
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 
-const tokenA = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const tokenB = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-const factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
-const firstPair = "0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc";
-const nbPairs = 31941;
+// UNISWAP
+// const tokenA = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+// const tokenB = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
+// const factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
+// const firstPair = "0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc";
+// const reserveA = "144065947714472";
+// const reserveB = "75512578800914566328215";
+// const nbPairs = 31941;
+
+// SUSHISWAP
+const tokenA = "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2";
+const tokenB = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+const factory = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac";
+const firstPair = "0x680A025Da7b1be2c204D7745e809919bCE074026";
+const reserveA = "1201055109316335905137";
+const reserveB = "17860836355";
+const nbPairs = 900;
 
 describe("SushiSwapPool", () => {
   let admin: Signer;
@@ -55,7 +67,7 @@ describe("SushiSwapPool", () => {
     )) as SushiSwapPool;
   });
 
-  describe("UniSwap Factory", () => {
+  describe("SushiSwap Factory", () => {
     it(`should get ${nbPairs} pairs`, async () => {
       const allPairsLength: BigNumber = await factoryContract.allPairsLength();
 
@@ -68,7 +80,7 @@ describe("SushiSwapPool", () => {
     });
   });
 
-  describe("UniSwap Pair", () => {
+  describe("SushiSwap first Pair", () => {
     it("should get factory address from first pair", async () => {
       const pairFactoryAddress = await onePairContract.factory();
 
@@ -81,8 +93,8 @@ describe("SushiSwapPool", () => {
 
       expect(token0).to.be.equal(tokenA);
       expect(token1).to.be.equal(tokenB);
-      expect(reserve0).to.be.equal("144065947714472");
-      expect(reserve1).to.be.equal("75512578800914566328215");
+      expect(reserve0).to.be.equal(reserveA);
+      expect(reserve1).to.be.equal(reserveB);
     });
   });
 
