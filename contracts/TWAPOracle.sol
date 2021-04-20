@@ -74,10 +74,13 @@ contract TWAPOracle {
         if (token == token0) {
             // price to exchange amounIn uAD to 3CRV based on TWAP
             amountOut = price0Average;
+
+            console.log("## consult TwapOracle token0 price:%s", amountOut);
         } else {
             require(token == token1, "TWAPOracle: INVALID_TOKEN");
             // price to exchange amounIn 3CRV to uAD  based on TWAP
             amountOut = price1Average;
+            console.log("## consult TwapOracle token1 price:%s", amountOut);
         }
     }
 

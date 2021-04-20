@@ -26,6 +26,7 @@ describe("CurveIncentive", () => {
   let daiToken: ERC20;
   let twapOracle: TWAPOracle;
   let debtCoupon: DebtCoupon;
+  let curvePoolFactory: ICurveFactory;
   let admin: Signer;
   let secondAccount: Signer;
   let operation: Signer;
@@ -319,7 +320,7 @@ describe("CurveIncentive", () => {
     await manager.setuGovFundAddress(await uGOVFund.getAddress());
     await manager.setLpRewardsAddress(await lpReward.getAddress());
 
-    (await ethers.getContractAt(
+    curvePoolFactory = (await ethers.getContractAt(
       "ICurveFactory",
       curveFactory
     )) as ICurveFactory;
@@ -578,4 +579,8 @@ describe("CurveIncentive", () => {
     expect(metaPoolBalanceUADBefore).to.equal(metaPoolBalanceUADAfter);
     expect(balance3CRVBefore).to.equal(balance3CRVAfter);
   });
+  // todo ugov incetive
+  // todo emit event set incentive
+  // todo exempt address
+  // update incetive contract
 });

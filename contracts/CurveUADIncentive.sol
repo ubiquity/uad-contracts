@@ -96,6 +96,7 @@ contract CurveUADIncentive is IIncentive {
         /* swapping 3CRV (or underlying) for uAD (aka buying uAD) will mint x% of uGOV.
              Where x = (1- TWAP_Price) * amountIn.
             E.g. uAD = 0.8, you buy 1000 uAD, you get (1-0.8)*1000 = 200 uGOV */
+
         if (incentive != 0) {
             // this means CurveIncentive should be a minter of UGOV
             IUbiquityGovernance(manager.uGOVTokenAddress()).mint(
@@ -113,7 +114,6 @@ contract CurveUADIncentive is IIncentive {
     {
         _updateOracle();
         uint256 curPrice = _getTWAPPrice();
-
         if (curPrice >= 1 ether) {
             return 0;
         }

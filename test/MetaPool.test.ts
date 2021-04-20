@@ -200,6 +200,9 @@ describe("MetaPool", () => {
       );
       // Exchange (swap) DAI to UAD
       const dyUAD = await swapDAItoUAD(amountToSwap, secondAccount);
+      const adminFee = await curvePoolFactory.get_admin_balances(
+        metaPool.address
+      );
 
       const secondAccountDAIBalanceAfter = await daiToken.balanceOf(
         secondAccountAdr
