@@ -56,6 +56,7 @@ const config: HardhatUserConfig = {
     usdDepositerAddress: "0xA79828DF1850E8a3A3064576f380D90aECDD3359",
     // curveWhaleAddress: "0x09cabda22B553bA8FFCD2d453078e2fD4017404F",
     curveWhaleAddress: "0x1C0b104A9EeFf2F7001348a49fA28b8A0D23d637",
+    daiWhaleAddress: "0x13aec50f5d3c011cd3fed44e2a30c515bd8a5a06",
   },
 
   /*   paths: {

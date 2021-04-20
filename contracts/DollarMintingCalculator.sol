@@ -12,6 +12,7 @@ import "./libs/ABDKMathQuad.sol";
 contract DollarMintingCalculator is IDollarMintingCalculator {
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;
+    bytes16 immutable one = (uint256(1 ether)).fromUInt();
     UbiquityAlgorithmicDollarManager public manager;
 
     /// @param _manager the address of the manager contract so we can fetch variables
@@ -23,7 +24,6 @@ contract DollarMintingCalculator is IDollarMintingCalculator {
         TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
         uint256 twapPrice = oracle.consult(manager.uADTokenAddress());
         require(twapPrice > 1, "DollarMintingCalculator: not > 1");
-        bytes16 one = (uint256(1 ether)).fromUInt();
         return
             twapPrice
                 .fromUInt()
