@@ -1,6 +1,7 @@
 import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
+import Big, { RoundingMode } from "big.js";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
@@ -16,9 +17,6 @@ import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 
-import Big, { RoundingMode } from "big.js";
-import { mineNBlock } from "./utils/hardhatNode";
-
 describe("CurveIncentive", () => {
   let metaPool: IMetaPool;
   let couponsForDollarsCalculator: CouponsForDollarsCalculator;
@@ -28,7 +26,6 @@ describe("CurveIncentive", () => {
   let daiToken: ERC20;
   let twapOracle: TWAPOracle;
   let debtCoupon: DebtCoupon;
-  let curvePoolFactory: ICurveFactory;
   let admin: Signer;
   let secondAccount: Signer;
   let operation: Signer;
@@ -336,74 +333,36 @@ describe("CurveIncentive", () => {
     await manager.setuGovFundAddress(await uGOVFund.getAddress());
     await manager.setLpRewardsAddress(await lpReward.getAddress());
 
-    curvePoolFactory = (await ethers.getContractAt(
+    (await ethers.getContractAt(
       "ICurveFactory",
       curveFactory
     )) as ICurveFactory;
   });
 
-  it("Curve sell Incentive should be call when swapping uAD for 3CRV or underlying when uAD <1$", async () => {
-    // turn on BuyIncentive
+  it("curve sell penalty should be call when swapping uAD for 3CRV when uAD <1$", async () => {
+    // turn on SellPenalty
     await curveIncentive.switchSellPenalty();
     const secondAccountAdr = await secondAccount.getAddress();
-
-    const priceBefores = await twapOracle.consult(uAD.address);
-    console.log(`
-    ----- priceBefores:${ethers.utils.formatEther(priceBefores)}
-    `);
-
+    const amount = ethers.utils.parseEther("100");
     // Now that the price is under peg we sell uAD and Check that the incentive is applied
     const priceBefore = await twapOracle.consult(uAD.address);
     expect(priceBefore).to.equal(oneETH);
     const balanceLPBefore = await metaPool.balanceOf(secondAccountAdr);
     const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
-    const pool0balBefore = await metaPool.balances(0);
-    const pool1balBefore = await metaPool.balances(1);
-    // expect(pool0balBefore).to.equal(ethers.utils.parseEther("12000"));
-    //  expect(pool1balBefore).to.equal(ethers.utils.parseEther("10000"));
-    const metaPoolBalanceUADBefore = await uAD.balanceOf(metaPool.address);
 
-    const amountToBeSwapped = await swapUADto3CRV(
-      ethers.utils.parseEther("1000"),
-      secondAccount
-    );
-    const pool0balAfter = await metaPool.balances(0);
-    const pool1balAfter = await metaPool.balances(1);
+    const amountToBeSwapped = await swapUADto3CRV(amount, secondAccount);
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
     const balance3CRVAfter = await crvToken.balanceOf(secondAccountAdr);
     const balanceUADAfter = await uAD.balanceOf(secondAccountAdr);
-    const metaPoolBalanceUADAfter = await uAD.balanceOf(metaPool.address);
     const penalty = calculateIncentiveAmount(
-      "1000",
-      ethers.utils.formatEther(priceBefore)
+      amount.toString(),
+      priceAfter.toString()
     );
-    console.log(`
-    metaPoolBalanceUADBefore:${ethers.utils.formatEther(
-      metaPoolBalanceUADBefore
-    )}
-    metaPoolBalanceUADAfter:${ethers.utils.formatEther(metaPoolBalanceUADAfter)}
-    pool0balBefore:${ethers.utils.formatEther(pool0balBefore)}
-    pool1balBefore:${ethers.utils.formatEther(pool1balBefore)}
-    pool0balAfter:${ethers.utils.formatEther(pool0balAfter)}
-    pool1balAfter:${ethers.utils.formatEther(pool1balAfter)}
-    amountToBeSwapped:${ethers.utils.formatEther(amountToBeSwapped)}
-    priceBefore:${ethers.utils.formatEther(priceBefore)}
-    priceAfter:${ethers.utils.formatEther(priceAfter)}
-    penalty:${ethers.utils.formatEther(penalty)}
-    balanceUADBefore:${ethers.utils.formatEther(balanceUADBefore)}
-    balanceUADAfter:${ethers.utils.formatEther(balanceUADAfter)}
-    balanceLPBefore:${ethers.utils.formatEther(balanceLPBefore)}
-    balanceLPAfter:${ethers.utils.formatEther(balanceLPAfter)}
-    balance3CRVBefore:${ethers.utils.formatEther(balance3CRVBefore)}
-    balance3CRVAfter:${ethers.utils.formatEther(balance3CRVAfter)}
-    `);
     // we have lost all the uAD
-    expect(balanceUADBefore.sub(ethers.utils.parseEther("1000"))).to.equal(
-      balanceUADAfter
-    );
+    expect(balanceUADBefore.sub(amount).sub(penalty)).to.equal(balanceUADAfter);
     expect(balanceLPBefore).to.equal(balanceLPAfter);
     //
     expect(balance3CRVBefore.add(amountToBeSwapped)).to.equal(balance3CRVAfter);
@@ -416,10 +375,6 @@ describe("CurveIncentive", () => {
     await crvToken
       .connect(curveWhale)
       .transfer(secondAccountAdr, ethers.utils.parseEther("1000"));
-    const priceBefores = await twapOracle.consult(uAD.address);
-    console.log(`
-    ----- priceBefores:${ethers.utils.formatEther(priceBefores)}
-    `);
 
     // Now that the price is under peg we sell uAD and Check that the incentive is applied
     const priceBefore = await twapOracle.consult(uAD.address);
@@ -428,63 +383,34 @@ describe("CurveIncentive", () => {
     const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
     const balanceUgovBefore = await uGOV.balanceOf(secondAccountAdr);
-
-    const metaPoolBalanceUADBefore = await uAD.balanceOf(metaPool.address);
-
+    // swap
     const amountToBeSwapped = await swap3CRVtoUAD(
       ethers.utils.parseEther("1000"),
       secondAccount
     );
-    const pool0balAfter = await metaPool.balances(0);
-    const pool1balAfter = await metaPool.balances(1);
-
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
     const balance3CRVAfter = await crvToken.balanceOf(secondAccountAdr);
     const balanceUgovAfter = await uGOV.balanceOf(secondAccountAdr);
     const balanceUADAfter = await uAD.balanceOf(secondAccountAdr);
-    const metaPoolBalanceUADAfter = await uAD.balanceOf(metaPool.address);
 
-    console.log(`
-    balanceUgovBefore:${ethers.utils.formatEther(balanceUgovBefore)}
-    balanceUgovAfter:${ethers.utils.formatEther(balanceUgovAfter)}
-    metaPoolBalanceUADBefore:${ethers.utils.formatEther(
-      metaPoolBalanceUADBefore
-    )}
-    metaPoolBalanceUADAfter:${ethers.utils.formatEther(metaPoolBalanceUADAfter)}
-    pool0balAfter:${ethers.utils.formatEther(pool0balAfter)}
-    pool1balAfter:${ethers.utils.formatEther(pool1balAfter)}
-    amountToBeSwapped:${ethers.utils.formatEther(amountToBeSwapped)}
-    priceBefore:${ethers.utils.formatEther(priceBefore)}
-    priceAfter:${ethers.utils.formatEther(priceAfter)}
-
-    balanceUADBefore:${ethers.utils.formatEther(balanceUADBefore)}
-    balanceUADAfter:${ethers.utils.formatEther(balanceUADAfter)}
-    balanceLPBefore:${ethers.utils.formatEther(balanceLPBefore)}
-    balanceLPAfter:${ethers.utils.formatEther(balanceLPAfter)}
-    balance3CRVBefore:${ethers.utils.formatEther(balance3CRVBefore)}
-    balance3CRVAfter:${ethers.utils.formatEther(balance3CRVAfter)}
-    maxuint:${ethers.constants.MaxUint256}
-    `);
     const incentive = calculateIncentiveAmount(
       amountToBeSwapped.toString(),
       priceAfter.toString()
     );
-
-    console.log(` penalty:${ethers.utils.formatEther(incentive)} `);
-    // we minted the right wmount of uGOV
+    // we minted the right amount of uGOV
     expect(balanceUgovBefore.add(incentive)).to.equal(balanceUgovAfter);
-    // we have lost all the uAD
+    // we have more uAD
     expect(balanceUADBefore.add(amountToBeSwapped)).to.equal(balanceUADAfter);
     expect(balanceLPBefore).to.equal(balanceLPAfter);
-    //
+    // we have less 3CRV
     expect(balance3CRVBefore.sub(ethers.utils.parseEther("1000"))).to.equal(
       balance3CRVAfter
     );
   });
-  it.only("curve buy Incentive should be call when swapping  underlying for uAD when uAD <1$", async () => {
-    // turn on  buy incentive Penalty
+  it("curve buy Incentive should be call when swapping  underlying for uAD when uAD <1$", async () => {
+    // turn on  buy  Incentive
     await curveIncentive.switchBuyIncentive();
     const secondAccountAdr = await secondAccount.getAddress();
     const amount = ethers.utils.parseEther("0.45678");
@@ -494,16 +420,7 @@ describe("CurveIncentive", () => {
       params: [daiWhaleAddress],
     });
     const daiWhale = ethers.provider.getSigner(daiWhaleAddress);
-    const bal = await daiToken.balanceOf(daiWhaleAddress);
-    console.log(`
-    ----- bal:${ethers.utils.formatEther(bal)}
-    `);
     await daiToken.connect(daiWhale).transfer(secondAccountAdr, amount);
-    const priceBefores = await twapOracle.consult(uAD.address);
-    console.log(`
-    ----- priceBefores:${ethers.utils.formatEther(priceBefores)}
-    `);
-
     // Now that the price is under peg we sell uAD and Check that the incentive is applied
     const priceBefore = await twapOracle.consult(uAD.address);
     expect(priceBefore).to.equal(oneETH);
@@ -511,71 +428,168 @@ describe("CurveIncentive", () => {
     const balanceDAIBefore = await daiToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
     const balanceUgovBefore = await uGOV.balanceOf(secondAccountAdr);
-
-    const metaPoolBalanceUADBefore = await uAD.balanceOf(metaPool.address);
-
     const amountToBeSwapped = await swapDAItoUAD(amount, secondAccount);
-    const pool0balAfter = await metaPool.balances(0);
-    const pool1balAfter = await metaPool.balances(1);
-
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
     const balanceDAIAfter = await daiToken.balanceOf(secondAccountAdr);
     const balanceUgovAfter = await uGOV.balanceOf(secondAccountAdr);
     const balanceUADAfter = await uAD.balanceOf(secondAccountAdr);
-    const metaPoolBalanceUADAfter = await uAD.balanceOf(metaPool.address);
-    const adminFee = await curvePoolFactory.get_admin_balances(
-      metaPool.address
-    );
-    const rates = await curvePoolFactory.get_rates(metaPool.address);
 
-    console.log(`
-    ---rates0:${ethers.utils.formatEther(rates[0])}
-    ---rates1:${ethers.utils.formatEther(rates[1])}
-    ---adminFee0:${ethers.utils.formatEther(adminFee[0])}
-    ---adminFee1:${ethers.utils.formatEther(adminFee[1])}
-    balanceUgovBefore:${ethers.utils.formatEther(balanceUgovBefore)}
-    balanceUgovAfter:${ethers.utils.formatEther(balanceUgovAfter)}
-    metaPoolBalanceUADBefore:${ethers.utils.formatEther(
-      metaPoolBalanceUADBefore
-    )}
-    metaPoolBalanceUADAfter:${ethers.utils.formatEther(metaPoolBalanceUADAfter)}
-    pool0balAfter:${ethers.utils.formatEther(pool0balAfter)}
-    pool1balAfter:${ethers.utils.formatEther(pool1balAfter)}
-    amountToBeSwapped:${ethers.utils.formatEther(amountToBeSwapped)}
-    priceBefore:${ethers.utils.formatEther(priceBefore)}
-    priceAfter:${ethers.utils.formatEther(priceAfter)}
-
-    balanceUADBefore:${ethers.utils.formatEther(balanceUADBefore)}
-    balanceUADAfter:${ethers.utils.formatEther(balanceUADAfter)}
-    balanceLPBefore:${ethers.utils.formatEther(balanceLPBefore)}
-    balanceLPAfter:${ethers.utils.formatEther(balanceLPAfter)}
-    balanceDAIBefore:${ethers.utils.formatEther(balanceDAIBefore)}
-    balanceDAIAfter:${ethers.utils.formatEther(balanceDAIAfter)}
-    maxuint:${ethers.constants.MaxUint256}
-    `);
     const incentive = calculateIncentiveAmount(
       amountToBeSwapped.toString(),
       priceAfter.toString()
     );
 
-    console.log(` incentive:${ethers.utils.formatEther(incentive)} `);
     // we minted the right amount of uGOV
     // when swapping for underlying token the exchange_underlying is not precise
     const expectedUgov = balanceUgovBefore.add(incentive);
     expect(balanceUgovAfter).to.be.lt(expectedUgov);
     expect(balanceUgovAfter).to.be.gt(expectedUgov.mul(9999).div(10000));
-    // we have lost all the uAD
+    // we have more uAD
     const expectedUAD = balanceUADBefore.add(amountToBeSwapped);
     expect(balanceUADAfter).to.be.lt(expectedUAD);
     expect(balanceUADAfter).to.be.gt(expectedUAD.mul(9999).div(10000));
     expect(balanceLPBefore).to.equal(balanceLPAfter);
-    //
+    // we have less dai
     expect(balanceDAIBefore.sub(amount)).to.equal(balanceDAIAfter);
   });
-  // todo ugov incetive
-  // todo emit event set incentive
-  // todo exempt address
-  // update incetive contract
+  it("setting UAD Incentive should emit an event", async () => {
+    await expect(
+      manager.setIncentiveToUAD(uGOV.address, curveIncentive.address)
+    )
+      .to.emit(uAD, "IncentiveContractUpdate")
+      .withArgs(uGOV.address, curveIncentive.address);
+  });
+  it("curve buy Incentive should not be call when receiver is exempt", async () => {
+    // turn on  buy incentive Penalty
+    await curveIncentive.switchBuyIncentive();
+    const secondAccountAdr = await secondAccount.getAddress();
+    // get some 3crv token from our beloved whale
+    await crvToken
+      .connect(curveWhale)
+      .transfer(secondAccountAdr, ethers.utils.parseEther("1000"));
+
+    // exempt second accountr
+    await expect(curveIncentive.setExemptAddress(secondAccountAdr, true))
+      .to.emit(curveIncentive, "ExemptAddressUpdate")
+      .withArgs(secondAccountAdr, true);
+
+    // Now that the price is under peg we sell uAD and Check that the incentive is applied
+    const priceBefore = await twapOracle.consult(uAD.address);
+    expect(priceBefore).to.equal(oneETH);
+    const balanceLPBefore = await metaPool.balanceOf(secondAccountAdr);
+    const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
+    const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
+    const balanceUgovBefore = await uGOV.balanceOf(secondAccountAdr);
+    const metaPoolBalanceUADBefore = await uAD.balanceOf(metaPool.address);
+    // swap
+    const amountToBeSwapped = await swap3CRVtoUAD(
+      ethers.utils.parseEther("1000"),
+      secondAccount
+    );
+    const priceAfter = await twapOracle.consult(uAD.address);
+    expect(priceAfter).to.be.lt(priceBefore);
+    const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
+    const balance3CRVAfter = await crvToken.balanceOf(secondAccountAdr);
+    const balanceUgovAfter = await uGOV.balanceOf(secondAccountAdr);
+    const balanceUADAfter = await uAD.balanceOf(secondAccountAdr);
+    const metaPoolBalanceUADAfter = await uAD.balanceOf(metaPool.address);
+
+    // we minted the right wmount of uGOV
+    expect(balanceUgovBefore).to.equal(balanceUgovAfter);
+    // we have more uAD
+    expect(balanceUADBefore.add(amountToBeSwapped)).to.equal(balanceUADAfter);
+    expect(metaPoolBalanceUADAfter.add(amountToBeSwapped)).to.equal(
+      metaPoolBalanceUADBefore
+    );
+    expect(balanceLPBefore).to.equal(balanceLPAfter);
+    // we have less 3CRV
+    expect(balance3CRVBefore.sub(ethers.utils.parseEther("1000"))).to.equal(
+      balance3CRVAfter
+    );
+  });
+  it("curve sell penalty should not be call when sender is exempt", async () => {
+    // turn on BuyIncentive
+    await curveIncentive.switchSellPenalty();
+    const secondAccountAdr = await secondAccount.getAddress();
+    // exempt second accountr
+    await expect(curveIncentive.setExemptAddress(secondAccountAdr, true))
+      .to.emit(curveIncentive, "ExemptAddressUpdate")
+      .withArgs(secondAccountAdr, true);
+
+    const amount = ethers.utils.parseEther("100");
+    // Now that the price is under peg we sell uAD and Check that the incentive is applied
+    const priceBefore = await twapOracle.consult(uAD.address);
+    expect(priceBefore).to.equal(oneETH);
+    const balanceLPBefore = await metaPool.balanceOf(secondAccountAdr);
+    const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
+    const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
+
+    const amountToBeSwapped = await swapUADto3CRV(amount, secondAccount);
+    const priceAfter = await twapOracle.consult(uAD.address);
+    expect(priceAfter).to.be.lt(priceBefore);
+    const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
+    const balance3CRVAfter = await crvToken.balanceOf(secondAccountAdr);
+    const balanceUADAfter = await uAD.balanceOf(secondAccountAdr);
+
+    // we have lost all the uAD
+    expect(balanceUADBefore.sub(amount)).to.equal(balanceUADAfter);
+    expect(balanceLPBefore).to.equal(balanceLPAfter);
+    //
+    expect(balance3CRVBefore.add(amountToBeSwapped)).to.equal(balance3CRVAfter);
+  });
+  it("curve sell penalty should revert if not enough uAD to slash", async () => {
+    // turn on SellPenalty
+    await curveIncentive.switchSellPenalty();
+    const secondAccountAdr = await secondAccount.getAddress();
+    const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
+
+    // Now that the price is under peg we sell uAD and Check that the incentive is applied
+    const priceBefore = await twapOracle.consult(uAD.address);
+    expect(priceBefore).to.equal(oneETH);
+    const balanceLPBefore = await metaPool.balanceOf(secondAccountAdr);
+    const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
+
+    const metaPoolBalanceUADBefore = await uAD.balanceOf(metaPool.address);
+
+    // We will swap all the balance which is not possible because at the end
+    // of the transfer there will be no more uAD to take as a penalty
+
+    const amountToBeSwapped = await metaPool["get_dy(int128,int128,uint256)"](
+      0,
+      1,
+      balanceUADBefore
+    );
+    const expectedMin3CRV = amountToBeSwapped.div(100).mul(99);
+
+    // signer need to approve metaPool for sending its coin
+    await uAD
+      .connect(secondAccount)
+      .approve(metaPool.address, balanceUADBefore);
+    // secondAccount swap   3CRV=> x uAD
+    await expect(
+      metaPool
+        .connect(secondAccount)
+        ["exchange(int128,int128,uint256,uint256)"](
+          0,
+          1,
+          balanceUADBefore,
+          expectedMin3CRV
+        )
+    ).to.be.reverted;
+
+    const priceAfter = await twapOracle.consult(uAD.address);
+    expect(priceAfter).to.equal(priceBefore);
+    const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
+    const balance3CRVAfter = await crvToken.balanceOf(secondAccountAdr);
+    const balanceUADAfter = await uAD.balanceOf(secondAccountAdr);
+    const metaPoolBalanceUADAfter = await uAD.balanceOf(metaPool.address);
+
+    // no balance has changed
+    expect(balanceUADBefore).to.equal(balanceUADAfter);
+    expect(balanceLPBefore).to.equal(balanceLPAfter);
+    expect(metaPoolBalanceUADBefore).to.equal(metaPoolBalanceUADAfter);
+    expect(balance3CRVBefore).to.equal(balance3CRVAfter);
+  });
 });

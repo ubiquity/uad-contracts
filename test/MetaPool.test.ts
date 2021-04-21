@@ -189,16 +189,12 @@ describe("MetaPool", () => {
     )) as ICurveFactory;
   });
   describe("MetaPool", () => {
-    it.only("should perform an exchange between DAI to UAD ", async () => {
+    it("should perform an exchange between DAI to UAD ", async () => {
       await network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [daiWhaleAddress],
       });
       const daiWhale = ethers.provider.getSigner(daiWhaleAddress);
-      const bal = await daiToken.balanceOf(daiWhaleAddress);
-      console.log(`
-      ----- bal:${ethers.utils.formatEther(bal)}
-      `);
       const secondAccountAdr = await secondAccount.getAddress();
       const amountToSwap = ethers.utils.parseEther("10000");
       await daiToken.connect(daiWhale).transfer(secondAccountAdr, amountToSwap);
@@ -210,9 +206,6 @@ describe("MetaPool", () => {
       );
       // Exchange (swap) DAI to UAD
       const dyUAD = await swapDAItoUAD(amountToSwap, secondAccount);
-      const adminFee = await curvePoolFactory.get_admin_balances(
-        metaPool.address
-      );
 
       const secondAccountDAIBalanceAfter = await daiToken.balanceOf(
         secondAccountAdr
@@ -220,15 +213,6 @@ describe("MetaPool", () => {
       const secondAccountuADBalanceAfter = await uAD.balanceOf(
         secondAccountAdr
       );
-      console.log(`
-      ----- uAD2ndBalbeforeSWAP:${ethers.utils.formatEther(uAD2ndBalbeforeSWAP)}
-      ----- secondAccountuADBalanceAfter:${ethers.utils.formatEther(
-        secondAccountuADBalanceAfter
-      )}
-      ----- bal:${ethers.utils.formatEther(bal)}
-      ---adminFee0:${ethers.utils.formatEther(adminFee[0])}
-      ---adminFee1:${ethers.utils.formatEther(adminFee[1])}
-      `);
       expect(secondAccountDAIBalanceAfter).to.equal(
         secondAccountDAIBalanceBefore.sub(amountToSwap)
       );

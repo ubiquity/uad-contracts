@@ -19,6 +19,7 @@ contract UbiquityAlgorithmicDollar is ERC20Ubiquity {
 
     /// @param account the account to incentivize
     /// @param incentive the associated incentive contract
+    /// @notice only UAD manager can set Incentive contract
     function setIncentiveContract(address account, address incentive) external {
         require(
             ERC20Ubiquity.manager.hasRole(

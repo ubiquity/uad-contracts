@@ -702,7 +702,10 @@ describe("DebtCouponManager", () => {
 
       const uADPriceAfterSwap = await twapOracle.consult(uAD.address);
       expect(uADPriceAfterSwap).to.be.gt(oneETH);
-
+      console.log(
+        "-------------uADPriceAfterSwap",
+        ethers.utils.formatEther(uADPriceAfterSwap)
+      );
       // now we can redeem the coupon
       // 1. this will update the total debt by going through all the debt coupon that are
       // not expired it should be equal to debtCoupons here as we don't have uAR
@@ -785,6 +788,12 @@ describe("DebtCouponManager", () => {
           expiryBlock,
           oneETH
         );
+      let AfterSwap = await twapOracle.consult(uAD.address);
+
+      console.log(
+        "-------------1AfterSwap",
+        ethers.utils.formatEther(AfterSwap)
+      );
       // we minted more uAD than what we needed for our coupon
       expect(mintableUAD).to.be.gt(debtCoupons);
 
@@ -820,7 +829,12 @@ describe("DebtCouponManager", () => {
         uADPriceAfterSwap.sub(oneETH).toString()
       );
       expect(newCalculatedMintedUAD).to.equal(dollarsToMint);
+      AfterSwap = await twapOracle.consult(uAD.address);
 
+      console.log(
+        "-------------2-AfterSwap",
+        ethers.utils.formatEther(AfterSwap)
+      );
       // redeem the last 1 coupon
       await expect(
         debtCouponMgr.connect(secondAccount).redeemCoupons(expiryBlock, oneETH)
@@ -867,6 +881,12 @@ describe("DebtCouponManager", () => {
           expiryBlock,
           oneETH
         );
+      AfterSwap = await twapOracle.consult(uAD.address);
+
+      console.log(
+        "-------------3-AfterSwap",
+        ethers.utils.formatEther(AfterSwap)
+      );
     });
     it("calling exchangeDollarsForCoupons twice after up and down cycle should reset dollarsMintedThisCycle to zero", async () => {
       // Price must be below 1 to mint coupons
