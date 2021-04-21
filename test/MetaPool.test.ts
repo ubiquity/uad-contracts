@@ -40,11 +40,6 @@ describe("MetaPool", () => {
       amount
     );
     const expectedMinDAI = dyUAD.div(100).mul(99);
-    console.log(`
-    amount:${ethers.utils.formatEther(amount).toString()}
-    dyUAD:${ethers.utils.formatEther(dyUAD).toString()}
-    expectedMinDAI:${expectedMinDAI.toString()}
-    `);
     // secondAccount need to approve metaPool for sending its uAD
     await daiToken.connect(signer).approve(metaPool.address, amount);
     // swap 1 DAI  =>  1uAD

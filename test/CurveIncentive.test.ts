@@ -126,11 +126,6 @@ describe("CurveIncentive", () => {
     const one = new Big(ethers.utils.parseEther("1").toString());
     const amount = new Big(amountInWEI);
     // returns amount +  (1- TWAP_Price)%.
-    console.log(`
-    amount:${ethers.utils.formatEther(amountInWEI).toString()}
-    curPriceInWEI:${ethers.utils.formatEther(curPriceInWEI).toString()}
-    incentive:${one.sub(curPriceInWEI).mul(amount.div(one)).toString()}
-    `);
     return BigNumber.from(
       one
         .sub(curPriceInWEI)
@@ -197,12 +192,6 @@ describe("CurveIncentive", () => {
     );
     await Promise.all(mintings);
 
-    console.log(
-      `CurveFactory:${curveFactory}
-
-         curve3CrvBasePool: ${curve3CrvBasePool}
-         crvToken:${crvToken.address}`
-    );
     await manager.deployStableSwapPool(
       curveFactory,
       curve3CrvBasePool,
@@ -216,10 +205,7 @@ describe("CurveIncentive", () => {
       "IMetaPool",
       metaPoolAddr
     )) as IMetaPool;
-    console.log(
-      `
-         crvToken:${metaPoolAddr}`
-    );
+
     const TWAPOracleFactory = await ethers.getContractFactory("TWAPOracle");
     twapOracle = (await TWAPOracleFactory.deploy(
       metaPoolAddr,

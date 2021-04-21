@@ -93,9 +93,9 @@ contract CurveUADIncentive is IIncentive {
         }
 
         uint256 incentive = _getPercentDeviationFromUnderPeg(amountIn);
-        /* swapping 3CRV (or underlying) for uAD (aka buying uAD) will mint x% of UBQ.
+        /* swapping 3CRV (or underlying) for uAD (aka buying uAD) will mint x% of uGOV.
              Where x = (1- TWAP_Price) *100.
-            E.g. uAD = 0.8, you buy 1000 uAD, you get (1-0.8)*1000 = 200 UBQ */
+            E.g. uAD = 0.8, you buy 1000 uAD, you get (1-0.8)*1000 = 200 uGOV */
         if (incentive != 0) {
             // this means CurveIncentive should be a minter of UGOV
             IUbiquityGovernance(manager.uGOVTokenAddress()).mint(

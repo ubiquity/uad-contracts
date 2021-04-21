@@ -79,9 +79,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
 
         TWAPOracle oracle = TWAPOracle(twapOracleAddress);
         oracle.update();
-
-        uint256 p = oracle.consult(uADTokenAddress);
-        console.log("## setTwapOracleAddress price:%s", p);
     }
 
     function setDebtCouponAddress(address _debtCouponAddress)

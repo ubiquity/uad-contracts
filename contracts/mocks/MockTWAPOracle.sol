@@ -36,4 +36,8 @@ contract MockTWAPOracle {
             amountOut = price1Average;
         }
     }
+
+    function update() external pure {
+        return;
+    }
 }
