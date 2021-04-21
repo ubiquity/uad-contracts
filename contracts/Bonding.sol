@@ -105,52 +105,40 @@ contract Bonding is CollectableDust {
     }
 
     /*
-        Desposit function (new version of bondTokens)
-        use uAD-3CRV LP tokens (not uAD tokens)
+        Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
      */
-    function deposit(uint256 _amount) public {
-        // _updateOracle();
-        // uint256 currentPrice = currentTokenPrice();
-        // require(
-        //     currentPrice < maxBondingPrice,
-        //     "Bonding: Current price is too high"
-        // );
-        // IERC20(manager.uADTokenAddress()).safeTransferFrom(
-        //     msg.sender,
-        //     address(this),
-        //     _amount
-        // );
-        // _bond(_amount, currentPrice);
-    }
-
-    // staking duration multiplier
-    // M = 0.001 * D3/2
-    function durationMultiplier(uint256 _weeks)
-        public
-        view
-        returns (uint256 M)
-    {
-        bytes16 unit = uint256(1 ether).fromUInt();
-        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
-        bytes16 D = _weeks.fromUInt();
-        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
-
-        M = m.mul(D32).mul(unit).toUInt();
-    }
-
-    function bondTokens(uint256 _amount) public {
+    function deposit(uint256 _lpsAmount, uint8 _weeks) public {
         _updateOracle();
         uint256 currentPrice = currentTokenPrice();
         require(
             currentPrice < maxBondingPrice,
             "Bonding: Current price is too high"
         );
-        IERC20(manager.uADTokenAddress()).safeTransferFrom(
+        IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
             msg.sender,
             address(this),
-            _amount
+            _lpsAmount
         );
-        _bond(_amount, currentPrice);
+
+        uint256 _sharesAmount = durationMultiplier(_lpsAmount, _weeks);
+        _bond(_sharesAmount);
+    }
+
+    // staking duration multiplier
+    // sharesAmount = M * lpsAmount
+    // M = 0.001 * D3/2
+    function durationMultiplier(uint256 _lpsAmount, uint256 _weeks)
+        public
+        view
+        returns (uint256 _sharesAmount)
+    {
+        bytes16 unit = uint256(1 ether).fromUInt();
+        bytes16 A = _lpsAmount.fromUInt();
+        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
+        bytes16 D = _weeks.fromUInt();
+        bytes16 D32 = (D.mul(D).mul(D)).sqrt().mul(A);
+
+        _sharesAmount = A.mul(m).mul(D32).toUInt();
     }
 
     function redeemShares(uint256 _sharesAmount) public {
@@ -226,17 +214,9 @@ contract Bonding is CollectableDust {
             );
     }
 
-    function _bond(uint256 _amount, uint256 currentPrice) internal {
+    function _bond(uint256 _amount) internal {
         uint256 shareValue = currentShareValue();
         uint256 numberOfShares = (_amount / shareValue) * TARGET_PRICE;
-
-        if (bondingDiscountMultiplier != 0) {
-            uint256 bonus =
-                ((TARGET_PRICE - currentPrice) *
-                    numberOfShares *
-                    bondingDiscountMultiplier) / (TARGET_PRICE * TARGET_PRICE);
-            numberOfShares = numberOfShares + bonus;
-        }
 
         IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
