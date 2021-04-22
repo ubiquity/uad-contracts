@@ -10,6 +10,10 @@ import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { Bonding } from "../artifacts/types/Bonding";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 
+function log(bigN: BigNumber): string {
+  return ethers.utils.formatEther(bigN);
+}
+
 describe("UseCase1", () => {
   const id = 42;
   const UBQ_MINTER_ROLE = ethers.utils.keccak256(
@@ -63,10 +67,6 @@ describe("UseCase1", () => {
       await ethers.getContractFactory("BondingShare")
     ).deploy(manager.address)) as BondingShare;
     await manager.setBondingShareAddress(bondingShare.address);
-    // ACCESS CONTROL A ENLEVER
-    await bondingShare
-      .connect(admin)
-      .grantRole(ethers.utils.id("MINTER_ROLE"), bonding.address);
 
     // DEPLOY UAD token Contract
     uAD = (await (
@@ -129,34 +129,49 @@ describe("UseCase1", () => {
     await manager.setTwapOracleAddress(twapOracle.address);
   });
 
-  describe("UseCase deposit 100 LP tokens for 6 weeks and withdraw", () => {
-    it("should get 100 LPs tokens less, and 100++ bond tokens", async () => {
+  describe("UseCase bond 100 LP tokens for 6 weeks and withdraw", () => {
+    it("deposit 100 LPs tokens should give 101.46 bond tokens", async () => {
+      await bonding.setRedeemStreamTime(ethers.BigNumber.from("0"));
+
       const addr: string = await admin.getAddress();
       const amount: BigNumber = BigNumber.from(10).pow(18).mul(100);
 
       // oldBalLp = balanceOf lpTokens
-      const oldBalLp0: BigNumber = await metaPool.balances(0);
-      const oldBalLp: BigNumber = await metaPool.balances(1);
+      const oldBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
 
       // oldBalBond = balanceOf bondTokens
       const oldBalBond: BigNumber = await bondingShare.balanceOf(addr, id);
       expect(oldBalBond).to.be.eq(0);
 
-      // deposit 10 Lp tokens for 6 weeks
+      // bond 10 Lp tokens for 6 weeks
       await metaPool.approve(bonding.address, amount);
-      await bonding.connect(admin).deposit(amount, 6);
+      await bonding.connect(admin).bondTokens(amount, 6);
 
       //  newBalLp = balanceOf lpTokens
-      const newBalLp0: BigNumber = await metaPool.balances(0);
-      const newBalLp: BigNumber = await metaPool.balances(1);
-      console.log(newBalLp0.toString(), oldBalLp0.toString());
-      console.log(newBalLp.toString(), oldBalLp.toString());
-      // expect(newBalLp).to.be.equal(oldBalLp.sub(100));
+      const newBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
+
+      console.log("deltaLP  ", log(newBalLp.sub(oldBalLp)));
+      expect(newBalLp).to.be.equal(oldBalLp.add(amount));
 
       //  newBalBond = balanceOf bondTokens
       const newBalBond: BigNumber = await bondingShare.balanceOf(addr, id);
-      console.log(newBalBond.toString(), oldBalBond.toString());
-      // expect(newBalBond).to.be.gte(oldBalBond.add(100));
+
+      const deltaBond = newBalBond.sub(oldBalBond);
+      console.log("deltaBond", log(deltaBond));
+
+      const epsilon = deltaBond.sub(
+        BigNumber.from(10).pow(9).mul(101469693845)
+      );
+      expect(epsilon.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+
+      await bondingShare.setApprovalForAll(bonding.address, true);
+      await bonding.redeemShares(newBalBond);
+
+      //  finalBalBond = balanceOf bondTokens
+      const finalBalBond: BigNumber = await bondingShare.balanceOf(addr, id);
+
+      console.log("finalBond", log(finalBalBond));
+      expect(finalBalBond).to.be.equal(0);
     });
   });
 });

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
@@ -22,6 +23,7 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint256) public nonces;
 
+    // ----------- Events -----------
     event Minting(
         address indexed _to,
         address indexed _minter,
@@ -150,45 +152,22 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
         onlyBurner
         whenNotPaused
     {
-        _burn(account, amount);
+        super.burnFrom(account, amount);
         emit Burning(account, msg.sender, amount);
     }
 
-    /**
-     * @dev Creates `amount` new tokens for `to`.
-     *
-     * See {ERC20-_mint}.
-     *
-     * Requirements:
-     *
-     * - the caller must have the `MINTER_ROLE`.
-     */
+    // @dev Creates `amount` new tokens for `to`.
     function mint(address to, uint256 amount) public onlyMinter whenNotPaused {
         _mint(to, amount);
+        emit Minting(to, msg.sender, amount);
     }
 
-    /**
-     * @dev Pauses all token transfers.
-     *
-     * See {ERC20Pausable} and {Pausable-_pause}.
-     *
-     * Requirements:
-     *
-     * - the caller must have the `PAUSER_ROLE`.
-     */
+    // @dev Pauses all token transfers.
     function pause() public onlyPauser {
         _pause();
     }
 
-    /**
-     * @dev Unpauses all token transfers.
-     *
-     * See {ERC20Pausable} and {Pausable-_unpause}.
-     *
-     * Requirements:
-     *
-     * - the caller must have the `PAUSER_ROLE`.
-     */
+    // @dev Unpauses all token transfers.
     function unpause() public onlyPauser {
         _unpause();
     }

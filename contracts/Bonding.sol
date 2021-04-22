@@ -3,7 +3,7 @@ pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/IERC1155Supply.sol";
+import "./interfaces/IERC1155Ubiquity.sol";
 
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
@@ -11,6 +11,7 @@ import "./interfaces/ITWAPOracle.sol";
 import "./interfaces/IBondingShare.sol";
 import "./utils/CollectableDust.sol";
 import "./libs/ABDKMathQuad.sol";
+import "hardhat/console.sol";
 
 contract Bonding is CollectableDust {
     using ABDKMathQuad for uint256;
@@ -107,7 +108,7 @@ contract Bonding is CollectableDust {
     /*
         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
      */
-    function deposit(uint256 _lpsAmount, uint8 _weeks) public {
+    function bondTokens(uint256 _lpsAmount, uint256 _weeks) public {
         _updateOracle();
         uint256 currentPrice = currentTokenPrice();
         require(
@@ -120,31 +121,32 @@ contract Bonding is CollectableDust {
             _lpsAmount
         );
 
-        uint256 _sharesAmount = durationMultiplier(_lpsAmount, _weeks);
+        uint256 _sharesAmount = durationMultiply(_lpsAmount, _weeks);
         _bond(_sharesAmount);
     }
 
     // staking duration multiplier
-    // sharesAmount = M * lpsAmount
-    // M = 0.001 * D3/2
-    function durationMultiplier(uint256 _lpsAmount, uint256 _weeks)
+    // _sharesAmount = (1 + 0.001 * _weeks^3/2) * _lpsAmount
+    // D32 = D^3/2
+    // S = m * D32 * A + A
+    function durationMultiply(uint256 _lpsAmount, uint256 _weeks)
         public
         view
         returns (uint256 _sharesAmount)
     {
         bytes16 unit = uint256(1 ether).fromUInt();
-        bytes16 A = _lpsAmount.fromUInt();
-        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
         bytes16 D = _weeks.fromUInt();
-        bytes16 D32 = (D.mul(D).mul(D)).sqrt().mul(A);
+        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
+        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
+        bytes16 A = _lpsAmount.fromUInt();
 
-        _sharesAmount = A.mul(m).mul(D32).toUInt();
+        _sharesAmount = m.mul(D32).mul(A).add(A).toUInt();
     }
 
     function redeemShares(uint256 _sharesAmount) public {
         _updateOracle();
         require(
-            IERC1155Supply(manager.bondingShareAddress()).balanceOf(
+            IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
                 msg.sender,
                 id
             ) >= _sharesAmount,
@@ -155,36 +157,36 @@ contract Bonding is CollectableDust {
             id,
             _sharesAmount
         );
-        uint256 tokenAmount =
-            (_sharesAmount * currentShareValue()) / TARGET_PRICE;
-        if (redeemStreamTime == 0) {
-            IERC20(manager.uADTokenAddress()).safeTransfer(
-                msg.sender,
-                tokenAmount
-            );
-        } else {
-            // The transaction must be processed by the Ethereum blockchain before
-            // the start time of the stream, or otherwise the sablier contract
-            // reverts with a "start time before block.timestamp" message.
-            uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
-            uint256 streamStop = streamStart + redeemStreamTime;
-            // The deposit must be a multiple of the difference between the stop
-            // time and the start time
-            uint256 streamDuration = streamStop - streamStart;
-            tokenAmount = (tokenAmount / streamDuration) * streamDuration;
-            IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
-            IERC20(manager.uADTokenAddress()).safeApprove(
-                address(sablier),
-                tokenAmount
-            );
-            sablier.createStream(
-                msg.sender,
-                tokenAmount,
-                manager.uADTokenAddress(),
-                streamStart,
-                streamStop
-            );
-        }
+        // uint256 tokenAmount =
+        //     (_sharesAmount * currentShareValue()) / TARGET_PRICE;
+        // if (redeemStreamTime == 0) {
+        //     IERC20(manager.uADTokenAddress()).safeTransfer(
+        //         msg.sender,
+        //         tokenAmount
+        //     );
+        // } else {
+        //     // The transaction must be processed by the Ethereum blockchain before
+        //     // the start time of the stream, or otherwise the sablier contract
+        //     // reverts with a "start time before block.timestamp" message.
+        //     uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
+        //     uint256 streamStop = streamStart + redeemStreamTime;
+        //     // The deposit must be a multiple of the difference between the stop
+        //     // time and the start time
+        //     uint256 streamDuration = streamStop - streamStart;
+        //     tokenAmount = (tokenAmount / streamDuration) * streamDuration;
+        //     IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
+        //     IERC20(manager.uADTokenAddress()).safeApprove(
+        //         address(sablier),
+        //         tokenAmount
+        //     );
+        //     sablier.createStream(
+        //         msg.sender,
+        //         tokenAmount,
+        //         manager.uADTokenAddress(),
+        //         streamStart,
+        //         streamStop
+        //     );
+        // }
     }
 
     function redeemAllShares() public {
@@ -195,7 +197,7 @@ contract Bonding is CollectableDust {
 
     function currentShareValue() public view returns (uint256 pricePerShare) {
         uint256 totalShares =
-            IERC1155Supply(manager.bondingShareAddress()).totalSupply(id);
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply(id);
 
         pricePerShare = totalShares == 0
             ? TARGET_PRICE
@@ -214,9 +216,15 @@ contract Bonding is CollectableDust {
             );
     }
 
+    // numberOfShares = (amount / shareValue) * TARGET_PRICE
+    // numberOfShares = A / V * T
     function _bond(uint256 _amount) internal {
-        uint256 shareValue = currentShareValue();
-        uint256 numberOfShares = (_amount / shareValue) * TARGET_PRICE;
+        // console.log(_amount);
+        bytes16 A = _amount.fromUInt();
+        bytes16 V = currentShareValue().fromUInt();
+        bytes16 T = TARGET_PRICE.fromUInt();
+        uint256 numberOfShares = A.div(V).mul(T).toUInt();
+        // console.log(numberOfShares);
 
         IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
