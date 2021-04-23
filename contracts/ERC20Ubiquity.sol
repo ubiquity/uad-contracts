@@ -150,9 +150,9 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
         public
         override(ERC20Burnable)
         onlyBurner
-        whenNotPaused
+        whenNotPaused // to suppress ? if BURNER_ROLE should do it even paused ?
     {
-        super.burnFrom(account, amount);
+        _burn(account, amount);
         emit Burning(account, msg.sender, amount);
     }
 

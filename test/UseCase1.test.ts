@@ -10,32 +10,68 @@ import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { Bonding } from "../artifacts/types/Bonding";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 
+const id = 42;
+const one: BigNumber = BigNumber.from(10).pow(18);
+const ten9: BigNumber = BigNumber.from(10).pow(9);
+
+let twapOracle: TWAPOracle;
+let metaPool: IMetaPool;
+let bonding: Bonding;
+let bondingShare: BondingShare;
+let manager: UbiquityAlgorithmicDollarManager;
+let uAD: UbiquityAlgorithmicDollar;
+let sablier: string;
+let curvePoolFactory: ICurveFactory;
+let curveFactory: string;
+let curve3CrvBasePool: string;
+let curve3CrvToken: string;
+let curveWhaleAddress: string;
+let metaPoolAddr: string;
+let admin: Signer;
+let secondAccount: Signer;
+let thirdAccount: Signer;
+let adminAddress: string;
+let secondAddress: string;
+let thirdAddress: string;
+
 function log(bigN: BigNumber): string {
   return ethers.utils.formatEther(bigN);
 }
 
+async function bondTokens(
+  signer: Signer,
+  amount: BigNumber,
+  duration: BigNumber,
+  block: number
+): Promise<BigNumber> {
+  const address = await signer.getAddress();
+  const bond0: BigNumber = await bondingShare.balanceOf(address, block);
+
+  await metaPool.connect(signer).approve(bonding.address, amount);
+  await bonding.connect(signer).bondTokens(amount, duration);
+
+  const bond1: BigNumber = await bondingShare.balanceOf(address, block);
+  const deltaBond: BigNumber = bond1.sub(bond0);
+
+  return deltaBond;
+}
+
+async function redeemShares(signer: Signer, block: number): Promise<BigNumber> {
+  const address = await signer.getAddress();
+  const newBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
+
+  const newBalBond: BigNumber = await bondingShare.balanceOf(address, block);
+
+  await bondingShare.connect(signer).setApprovalForAll(bonding.address, true);
+  await bonding.connect(signer).redeemShares(newBalBond);
+
+  const finalBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
+  const deltaBalLp: BigNumber = finalBalLp.sub(newBalLp);
+
+  return deltaBalLp;
+}
+
 describe("UseCase1", () => {
-  const id = 42;
-  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
-  );
-
-  let twapOracle: TWAPOracle;
-  let metaPool: IMetaPool;
-  let admin: Signer;
-  let bonding: Bonding;
-  let bondingShare: BondingShare;
-  let manager: UbiquityAlgorithmicDollarManager;
-  let uAD: UbiquityAlgorithmicDollar;
-  let sablier: string;
-  let curvePoolFactory: ICurveFactory;
-  let curveFactory: string;
-  let curve3CrvBasePool: string;
-  let curve3CrvToken: string;
-  let curveWhaleAddress: string;
-  let metaPoolAddr: string;
-  let adminAddress: string;
-
   before(async () => {
     // GET contracts adresses
     ({
@@ -47,8 +83,10 @@ describe("UseCase1", () => {
     } = await getNamedAccounts());
 
     // GET first EOA account as admin Signer
-    [admin] = await ethers.getSigners();
+    [admin, secondAccount, thirdAccount] = await ethers.getSigners();
     adminAddress = await admin.getAddress();
+    secondAddress = await secondAccount.getAddress();
+    thirdAddress = await thirdAccount.getAddress();
 
     // DEPLOY UbiquityAlgorithmicDollarManager Contract
     manager = (await (
@@ -86,8 +124,8 @@ describe("UseCase1", () => {
       curveFactory
     )) as ICurveFactory;
 
-    // Mint 10000 uAD each for admin and manager
-    const mintings = [adminAddress, manager.address].map(
+    // Mint 10000 uAD each for admin, second account and manager
+    const mintings = [adminAddress, secondAddress, manager.address].map(
       async (signer: string): Promise<ContractTransaction> =>
         uAD.mint(signer, ethers.utils.parseEther("10000"))
     );
@@ -120,6 +158,11 @@ describe("UseCase1", () => {
       metaPoolAddr
     )) as IMetaPool;
 
+    // TRANSFER some uLP tokens to second account
+    await metaPool
+      .connect(admin)
+      .transfer(secondAddress, ethers.utils.parseEther("2000"));
+
     // DEPLOY TWAPOracle Contract
     twapOracle = (await (await ethers.getContractFactory("TWAPOracle")).deploy(
       metaPoolAddr,
@@ -129,49 +172,104 @@ describe("UseCase1", () => {
     await manager.setTwapOracleAddress(twapOracle.address);
   });
 
-  describe("UseCase bond 100 LP tokens for 6 weeks and withdraw", () => {
-    it("deposit 100 LPs tokens should give 101.46 bond tokens", async () => {
-      await bonding.setRedeemStreamTime(ethers.BigNumber.from("0"));
+  describe("Bonding and Redeem", () => {
+    it("admin should have some uLP tokens", async () => {
+      expect(await metaPool.balanceOf(adminAddress)).to.be.gt(one.mul(1000));
+    });
 
-      const addr: string = await admin.getAddress();
-      const amount: BigNumber = BigNumber.from(10).pow(18).mul(100);
+    it("second account should have some uLP tokens", async () => {
+      expect(await metaPool.balanceOf(secondAddress)).to.be.gt(one.mul(1000));
+    });
 
-      // oldBalLp = balanceOf lpTokens
-      const oldBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
+    it("third account should have no uLP tokens", async () => {
+      expect(await metaPool.balanceOf(thirdAddress)).to.be.equal(0);
+    });
 
-      // oldBalBond = balanceOf bondTokens
-      const oldBalBond: BigNumber = await bondingShare.balanceOf(addr, id);
-      expect(oldBalBond).to.be.eq(0);
+    it("admin should be able to bound", async () => {
+      expect(
+        await bondTokens(admin, one.mul(100), BigNumber.from(0), id)
+      ).to.be.equal(one.mul(100));
+      // console.log("total uLP", log(await metaPool.balanceOf(bonding.address)));
+    });
+    // uLP = 100
+    // uBOND = 100
+    it("second account should be able to bound", async () => {
+      expect(
+        await bondTokens(secondAccount, one.mul(100), BigNumber.from(0), id)
+      ).to.be.equal(one.mul(50));
+    });
+    // uLP = 200
+    // uBOND = 150
+    it("third account should not be able to bound", async () => {
+      await expect(
+        bondTokens(thirdAccount, BigNumber.from(1), BigNumber.from(1), id)
+      ).to.be.revertedWith("revert SafeERC20: low-level call failed");
+    });
 
-      // bond 10 Lp tokens for 6 weeks
-      await metaPool.approve(bonding.address, amount);
-      await bonding.connect(admin).bondTokens(amount, 6);
+    it("total uLP should be 200", async () => {
+      const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
+      expect(totalLP).to.be.equal(one.mul(200));
+    });
 
-      //  newBalLp = balanceOf lpTokens
-      const newBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
+    it("total uBOND should be 150", async () => {
+      const totalUBOND: BigNumber = await bondingShare.totalSupply(id);
+      expect(totalUBOND).to.be.equal(one.mul(150));
+    });
 
-      console.log("deltaLP  ", log(newBalLp.sub(oldBalLp)));
-      expect(newBalLp).to.be.equal(oldBalLp.add(amount));
+    it("admin account should be able to redeem uBOND", async () => {
+      await redeemShares(admin, id);
+      expect(await bondingShare.balanceOf(adminAddress, id)).to.be.equal(0);
+    });
+    // uLP = 100
+    // uBOND = 50
+    it("second account should be able to redeem uBOND", async () => {
+      await redeemShares(secondAccount, id);
+      expect(await bondingShare.balanceOf(secondAddress, id)).to.be.equal(0);
+    });
+    // uLP = 0
+    // uBOND = 0
+    it("third account should be able to redeem uBOND", async () => {
+      await redeemShares(thirdAccount, id);
+      expect(await bondingShare.balanceOf(thirdAddress, id)).to.be.equal(0);
+    });
 
-      //  newBalBond = balanceOf bondTokens
-      const newBalBond: BigNumber = await bondingShare.balanceOf(addr, id);
+    it("total uBOND should be 0 after redeem", async () => {
+      const totalUBOND: BigNumber = await bondingShare.totalSupply(id);
+      expect(totalUBOND).to.be.equal(0);
+    });
 
-      const deltaBond = newBalBond.sub(oldBalBond);
-      console.log("deltaBond", log(deltaBond));
+    it("total uLP should be 0 after redeem", async () => {
+      const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
+      expect(totalLP).to.be.lt(ten9);
+    });
+  });
 
-      const epsilon = deltaBond.sub(
-        BigNumber.from(10).pow(9).mul(101469693845)
+  describe("UseCase bond uLP tokens and immediate withdraw", () => {
+    it("deposit 100 LPs tokens for 6 weeks should give 101.469693845 bond tokens", async () => {
+      const deltaBond: BigNumber = await bondTokens(
+        secondAccount,
+        one.mul(100),
+        BigNumber.from(6),
+        id
       );
-      expect(epsilon.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+      expect(deltaBond.sub(ten9.mul(101469693845)).abs()).to.be.lt(ten9);
+    });
+    // uLP = 100
+    // uBOND = 100.469693845
+    it("redeemShares should give back 100 LPs tokens", async () => {
+      const deltaBalLp: BigNumber = await redeemShares(secondAccount, id);
+      expect(deltaBalLp.add(one.mul(100)).abs()).to.be.lt(ten9);
+    });
+    // uLP = 0
+    // uBOND = 0
+    it("total uBOND should be 0 after redeem", async () => {
+      const totalUBOND: BigNumber = await bondingShare.totalSupply(id);
+      expect(totalUBOND).to.be.equal(0);
+    });
 
-      await bondingShare.setApprovalForAll(bonding.address, true);
-      await bonding.redeemShares(newBalBond);
-
-      //  finalBalBond = balanceOf bondTokens
-      const finalBalBond: BigNumber = await bondingShare.balanceOf(addr, id);
-
-      console.log("finalBond", log(finalBalBond));
-      expect(finalBalBond).to.be.equal(0);
+    it("total uLP should be 0 after redeem", async () => {
+      const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
+      expect(totalLP).to.be.lt(ten9);
     });
   });
 });
