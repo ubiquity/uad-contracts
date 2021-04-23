@@ -25,7 +25,6 @@ describe("DebtCouponManager", () => {
   let admin: Signer;
   let secondAccount: Signer;
   let treasury: Signer;
-  let uGOVFund: Signer;
   let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
   let crvToken: ERC20;
@@ -82,6 +81,7 @@ describe("DebtCouponManager", () => {
     return dyuADto3CRV;
   };
   const calcPercentage = (amount: string, percentage: string): BigNumber => {
+    // calculate amount * percentage
     const value = new Big(amount);
     const one = new Big(ethers.utils.parseEther("1").toString());
     const percent = new Big(percentage).div(one);
@@ -112,13 +112,7 @@ describe("DebtCouponManager", () => {
       curve3CrvToken,
       curveWhaleAddress,
     } = await getNamedAccounts());
-    [
-      admin,
-      secondAccount,
-      treasury,
-      uGOVFund,
-      lpReward,
-    ] = await ethers.getSigners();
+    [admin, secondAccount, treasury, lpReward] = await ethers.getSigners();
     await resetFork(12150000);
     // deploy manager
     const UADMgr = await ethers.getContractFactory(
@@ -268,12 +262,10 @@ describe("DebtCouponManager", () => {
     await manager
       .connect(admin)
       .setTreasuryAddress(await treasury.getAddress());
+
     await manager
       .connect(admin)
-      .setuGovFundAddress(await uGOVFund.getAddress());
-    await manager
-      .connect(admin)
-      .setLpRewardsAddress(await lpReward.getAddress());
+      .setBondingContractAddress(await lpReward.getAddress());
   });
   it("exchangeDollarsForCoupons should fail if uAD price is >= 1", async () => {
     await expect(
@@ -318,10 +310,6 @@ describe("DebtCouponManager", () => {
     const secondAccountAdr = await secondAccount.getAddress();
     const balanceBefore = await uAD.balanceOf(secondAccountAdr);
 
-    // approve debtCouponManager to burn user's token
-    /*   await uAD
-        .connect(secondAccount)
-        .approve(debtCouponMgr.address, amountToExchangeForCoupon); */
     const lastBlock = await ethers.provider.getBlock(
       await ethers.provider.getBlockNumber()
     );
@@ -578,18 +566,6 @@ describe("DebtCouponManager", () => {
         await treasury.getAddress(),
         excessUAD.div(10).toString()
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        excessUAD.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        excessUAD.sub(excessUAD.div(10)).sub(excessUAD.div(10))
-      )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
         debtCouponMgr.address,
@@ -755,18 +731,6 @@ describe("DebtCouponManager", () => {
         await treasury.getAddress(),
         excessUAD.div(10).toString()
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        excessUAD.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        excessUAD.sub(excessUAD.div(10)).sub(excessUAD.div(10))
-      )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
         debtCouponMgr.address,
@@ -804,12 +768,16 @@ describe("DebtCouponManager", () => {
     const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
     const dollarsToMint = mintableUADThisTime.sub(mintableUAD);
     // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
+    const beforeSecondRedeemTotalSupply = await uAD.totalSupply();
 
     const newCalculatedMintedUAD = calcPercentage(
-      mintableUAD.toString(),
+      beforeSecondRedeemTotalSupply.toString(),
       uADPriceAfterSwap.sub(oneETH).toString()
     );
-    expect(newCalculatedMintedUAD).to.equal(dollarsToMint);
+    const calculatedDollarToMint = newCalculatedMintedUAD.sub(mintableUAD);
+
+    // check that our calculation match the SC calculation
+    expect(calculatedDollarToMint).to.equal(dollarsToMint);
 
     // redeem the last 1 coupon
     await expect(
@@ -837,18 +805,6 @@ describe("DebtCouponManager", () => {
         await treasury.getAddress(),
         dollarsToMint.div(10)
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        dollarsToMint.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        dollarsToMint.sub(dollarsToMint.div(10)).sub(dollarsToMint.div(10))
-      )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
         debtCouponMgr.address,
@@ -857,6 +813,14 @@ describe("DebtCouponManager", () => {
         expiryBlock,
         oneETH
       );
+
+    const finalTotalSupply = await uAD.totalSupply();
+
+    // total supply should only be increased by the difference between what has
+    // been calculated and what has been already minted
+    expect(finalTotalSupply).to.equal(
+      beforeSecondRedeemTotalSupply.add(dollarsToMint)
+    );
   });
   it("calling exchangeDollarsForCoupons twice after up and down cycle should reset dollarsMintedThisCycle to zero", async () => {
     // Price must be below 1 to mint coupons
@@ -987,18 +951,6 @@ describe("DebtCouponManager", () => {
         await treasury.getAddress(),
         excessUAD.div(10).toString()
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        excessUAD.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        excessUAD.sub(excessUAD.div(10)).sub(excessUAD.div(10))
-      )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
         debtCouponMgr.address,
@@ -1071,9 +1023,8 @@ describe("DebtCouponManager", () => {
 
     //  make sure that calling getDollarsToMint twice doesn't mint all dollars twice
     const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
-    // const dollarsToMint = mintableUADThisTime.sub(mintableUAD);
-    // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
 
+    // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
     totalSupply = await uAD.totalSupply();
     const newCalculatedMintedUAD = calcPercentage(
       totalSupply.toString(),
@@ -1108,21 +1059,6 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         await treasury.getAddress(),
         mintableUADThisTime.sub(newDebtCoupons).div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        mintableUADThisTime.sub(newDebtCoupons).div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        mintableUADThisTime
-          .sub(newDebtCoupons)
-          .sub(mintableUADThisTime.sub(newDebtCoupons).div(10))
-          .sub(mintableUADThisTime.sub(newDebtCoupons).div(10))
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(

@@ -35,16 +35,14 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public twapOracleAddress;
     address public debtCouponAddress;
     address public uADTokenAddress;
-    address public comparisonTokenAddress; // 3Crv
     address public couponCalculatorAddress;
     address public dollarCalculatorAddress;
     address public bondingShareAddress;
+    address public bondingContractAddress;
     address public stableSwapMetaPoolAddress;
+    address public curve3PoolTokenAddress; // 3CRV
     address public autoRedeemPoolTokenAddress;
-    address public curveIncentiveAddress;
     address public treasuryAddress;
-    address public uGovFundAddress;
-    address public lpRewardsAddress;
     address public uGOVTokenAddress;
 
     //key = address of couponmanager, value = excessdollardistributor
@@ -104,13 +102,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
 
     function setuGOVTokenAddress(address _uGOVTokenAddress) external onlyAdmin {
         uGOVTokenAddress = _uGOVTokenAddress;
-    }
-
-    function setComparisonTokenAddress(address _comparisonTokenAddress)
-        external
-        onlyAdmin
-    {
-        comparisonTokenAddress = _comparisonTokenAddress;
     }
 
     function setCouponCalculatorAddress(address _couponCalculatorAddress)
@@ -195,6 +186,8 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
                 IERC20(_crv3PoolTokenAddress).balanceOf(address(this))
             ];
 
+        // set curve 3Pool address
+        curve3PoolTokenAddress = _crv3PoolTokenAddress;
         IMetaPool(metaPool).add_liquidity(amounts, 0, msg.sender);
     }
 
@@ -220,27 +213,20 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     }
 
     /**
-     @notice set the lpRewards smart contract address
-    @dev rewards for bonding contract participants
-         that provided liquidity to uGOV pool for a certain duration
-    @param _lpRewardsAddress lpReward address
+    @notice set the bonding bontract smart contract address
+    @dev bonding contract participants deposit  curve LP token
+         for a certain duration to earn uGOV and more curve LP token
+    @param _bondingContractAddress bonding contract address
      */
-    function setLpRewardsAddress(address _lpRewardsAddress) external onlyAdmin {
-        lpRewardsAddress = _lpRewardsAddress;
+    function setBondingContractAddress(address _bondingContractAddress)
+        external
+        onlyAdmin
+    {
+        bondingContractAddress = _bondingContractAddress;
     }
 
     /**
-     @notice set the uGOV fund address
-    @dev All funds deposited in the uGOV fund will be used
-         to buyback & LP on our uAD-uGOV primary market
-    @param _uGovFundAddress uGOV fund address
-     */
-    function setuGovFundAddress(address _uGovFundAddress) external onlyAdmin {
-        uGovFundAddress = _uGovFundAddress;
-    }
-
-    /**
-     @notice set the treasury address
+    @notice set the treasury address
     @dev the treasury fund is used to maintain the protocol
     @param _treasuryAddress treasury fund address
      */

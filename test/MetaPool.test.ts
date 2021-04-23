@@ -88,7 +88,7 @@ describe("MetaPool", () => {
 
     // signer need to approve metaPool for sending its coin
     await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
+    // secondAccount swap  uAD => x 3CRV
     await metaPool
       .connect(signer)
       ["exchange(int128,int128,uint256,uint256)"](

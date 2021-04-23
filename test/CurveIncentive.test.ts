@@ -31,8 +31,6 @@ describe("CurveIncentive", () => {
   let secondAccount: Signer;
   let operation: Signer;
   let treasury: Signer;
-  let uGOVFund: Signer;
-  let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
   let uGOV: UbiquityGovernance;
   let crvToken: ERC20;
@@ -147,14 +145,7 @@ describe("CurveIncentive", () => {
       curveWhaleAddress,
       daiWhaleAddress,
     } = await getNamedAccounts());
-    [
-      admin,
-      secondAccount,
-      operation,
-      treasury,
-      uGOVFund,
-      lpReward,
-    ] = await ethers.getSigners();
+    [admin, secondAccount, operation, treasury] = await ethers.getSigners();
 
     // deploy manager
     const UADMgr = await ethers.getContractFactory(
@@ -317,8 +308,6 @@ describe("CurveIncentive", () => {
 
     // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
     await manager.setTreasuryAddress(await treasury.getAddress());
-    await manager.setuGovFundAddress(await uGOVFund.getAddress());
-    await manager.setLpRewardsAddress(await lpReward.getAddress());
 
     curvePoolFactory = (await ethers.getContractAt(
       "ICurveFactory",

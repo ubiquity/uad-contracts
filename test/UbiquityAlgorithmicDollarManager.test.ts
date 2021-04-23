@@ -58,7 +58,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       await manager.connect(admin).setBondingShareAddress(bondingShare.address);
 
       const bondingShareAddr = BigNumber.from(
-        await ethers.provider.getStorageAt(manager.address, 7)
+        await ethers.provider.getStorageAt(manager.address, 6)
       ).toHexString();
 
       expect(bondingShare.address.toLowerCase()).to.equal(
@@ -82,7 +82,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
 
       const uGOVTokenAddr = BigNumber.from(
-        await ethers.provider.getStorageAt(manager.address, 14)
+        await ethers.provider.getStorageAt(manager.address, 12)
       ).toHexString();
 
       expect(uGOV.address.toLowerCase()).to.equal(uGOVTokenAddr.toLowerCase());
