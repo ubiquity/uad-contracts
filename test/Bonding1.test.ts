@@ -51,34 +51,31 @@ describe("Bonding1", () => {
     it("durationMultiply of 0 should be 1", async () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment , @typescript-eslint/no-unsafe-call
       const mult = await ubiquityFormulas.durationMultiply(one, 0, zzz1);
-      log(mult);
 
       expect(mult).to.eq(one);
     });
 
     it("durationMultiply of 1 should be 1.001", async () => {
-      // 1.001 * 10**18 = 10**15 * 1001
+      // 1.001000000 * 10**18 = 10**9 * 1001000000
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       const mult = BigNumber.from(
         await ubiquityFormulas.durationMultiply(one, 1, zzz1)
       );
-      const epsilon = BigNumber.from(10).pow(15).mul(1001).sub(mult);
-      log(mult);
+      const epsilon = ten9.mul(1001000000).sub(mult);
 
       // 10**-9 expected precision on following calculations
-      expect(epsilon.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+      expect(epsilon.div(ten9)).to.be.equal(0);
     });
 
-    it("durationMultiply of 4 should be 1.008", async () => {
-      // 1.008 * 10**18 = 10**15 * 1008
+    it("durationMultiply of 6 should be 1.014696938", async () => {
+      // 1.014696938 * 10**18 = 10**9 * 1014696938
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       const mult = BigNumber.from(
-        await ubiquityFormulas.durationMultiply(one, 4, zzz1)
+        await ubiquityFormulas.durationMultiply(one, 6, zzz1)
       );
-      const epsilon = BigNumber.from(10).pow(15).mul(1008).sub(mult);
-      log(mult);
+      const epsilon = ten9.mul(1014696938).sub(mult);
 
-      expect(epsilon.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+      expect(epsilon.div(ten9)).to.be.equal(0);
     });
 
     it("durationMultiply of 24 should be 1.117575507", async () => {
@@ -87,10 +84,9 @@ describe("Bonding1", () => {
       const mult = BigNumber.from(
         await ubiquityFormulas.durationMultiply(one, 24, zzz1)
       );
-      const epsilon = BigNumber.from(10).pow(9).mul(1117575507).sub(mult);
-      log(mult);
+      const epsilon = ten9.mul(1117575507).sub(mult);
 
-      expect(epsilon.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+      expect(epsilon.div(ten9)).to.be.equal(0);
     });
 
     it("durationMultiply of 52 should be 1.374977332", async () => {
@@ -99,10 +95,9 @@ describe("Bonding1", () => {
       const mult = BigNumber.from(
         await ubiquityFormulas.durationMultiply(one, 52, zzz1)
       );
-      const epsilon = BigNumber.from(10).pow(9).mul(1374977332).sub(mult);
-      log(mult);
+      const epsilon = ten9.mul(1374977332).sub(mult);
 
-      expect(epsilon.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+      expect(epsilon.div(ten9)).to.be.equal(0);
     });
 
     it("durationMultiply of 520 should be 12.857824421", async () => {
@@ -111,10 +106,9 @@ describe("Bonding1", () => {
       const mult = BigNumber.from(
         await ubiquityFormulas.durationMultiply(one, 520, zzz1)
       );
-      const epsilon = BigNumber.from(10).pow(10).mul(1285782442).sub(mult);
-      log(mult);
+      const epsilon = ten9.mul(12857824421).sub(mult);
 
-      expect(epsilon.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+      expect(epsilon.div(ten9)).to.be.equal(0);
     });
   });
 
@@ -123,7 +117,7 @@ describe("Bonding1", () => {
       await expect(
         bonding
           .connect(secondAccount)
-          .redeemShares(ethers.utils.parseEther("10000"))
+          .redeemShares(ethers.utils.parseEther("10000"), id)
       ).to.be.revertedWith("Bonding: Caller does not have enough shares");
     });
 

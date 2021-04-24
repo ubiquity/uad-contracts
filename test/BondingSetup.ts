@@ -33,43 +33,35 @@ let secondAddress: string;
 let thirdAddress: string;
 let ubiquityFormulas: UbiquityFormulas;
 
-function log(bigN: BigNumber): string {
-  return ethers.utils.formatEther(bigN);
+function log(bigN: BigNumber): void {
+  console.log(ethers.utils.formatEther(bigN));
 }
 
 async function bondTokens(
   signer: Signer,
   amount: BigNumber,
-  duration: number,
-  block: number
-): Promise<BigNumber> {
+  duration: number
+): Promise<number> {
   const address = await signer.getAddress();
-  const bond0: BigNumber = await bondingShare.balanceOf(address, block);
-  // expect(bond0).to.be.equal(0);
 
   await metaPool.connect(signer).approve(bonding.address, amount);
+  const tx = await (
+    await bonding.connect(signer).bondTokens(amount, duration)
+  ).wait();
 
-  await bonding.connect(signer).bondTokens(amount, duration, block);
-
-  const bond1: BigNumber = await bondingShare.balanceOf(address, block);
-  const deltaBond: BigNumber = bond1.sub(bond0);
-
-  return deltaBond;
+  const ts = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
+  // 1 WEEK =  7 * 24 * 60 * 60  = 604800
+  return ts + duration * 604800;
 }
 
-async function redeemShares(signer: Signer, block: number): Promise<BigNumber> {
+async function redeemShares(signer: Signer, id: number): Promise<BigNumber> {
   const address = await signer.getAddress();
-  const newBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
-
-  const newBalBond: BigNumber = await bondingShare.balanceOf(address, block);
+  const bond: BigNumber = await bondingShare.balanceOf(address, id);
 
   await bondingShare.connect(signer).setApprovalForAll(bonding.address, true);
-  await bonding.connect(signer).redeemShares(newBalBond);
+  await bonding.connect(signer).redeemShares(bond, id);
 
-  const finalBalLp: BigNumber = await metaPool.balanceOf(bonding.address);
-  const deltaBalLp: BigNumber = finalBalLp.sub(newBalLp);
-
-  return deltaBalLp;
+  return metaPool.balanceOf(address);
 }
 
 async function bondingSetup(): Promise<{
@@ -182,10 +174,15 @@ async function bondingSetup(): Promise<{
     metaPoolAddr
   )) as IMetaPool;
 
+  // TRANSFER some uLP tokens to bonding contract to pay premium
+  await metaPool
+    .connect(admin)
+    .transfer(bonding.address, ethers.utils.parseEther("1000"));
+
   // TRANSFER some uLP tokens to second account
   await metaPool
     .connect(admin)
-    .transfer(secondAddress, ethers.utils.parseEther("2000"));
+    .transfer(secondAddress, ethers.utils.parseEther("1000"));
 
   // DEPLOY TWAPOracle Contract
   twapOracle = (await (await ethers.getContractFactory("TWAPOracle")).deploy(

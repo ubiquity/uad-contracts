@@ -107,11 +107,15 @@ contract Bonding is CollectableDust {
     /*
         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
      */
-    function bondTokens(
-        uint256 _lpsAmount,
-        uint256 _weeks,
-        uint256 _block
-    ) public {
+    function bondTokens(uint256 _lpsAmount, uint256 _weeks)
+        public
+        returns (uint256 _id)
+    {
+        require(
+            1 <= _weeks && _weeks <= 520,
+            "Bonding: duration must be between 1 and 250 weeks"
+        );
+
         _updateOracle();
         uint256 currentPrice = currentTokenPrice();
         require(
@@ -130,22 +134,33 @@ contract Bonding is CollectableDust {
                 _weeks,
                 bondingDiscountMultiplier
             );
-        _bond(_sharesAmount, _block);
+
+        // 1 WEEK =  7 * 24 * 60 * 60  = 604800
+        _id = block.timestamp + _weeks * 604800;
+
+        _bond(_sharesAmount, _id);
     }
 
-    function redeemShares(uint256 _sharesAmount) public {
+    function redeemShares(uint256 _sharesAmount, uint256 _id) public {
+        require(
+            block.timestamp > _id,
+            "Bonding: Redeem not allowed before bonding time"
+        );
+
         require(
             IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
                 msg.sender,
-                id
+                _id
             ) >= _sharesAmount,
             "Bonding: Caller does not have enough shares"
         );
+
         _updateOracle();
         uint256 _currentShareValue = currentShareValue();
+
         IBondingShare(manager.bondingShareAddress()).burn(
             msg.sender,
-            id,
+            _id,
             _sharesAmount
         );
 
@@ -193,9 +208,11 @@ contract Bonding is CollectableDust {
     }
 
     function redeemAllShares() public {
-        redeemShares(
-            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender)
-        );
+        // for each id in chained list
+        // redeemShares(
+        //     IERC20(manager.bondingShareAddress()).balanceOf(msg.sender),
+        //     _id
+        // );
     }
 
     // SI totalShares = 0  priceShare = TARGET_PRICE
@@ -229,16 +246,16 @@ contract Bonding is CollectableDust {
             );
     }
 
-    function _bond(uint256 _amount, uint256 _block) internal {
+    function _bond(uint256 _amount, uint256 _id) internal {
         uint256 _currentShareValue = currentShareValue();
         require(
             _currentShareValue != 0,
-            "Current Share Value should not be nul"
+            "Bonding: Share Value should not be nul"
         );
 
         IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
-            _block,
+            _id,
             UbiquityFormulas.bonding(_amount, _currentShareValue, TARGET_PRICE),
             data
         );
