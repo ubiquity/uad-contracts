@@ -1,142 +1,15 @@
-import { ContractTransaction, Signer } from "ethers";
-import { deployments, ethers, getNamedAccounts, network } from "hardhat";
-import { before, describe, it } from "mocha";
-import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+/* eslint-disable @typescript-eslint/no-use-before-define */
+
+import { ethers, Signer } from "ethers";
+import { describe, it } from "mocha";
 import { expect } from "./setup";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { ERC20 } from "../artifacts/types/ERC20";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
+import { bondingSetup, log } from "./BondingSetup";
 
 describe("Bonding", () => {
-  const id = 42;
-
-  let bonding: Bonding;
-  let manager: UbiquityAlgorithmicDollarManager;
-  let admin: Signer;
-  let secondAccount: Signer;
-  let uAD: UbiquityAlgorithmicDollar;
-  let sablier: string;
-  let DAI: string;
-  let USDC: string;
-  let curveFactory: string;
-  let curve3CrvBasePool: string;
-  let curve3CrvToken: string;
-  let curveWhaleAddress: string;
-  let twapOracle: TWAPOracle;
-  let bondingShare: BondingShare;
-
-  before(async () => {
-    ({
-      sablier,
-      DAI,
-      USDC,
-      curveFactory,
-      curve3CrvBasePool,
-      curve3CrvToken,
-      curveWhaleAddress,
-    } = await getNamedAccounts());
-    [admin, secondAccount] = await ethers.getSigners();
-    const adminAddress = await admin.getAddress();
-
-    bondingShare = (await (await ethers.getContractFactory("BondingShare"))
-      .connect(admin)
-      .deploy(adminAddress)) as BondingShare;
-
-    const Manager = await deployments.deploy(
-      "UbiquityAlgorithmicDollarManager",
-      {
-        from: await admin.getAddress(),
-        args: [await admin.getAddress()],
-      }
-    );
-    manager = (await ethers.getContractAt(
-      "UbiquityAlgorithmicDollarManager",
-      Manager.address
-    )) as UbiquityAlgorithmicDollarManager;
-
-    await manager.connect(admin).setBondingShareAddress(bondingShare.address);
-
-    const UAD = await deployments.deploy("UbiquityAlgorithmicDollar", {
-      args: [manager.address],
-      from: await admin.getAddress(),
-    });
-
-    uAD = (await ethers.getContractAt(
-      "UbiquityAlgorithmicDollar",
-      UAD.address
-    )) as UbiquityAlgorithmicDollar;
-
-    // mint 10000 uAD each for admin, manager and secondAccount
-    const mintings = [
-      await admin.getAddress(),
-      await secondAccount.getAddress(),
-      manager.address,
-    ].map(
-      async (signer): Promise<ContractTransaction> =>
-        uAD.connect(admin).mint(signer, ethers.utils.parseEther("10000"))
-    );
-    await Promise.all(mintings);
-
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
-
-    const crvToken = (await ethers.getContractAt(
-      "ERC20",
-      curve3CrvToken
-    )) as ERC20;
-
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [curveWhaleAddress],
-    });
-
-    const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
-
-    // mint uad for whale
-    await uAD
-      .connect(admin)
-      .mint(curveWhaleAddress, ethers.utils.parseEther("10"));
-
-    await crvToken
-      .connect(curveWhale)
-      .transfer(manager.address, ethers.utils.parseEther("10000"));
-
-    await manager
-      .connect(admin)
-      .deployStableSwapPool(
-        curveFactory,
-        curve3CrvBasePool,
-        crvToken.address,
-        10,
-        4000000
-      );
-
-    const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
-
-    const TWAPOracleDeployment = await deployments.deploy("TWAPOracle", {
-      from: await admin.getAddress(),
-      args: [metaPoolAddr, uAD.address, curve3CrvToken],
-    });
-
-    twapOracle = (await ethers.getContractAt(
-      "TWAPOracle",
-      TWAPOracleDeployment.address
-    )) as TWAPOracle;
-
-    await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
-
-    const BondingDeployment = await deployments.deploy("Bonding", {
-      from: await admin.getAddress(),
-      args: [manager.address, sablier],
-    });
-
-    bonding = (await ethers.getContractAt(
-      "Bonding",
-      BondingDeployment.address
-    )) as Bonding;
-  });
-
   describe("CollectableDust", () => {
     it("Admin should be able to add protocol token (CollectableDust)", async () => {
       await bonding.connect(admin).addProtocolToken(USDC);
@@ -367,5 +240,31 @@ describe("Bonding", () => {
         bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
       ).to.be.revertedWith("Caller is not a bonding manager");
     });
+  });
+
+  const id = 42;
+
+  let bonding: Bonding;
+  let admin: Signer;
+  let secondAccount: Signer;
+  let uAD: UbiquityAlgorithmicDollar;
+  let sablier: string;
+  let DAI: string;
+  let USDC: string;
+  let twapOracle: TWAPOracle;
+  let bondingShare: BondingShare;
+
+  before(async () => {
+    ({
+      admin,
+      secondAccount,
+      uAD,
+      bonding,
+      bondingShare,
+      twapOracle,
+      sablier,
+      DAI,
+      USDC,
+    } = await bondingSetup());
   });
 });

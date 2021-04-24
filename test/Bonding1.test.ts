@@ -1,135 +1,16 @@
-import { ContractTransaction, Signer, BigNumber } from "ethers";
-import { deployments, ethers, getNamedAccounts, network } from "hardhat";
-import { before, describe, it } from "mocha";
-import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
-import { expect } from "./setup";
-import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { ERC20 } from "../artifacts/types/ERC20";
-import { TWAPOracle } from "../artifacts/types/TWAPOracle";
-import { BondingShare } from "../artifacts/types/BondingShare";
+/* eslint-disable @typescript-eslint/no-use-before-define */
+
+import { expect } from "chai";
+import { ethers, Signer, BigNumber } from "ethers";
+import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { Bonding } from "../artifacts/types/Bonding";
+import { BondingShare } from "../artifacts/types/BondingShare";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
+import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
+import { bondingSetup, bondTokens, redeemShares, log } from "./BondingSetup";
 
-function log(bigN: BigNumber) {
-  console.log(ethers.utils.formatEther(bigN));
-}
-
-describe("BondingShare", () => {
-  const id = 42;
-  const one = BigNumber.from(10).pow(18);
-
-  let bonding: Bonding;
-  let manager: UbiquityAlgorithmicDollarManager;
-  let admin: Signer;
-  let secondAccount: Signer;
-  let uAD: UbiquityAlgorithmicDollar;
-  let sablier: string;
-  let curveFactory: string;
-  let curve3CrvBasePool: string;
-  let curve3CrvToken: string;
-  let curveWhaleAddress: string;
-  let twapOracle: TWAPOracle;
-  let bondingShare: BondingShare;
-
-  before(async () => {
-    ({
-      sablier,
-      curveFactory,
-      curve3CrvBasePool,
-      curve3CrvToken,
-      curveWhaleAddress,
-    } = await getNamedAccounts());
-    [admin, secondAccount] = await ethers.getSigners();
-    const adminAddress = await admin.getAddress();
-
-    bondingShare = (await (await ethers.getContractFactory("BondingShare"))
-      .connect(admin)
-      .deploy(adminAddress)) as BondingShare;
-
-    const Manager = await deployments.deploy(
-      "UbiquityAlgorithmicDollarManager",
-      {
-        from: adminAddress,
-        args: [adminAddress],
-      }
-    );
-
-    manager = (await ethers.getContractAt(
-      "UbiquityAlgorithmicDollarManager",
-      Manager.address
-    )) as UbiquityAlgorithmicDollarManager;
-
-    await manager.connect(admin).setBondingShareAddress(bondingShare.address);
-    const UAD = await deployments.deploy("UbiquityAlgorithmicDollar", {
-      from: adminAddress,
-      args: [manager.address],
-    });
-    uAD = (await ethers.getContractAt(
-      "UbiquityAlgorithmicDollar",
-      UAD.address
-    )) as UbiquityAlgorithmicDollar;
-    // mint 10000 uAD each for admin, manager and secondAccount
-    const mintings = [
-      adminAddress,
-      await secondAccount.getAddress(),
-      manager.address,
-    ].map(
-      async (signer): Promise<ContractTransaction> =>
-        uAD.connect(admin).mint(signer, ethers.utils.parseEther("10000"))
-    );
-    await Promise.all(mintings);
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
-    const crvToken = (await ethers.getContractAt(
-      "ERC20",
-      curve3CrvToken
-    )) as ERC20;
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [curveWhaleAddress],
-    });
-    const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
-    // mint uad for whale
-    await uAD
-      .connect(admin)
-      .mint(curveWhaleAddress, ethers.utils.parseEther("10"));
-    await crvToken
-      .connect(curveWhale)
-      .transfer(manager.address, ethers.utils.parseEther("10000"));
-    await manager
-      .connect(admin)
-      .deployStableSwapPool(
-        curveFactory,
-        curve3CrvBasePool,
-        crvToken.address,
-        10,
-        4000000
-      );
-    const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
-    const TWAPOracleDeployment = await deployments.deploy("TWAPOracle", {
-      from: adminAddress,
-      args: [metaPoolAddr, uAD.address, curve3CrvToken],
-    });
-    twapOracle = (await ethers.getContractAt(
-      "TWAPOracle",
-      TWAPOracleDeployment.address
-    )) as TWAPOracle;
-    await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
-
-    const BondingDeployment = await deployments.deploy("Bonding", {
-      from: adminAddress,
-      args: [manager.address, sablier],
-    });
-    bonding = (await ethers.getContractAt(
-      "Bonding",
-      BondingDeployment.address
-    )) as Bonding;
-
-    // if not first test: contract is not recreated properly, reset things
-    await bonding.connect(admin).setSablier(sablier);
-    await bonding
-      .connect(admin)
-      .setBondingDiscountMultiplier(BigNumber.from(10).pow(15));
-  });
-
+describe("Bonding1", () => {
   describe("initialValues", () => {
     it("TARGET_PRICE should always be 1", async () => {
       const targetPrice: BigNumber = await bonding.TARGET_PRICE();
@@ -169,7 +50,7 @@ describe("BondingShare", () => {
   describe("durationMultiply", () => {
     it("durationMultiply of 0 should be 1", async () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment , @typescript-eslint/no-unsafe-call
-      const mult = await bonding.durationMultiply(one, 0);
+      const mult = await ubiquityFormulas.durationMultiply(one, 0, zzz1);
       log(mult);
 
       expect(mult).to.eq(one);
@@ -178,7 +59,9 @@ describe("BondingShare", () => {
     it("durationMultiply of 1 should be 1.001", async () => {
       // 1.001 * 10**18 = 10**15 * 1001
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const mult = BigNumber.from(await bonding.durationMultiply(one, 1));
+      const mult = BigNumber.from(
+        await ubiquityFormulas.durationMultiply(one, 1, zzz1)
+      );
       const epsilon = BigNumber.from(10).pow(15).mul(1001).sub(mult);
       log(mult);
 
@@ -189,7 +72,9 @@ describe("BondingShare", () => {
     it("durationMultiply of 4 should be 1.008", async () => {
       // 1.008 * 10**18 = 10**15 * 1008
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const mult = BigNumber.from(await bonding.durationMultiply(one, 4));
+      const mult = BigNumber.from(
+        await ubiquityFormulas.durationMultiply(one, 4, zzz1)
+      );
       const epsilon = BigNumber.from(10).pow(15).mul(1008).sub(mult);
       log(mult);
 
@@ -199,7 +84,9 @@ describe("BondingShare", () => {
     it("durationMultiply of 24 should be 1.117575507", async () => {
       // 1.117575507 * 10**18 = 10**9 * 1117575507
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const mult = BigNumber.from(await bonding.durationMultiply(one, 24));
+      const mult = BigNumber.from(
+        await ubiquityFormulas.durationMultiply(one, 24, zzz1)
+      );
       const epsilon = BigNumber.from(10).pow(9).mul(1117575507).sub(mult);
       log(mult);
 
@@ -209,7 +96,9 @@ describe("BondingShare", () => {
     it("durationMultiply of 52 should be 1.374977332", async () => {
       // 1.3749773326 * 10**18 = 10**9 * 1374977332
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const mult = BigNumber.from(await bonding.durationMultiply(one, 52));
+      const mult = BigNumber.from(
+        await ubiquityFormulas.durationMultiply(one, 52, zzz1)
+      );
       const epsilon = BigNumber.from(10).pow(9).mul(1374977332).sub(mult);
       log(mult);
 
@@ -219,7 +108,9 @@ describe("BondingShare", () => {
     it("durationMultiply of 520 should be 12.857824421", async () => {
       // 12.857824421 * 10**18 = 10**10 * 12857824421
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const mult = BigNumber.from(await bonding.durationMultiply(one, 520));
+      const mult = BigNumber.from(
+        await ubiquityFormulas.durationMultiply(one, 520, zzz1)
+      );
       const epsilon = BigNumber.from(10).pow(10).mul(1285782442).sub(mult);
       log(mult);
 
@@ -314,5 +205,41 @@ describe("BondingShare", () => {
       //   await bondingShare.balanceOf(await secondAccount.getAddress(), id)
       // );
     });
+  });
+  const id = 42;
+  const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
+  const ten9: BigNumber = BigNumber.from(10).pow(9); // ten9 = 10^-9 ether = 10^9
+  const zzz1: BigNumber = BigNumber.from(10).pow(15); // zzz1 = zerozerozero1 = 0.0001 ether = 10^15
+
+  let uAD: UbiquityAlgorithmicDollar;
+  let metaPool: IMetaPool;
+  let bonding: Bonding;
+  let bondingShare: BondingShare;
+  let sablier: string;
+  let manager: UbiquityAlgorithmicDollarManager;
+  let admin: Signer;
+  let secondAccount: Signer;
+  let thirdAccount: Signer;
+  let adminAddress: string;
+  let secondAddress: string;
+  let thirdAddress: string;
+  let ubiquityFormulas: UbiquityFormulas;
+
+  before(async () => {
+    ({
+      admin,
+      secondAccount,
+      thirdAccount,
+      uAD,
+      metaPool,
+      bonding,
+      bondingShare,
+      ubiquityFormulas,
+      sablier,
+      manager,
+    } = await bondingSetup());
+    adminAddress = await admin.getAddress();
+    secondAddress = await secondAccount.getAddress();
+    thirdAddress = await thirdAccount.getAddress();
   });
 });
