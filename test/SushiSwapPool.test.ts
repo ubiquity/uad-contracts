@@ -1,6 +1,7 @@
 import { Signer, BigNumber, ContractFactory } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
+
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 import { IMasterChef } from "../artifacts/types/IMasterChef";
 import { IUniswapV2Factory } from "../artifacts/types/IUniswapV2Factory";
@@ -10,15 +11,6 @@ import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlg
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { mineNBlock } from "./utils/hardhatNode";
-
-// UNISWAP
-// const tokenA = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-// const tokenB = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-// const factory = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
-// const firstPair = "0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc";
-// const reserveA = "144065947714472";
-// const reserveB = "75512578800914566328215";
-// const nbPairs = 31941;
 
 /*
       SUSHISWAP Glossary
@@ -38,12 +30,11 @@ import { mineNBlock } from "./utils/hardhatNode";
       allocation points of a liquidity pool, the more SUSHI one receives for staking its LP tokens.
 */
 
-const tokenA = "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2"; // sushi token
-const tokenB = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT
+const sushiToken = "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2"; // sushi token
+const USDTToken = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT
 const factoryAdr = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac"; // SushiV2Factory mainnet
 const routerAdr = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // SushiV2Router02
 const masterChefAdr = "0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd"; // MasterChef
-const sushiMakerAdr = "0xE11fc0B43ab98Eb91e9836129d1ee7c3Bc95df50"; // SushiMaker
 const firstPair = "0x680A025Da7b1be2c204D7745e809919bCE074026"; // SushiSwap SUSHI/USDT LP (SLP)
 const reserveA = "1201055109316335905137";
 const reserveB = "17860836355";
@@ -53,7 +44,7 @@ describe("SushiSwapPool", () => {
   let admin: Signer;
   let secondAccount: Signer;
   let manager: UbiquityAlgorithmicDollarManager;
-  let sushi: SushiSwapPool;
+  let sushiUGOVPool: SushiSwapPool;
   let poolContract: IUniswapV2Pair;
   let sushiFactory: ContractFactory;
   let router: IUniswapV2Router02;
@@ -94,7 +85,9 @@ describe("SushiSwapPool", () => {
     uGOV = (await UGOV.deploy(manager.address)) as UbiquityGovernance;
     await manager.setuGOVTokenAddress(uGOV.address);
     sushiFactory = await ethers.getContractFactory("SushiSwapPool");
-    sushi = (await sushiFactory.deploy(manager.address)) as SushiSwapPool;
+    sushiUGOVPool = (await sushiFactory.deploy(
+      manager.address
+    )) as SushiSwapPool;
 
     const mintings = [await secondAccount.getAddress()].map(
       async (signer): Promise<void> => {
@@ -103,7 +96,7 @@ describe("SushiSwapPool", () => {
       }
     );
     await Promise.all(mintings);
-    uGOVPair = await sushi.pair();
+    uGOVPair = await sushiUGOVPool.pair();
     poolContract = (await ethers.getContractAt(
       "IUniswapV2Pair",
       uGOVPair
@@ -133,8 +126,8 @@ describe("SushiSwapPool", () => {
       const token1 = await sushiUSDTPair.token1();
       const [reserve0, reserve1] = await sushiUSDTPair.getReserves();
 
-      expect(token0).to.be.equal(tokenA);
-      expect(token1).to.be.equal(tokenB);
+      expect(token0).to.be.equal(sushiToken);
+      expect(token1).to.be.equal(USDTToken);
       expect(reserve0).to.be.equal(reserveA);
       expect(reserve1).to.be.equal(reserveB);
     });
@@ -214,10 +207,10 @@ describe("SushiSwapPool", () => {
       )) as SushiSwapPool;
       const allPairsLengthAfterDeploy = await factory.allPairsLength();
       expect(allPairsLength).to.equal(allPairsLengthAfterDeploy);
-      expect(await newSushi.pair()).to.equal(await sushi.pair());
+      expect(await newSushi.pair()).to.equal(await sushiUGOVPool.pair());
     });
 
-    it.only("should add pool and earn sushi ", async () => {
+    it("should add pool and earn sushi", async () => {
       const secondAccAdr = await secondAccount.getAddress();
       // must allow to transfer token
       await uAD
@@ -260,7 +253,6 @@ describe("SushiSwapPool", () => {
       });
 
       const totAllocPoint = await masterChef.totalAllocPoint();
-      console.log(`------totAllocPoint:${totAllocPoint}`);
       const sushiChef = ethers.provider.getSigner(sushiMultiSig);
       // insert uGOV-UAD as onsen pair we will get half of all the sushi reward
       const blockNum = await ethers.provider.getBlockNumber();
@@ -281,10 +273,6 @@ describe("SushiSwapPool", () => {
       expect(pooluGOV.accSushiPerShare).to.equal(0);
 
       // deposit lp tokens
-      console.log(`------balanceBefore:${balanceBefore}`);
-
-      // await masterChef.connect(secondAccount).updatePool(uGOVpid);
-
       // must allow to transfer LP token
       await poolContract
         .connect(secondAccount)
@@ -307,14 +295,10 @@ describe("SushiSwapPool", () => {
       pendingReward = await masterChef.pendingSushi(uGOVpid, secondAccAdr);
       const sushiPerBlock = await masterChef.sushiPerBlock();
       // we have half of the total allocation point so we are entitled to half the sushi per block
-      console.log(
-        `--sushiPerBlock:${sushiPerBlock}--
-        -balanceBefore:${balanceBefore}--
-        --pendingReward:${pendingReward}`
-      );
-      expect(pendingReward).to.equal(0);
-    });
 
-    // todo call add function of the master chef to add our pool and earn sushi
+      // take into consideration precision
+      expect(pendingReward).to.be.lte(sushiPerBlock);
+      expect(pendingReward).to.be.gte(sushiPerBlock.mul(9999).div(20000));
+    });
   });
 });
