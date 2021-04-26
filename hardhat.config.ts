@@ -51,10 +51,9 @@ const config: HardhatUserConfig = {
     curve3CrvBasePool: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     curve3CrvToken: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
     curveFactory: "0x0959158b6040D32d04c301A72CBFD6b39E21c9AE",
-    // curveFactory: "0xfD6f33A0509ec67dEFc500755322aBd9Df1bD5B8",
     usdDepositerAddress: "0xA79828DF1850E8a3A3064576f380D90aECDD3359",
-    // curveWhaleAddress: "0x09cabda22B553bA8FFCD2d453078e2fD4017404F",
     curveWhaleAddress: "0x1C0b104A9EeFf2F7001348a49fA28b8A0D23d637",
+    sushiMultiSig: "0x9a8541Ddf3a932a9A922B607e9CF7301f1d47bD1",
   },
 
   /*   paths: {

@@ -1,13 +1,15 @@
 import { Signer, BigNumber, ContractFactory } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
+import { IMasterChef } from "../artifacts/types/IMasterChef";
 import { IUniswapV2Factory } from "../artifacts/types/IUniswapV2Factory";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
 import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
+import { mineNBlock } from "./utils/hardhatNode";
 
 // UNISWAP
 // const tokenA = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -52,14 +54,18 @@ describe("SushiSwapPool", () => {
   let secondAccount: Signer;
   let manager: UbiquityAlgorithmicDollarManager;
   let sushi: SushiSwapPool;
+  let poolContract: IUniswapV2Pair;
   let sushiFactory: ContractFactory;
   let router: IUniswapV2Router02;
   let factory: IUniswapV2Factory;
   let sushiUSDTPair: IUniswapV2Pair;
+  let uGOVPair: string;
   let uAD: UbiquityAlgorithmicDollar;
   let uGOV: UbiquityGovernance;
-
+  let sushiMultiSig: string;
   beforeEach(async () => {
+    ({ sushiMultiSig } = await getNamedAccounts());
+
     [admin, secondAccount] = await ethers.getSigners();
     const UADMgr = await ethers.getContractFactory(
       "UbiquityAlgorithmicDollarManager"
@@ -97,6 +103,11 @@ describe("SushiSwapPool", () => {
       }
     );
     await Promise.all(mintings);
+    uGOVPair = await sushi.pair();
+    poolContract = (await ethers.getContractAt(
+      "IUniswapV2Pair",
+      uGOVPair
+    )) as IUniswapV2Pair;
   });
 
   describe("SushiSwap Factory", () => {
@@ -131,13 +142,6 @@ describe("SushiSwapPool", () => {
 
   describe("SushiSwap", () => {
     it("should create pool", async () => {
-      const pool = await sushi.pair();
-
-      const poolContract: IUniswapV2Pair = (await ethers.getContractAt(
-        "IUniswapV2Pair",
-        pool
-      )) as IUniswapV2Pair;
-
       const token0 = await poolContract.token0();
       const token1 = await poolContract.token1();
       const [reserve0, reserve1] = await poolContract.getReserves();
@@ -154,12 +158,6 @@ describe("SushiSwapPool", () => {
     });
 
     it("should provide liquidity to pool", async () => {
-      const pair = await sushi.pair();
-      const poolContract: IUniswapV2Pair = (await ethers.getContractAt(
-        "IUniswapV2Pair",
-        pair
-      )) as IUniswapV2Pair;
-
       let [reserve0, reserve1] = await poolContract.getReserves();
       expect(reserve0).to.equal(0);
       expect(reserve1).to.equal(0);
@@ -176,7 +174,7 @@ describe("SushiSwapPool", () => {
         .connect(secondAccount)
         .approve(routerAdr, ethers.utils.parseEther("1000"));
       const totSupplyBefore = await poolContract.totalSupply();
-
+      expect(totSupplyBefore).to.equal(0);
       await expect(
         router
           .connect(secondAccount)
@@ -217,6 +215,104 @@ describe("SushiSwapPool", () => {
       const allPairsLengthAfterDeploy = await factory.allPairsLength();
       expect(allPairsLength).to.equal(allPairsLengthAfterDeploy);
       expect(await newSushi.pair()).to.equal(await sushi.pair());
+    });
+
+    it.only("should add pool and earn sushi ", async () => {
+      const secondAccAdr = await secondAccount.getAddress();
+      // must allow to transfer token
+      await uAD
+        .connect(secondAccount)
+        .approve(routerAdr, ethers.utils.parseEther("10000"));
+      await uGOV
+        .connect(secondAccount)
+        .approve(routerAdr, ethers.utils.parseEther("1000"));
+      // If the liquidity is to be added to an ERC-20/ERC-20 pair, use addLiquidity.
+      const blockBefore = await ethers.provider.getBlock(
+        await ethers.provider.getBlockNumber()
+      );
+      await router
+        .connect(secondAccount)
+        .addLiquidity(
+          uAD.address,
+          uGOV.address,
+          ethers.utils.parseEther("10000"),
+          ethers.utils.parseEther("1000"),
+          ethers.utils.parseEther("9900"),
+          ethers.utils.parseEther("990"),
+          secondAccAdr,
+          blockBefore.timestamp + 100
+        );
+      const balanceBefore = await poolContract.balanceOf(secondAccAdr);
+      const masterChef = (await ethers.getContractAt(
+        "IMasterChef",
+        masterChefAdr
+      )) as IMasterChef;
+      const poolLengthBefore = await masterChef.poolLength();
+      const owner = await masterChef.owner();
+      expect(owner).to.equal("0x9a8541Ddf3a932a9A922B607e9CF7301f1d47bD1");
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [sushiMultiSig],
+      });
+      await secondAccount.sendTransaction({
+        to: sushiMultiSig,
+        value: ethers.utils.parseEther("1.0"),
+      });
+
+      const totAllocPoint = await masterChef.totalAllocPoint();
+      console.log(`------totAllocPoint:${totAllocPoint}`);
+      const sushiChef = ethers.provider.getSigner(sushiMultiSig);
+      // insert uGOV-UAD as onsen pair we will get half of all the sushi reward
+      const blockNum = await ethers.provider.getBlockNumber();
+      await masterChef.connect(sushiChef).add(totAllocPoint, uGOVPair, true);
+      const totAllocPointAfterAdd = await masterChef.totalAllocPoint();
+      expect(totAllocPointAfterAdd).to.equal(
+        totAllocPoint.mul(BigNumber.from(2))
+      );
+      const poolLengthAfter = await masterChef.poolLength();
+      // ugov pid should be the last index
+      const uGOVpid = poolLengthAfter.sub(BigNumber.from(1));
+      const pooluGOV = await masterChef.poolInfo(uGOVpid);
+
+      expect(poolLengthAfter).to.equal(poolLengthBefore.add(BigNumber.from(1)));
+      expect(pooluGOV.lpToken).to.equal(uGOVPair);
+      expect(pooluGOV.allocPoint).to.equal(totAllocPoint);
+      expect(pooluGOV.lastRewardBlock).to.equal(blockNum + 1);
+      expect(pooluGOV.accSushiPerShare).to.equal(0);
+
+      // deposit lp tokens
+      console.log(`------balanceBefore:${balanceBefore}`);
+
+      // await masterChef.connect(secondAccount).updatePool(uGOVpid);
+
+      // must allow to transfer LP token
+      await poolContract
+        .connect(secondAccount)
+        .approve(masterChefAdr, balanceBefore);
+
+      // deposit all LP token
+      await masterChef.connect(secondAccount).deposit(uGOVpid, balanceBefore);
+      const uInfo = await masterChef.userInfo(uGOVpid, secondAccAdr);
+      expect(uInfo.amount).to.equal(balanceBefore);
+      expect(uInfo.rewardDebt).to.equal(0);
+
+      const balanceAfter = await poolContract.balanceOf(secondAccAdr);
+      expect(balanceAfter).to.equal(0);
+      // pending sushi reward
+      let pendingReward = await masterChef.pendingSushi(uGOVpid, secondAccAdr);
+      expect(pendingReward).to.equal(0);
+
+      // after one block we should be able to retrieve sushi
+      await mineNBlock(1);
+      pendingReward = await masterChef.pendingSushi(uGOVpid, secondAccAdr);
+      const sushiPerBlock = await masterChef.sushiPerBlock();
+      // we have half of the total allocation point so we are entitled to half the sushi per block
+      console.log(
+        `--sushiPerBlock:${sushiPerBlock}--
+        -balanceBefore:${balanceBefore}--
+        --pendingReward:${pendingReward}`
+      );
+      expect(pendingReward).to.equal(0);
     });
 
     // todo call add function of the master chef to add our pool and earn sushi
