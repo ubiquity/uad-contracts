@@ -20,7 +20,7 @@ import "./UbiquityAlgorithmicDollarManager.sol";
 contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     UbiquityAlgorithmicDollarManager public manager;
 
-    mapping(uint256 => uint256) private _totalSupply;
+    uint256 private _totalSupply;
 
     // ----------- Events -----------
     event Minting(
@@ -70,15 +70,8 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     /**
      * @dev Total amount of tokens in with a given id.
      */
-    function totalSupply(uint256 id) public view virtual returns (uint256) {
-        return _totalSupply[id];
-    }
-
-    /**
-     * @dev Indicates weither any token exist with a given id, or not.
-     */
-    function exists(uint256 id) public view virtual returns (bool) {
-        return totalSupply(id) > 0;
+    function totalSupply() public view virtual returns (uint256) {
+        return _totalSupply;
     }
 
     function _burn(
@@ -87,7 +80,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256 amount
     ) internal virtual override whenNotPaused {
         super._burn(account, id, amount);
-        _totalSupply[id] -= amount;
+        _totalSupply -= amount;
     }
 
     function _burnBatch(
@@ -97,7 +90,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     ) internal virtual override whenNotPaused {
         super._burnBatch(account, ids, amounts);
         for (uint256 i = 0; i < ids.length; ++i) {
-            _totalSupply[ids[i]] -= amounts[i];
+            _totalSupply -= amounts[i];
         }
     }
 
@@ -109,7 +102,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         bytes memory data
     ) public virtual {
         _mint(to, id, amount, data);
-        _totalSupply[id] += amount;
+        _totalSupply += amount;
     }
 
     // @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
@@ -121,7 +114,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     ) public virtual onlyMinter whenNotPaused {
         _mintBatch(to, ids, amounts, data);
         for (uint256 i = 0; i < ids.length; ++i) {
-            _totalSupply[ids[i]] += amounts[i];
+            _totalSupply += amounts[i];
         }
     }
 

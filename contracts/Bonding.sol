@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC1155Ubiquity.sol";
 
-import "./UbiquityFormulas.sol";
+import "./libs/UbiquityFormulas.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
 import "./interfaces/ITWAPOracle.sol";
@@ -16,6 +16,7 @@ import "hardhat/console.sol";
 
 contract Bonding is CollectableDust {
     using SafeERC20 for IERC20;
+    using UbiquityFormulas for uint256;
 
     uint16 public id = 42;
     bytes public data = "";
@@ -28,6 +29,7 @@ contract Bonding is CollectableDust {
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+    uint256 public blockRonding = 100;
 
     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
     event SablierUpdated(address _sablier);
@@ -104,6 +106,13 @@ contract Bonding is CollectableDust {
         emit RedeemStreamTimeUpdated(_redeemStreamTime);
     }
 
+    function setBlockRonding(uint256 _blockRonding)
+        external
+        onlyBondingManager
+    {
+        blockRonding = _blockRonding;
+    }
+
     /*
         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
      */
@@ -129,21 +138,24 @@ contract Bonding is CollectableDust {
         );
 
         uint256 _sharesAmount =
-            UbiquityFormulas.durationMultiply(
-                _lpsAmount,
-                _weeks,
-                bondingDiscountMultiplier
-            );
+            _lpsAmount.durationMultiply(_weeks, bondingDiscountMultiplier);
 
-        // 1 WEEK =  7 * 24 * 60 * 60  = 604800
-        _id = block.timestamp + _weeks * 604800;
+        // First block 2020 = 9193266 https://etherscan.io/block/9193266
+        // First block 2021 = 11565019 https://etherscan.io/block/11565019
+        // 2020 = 2371753 blocks = 366 days
+        // 1 week = 45361 blocks = 2371753*7/366
+        // n = (block + duration * 45361)
+        // id = n - n % blockRonding
+        // blockRonding = 100 => 2 ending zeros
+        uint256 n = block.number + _weeks * 45361;
+        _id = n - (n % blockRonding);
 
         _bond(_sharesAmount, _id);
     }
 
     function redeemShares(uint256 _sharesAmount, uint256 _id) public {
         require(
-            block.timestamp > _id,
+            block.number > _id,
             "Bonding: Redeem not allowed before bonding time"
         );
 
@@ -171,11 +183,7 @@ contract Bonding is CollectableDust {
         // if (redeemStreamTime == 0) {
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
             msg.sender,
-            UbiquityFormulas.redeemBonds(
-                _sharesAmount,
-                _currentShareValue,
-                TARGET_PRICE
-            )
+            _sharesAmount.redeemBonds(_currentShareValue, TARGET_PRICE)
         );
         //     } else {
         //         // The transaction must be processed by the Ethereum blockchain before
@@ -226,13 +234,9 @@ contract Bonding is CollectableDust {
             );
 
         uint256 totalShares =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply(id);
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
 
-        priceShare = UbiquityFormulas.bondPrice(
-            totalLP,
-            totalShares,
-            TARGET_PRICE
-        );
+        priceShare = totalLP.bondPrice(totalShares, TARGET_PRICE);
     }
 
     function currentTokenPrice() public view returns (uint256) {
@@ -256,7 +260,7 @@ contract Bonding is CollectableDust {
         IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
             _id,
-            UbiquityFormulas.bonding(_amount, _currentShareValue, TARGET_PRICE),
+            _amount.bonding(_currentShareValue, TARGET_PRICE),
             data
         );
     }

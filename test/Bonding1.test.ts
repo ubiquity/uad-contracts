@@ -26,7 +26,7 @@ describe("Bonding1", () => {
     });
 
     it("initial bonding totalSupply should be 0", async () => {
-      const bondTotalSupply: BigNumber = await bondingShare.totalSupply(id);
+      const bondTotalSupply: BigNumber = await bondingShare.totalSupply();
       const zero: BigNumber = BigNumber.from(0);
 
       expect(bondTotalSupply).to.eq(zero);

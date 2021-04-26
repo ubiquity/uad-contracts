@@ -37,11 +37,25 @@ function log(bigN: BigNumber): void {
   console.log(ethers.utils.formatEther(bigN));
 }
 
-async function bondTokens(
+type IdBond = {
+  id: number;
+  bond: BigNumber;
+};
+interface IbondTokens {
+  (signer: Signer, amount: BigNumber, duration: number): Promise<IdBond>;
+}
+
+// First block 2020 = 9193266 https://etherscan.io/block/9193266
+// First block 2021 = 11565019 https://etherscan.io/block/11565019
+// 2020 = 2371753 block = 366 days
+// 1 week = 45361 blocks = 2371753*7/366
+// n = (block + duration * 45361)
+// id = n - n / 100
+const bondTokens: IbondTokens = async function (
   signer: Signer,
   amount: BigNumber,
   duration: number
-): Promise<number> {
+) {
   const address = await signer.getAddress();
 
   await metaPool.connect(signer).approve(bonding.address, amount);
@@ -49,10 +63,15 @@ async function bondTokens(
     await bonding.connect(signer).bondTokens(amount, duration)
   ).wait();
 
-  const ts = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
-  // 1 WEEK =  7 * 24 * 60 * 60  = 604800
-  return ts + duration * 604800;
-}
+  // 1 week = 45361 blocks
+  const n = tx.blockNumber + duration * 45361;
+  const id = n - (n % 100);
+  // console.log("n", n);
+  // console.log("id", id);
+  const bond: BigNumber = await bondingShare.balanceOf(address, id);
+
+  return { id, bond };
+};
 
 async function redeemShares(signer: Signer, id: number): Promise<BigNumber> {
   const address = await signer.getAddress();
@@ -177,7 +196,7 @@ async function bondingSetup(): Promise<{
   // TRANSFER some uLP tokens to bonding contract to pay premium
   await metaPool
     .connect(admin)
-    .transfer(bonding.address, ethers.utils.parseEther("1000"));
+    .transfer(bonding.address, ethers.utils.parseEther("100"));
 
   // TRANSFER some uLP tokens to second account
   await metaPool
