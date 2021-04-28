@@ -5,9 +5,45 @@ import { Big, RoundingMode } from "big.js";
 // to have decent precision
 Big.DP = 35;
 // to avoid exponential notation
-Big.PE = 35;
-Big.NE = -15;
+Big.PE = 105;
+Big.NE = -35;
 
+// returns (twapPrice - 1) * uADTotalSupply
+export function calcDollarsToMint(
+  uADTotalSupply: string,
+  twapPrice: string
+): BigNumber {
+  const uADSupply = new Big(uADTotalSupply);
+  const price = new Big(twapPrice);
+  const one = new Big(ethers.utils.parseEther("1").toString());
+  return BigNumber.from(
+    price
+      .sub(one)
+      .mul(uADSupply.div(one))
+      .round(0, RoundingMode.RoundDown)
+      .toString()
+  );
+}
+
+// returns amount +  (1- TWAP_Price)%.
+export function calculateIncentiveAmount(
+  amountInWEI: string,
+  curPriceInWEI: string
+): BigNumber {
+  // should be in ETH
+  const one = new Big(ethers.utils.parseEther("1").toString());
+  const amount = new Big(amountInWEI);
+  // returns amount +  (1- TWAP_Price)%.
+  return BigNumber.from(
+    one
+      .sub(curPriceInWEI)
+      .mul(amount.div(one))
+      .round(0, RoundingMode.RoundDown)
+      .toString()
+  );
+}
+
+// returns amount * percentage (in wei)
 export function calcPercentage(amount: string, percentage: string): BigNumber {
   // calculate amount * percentage
   const value = new Big(amount);
@@ -18,6 +54,7 @@ export function calcPercentage(amount: string, percentage: string): BigNumber {
   );
 }
 
+// returns amount * 1 / (1-debt/totalsupply)²
 export function calcPremium(
   amount: string,
   uADTotalSupply: string,

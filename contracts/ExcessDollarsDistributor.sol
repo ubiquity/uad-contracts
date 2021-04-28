@@ -34,7 +34,6 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         //the excess dollars which were sent to this contract by the coupon manager
         uint256 excessDollars =
             IERC20Ubiquity(manager.uADTokenAddress()).balanceOf(address(this));
-        console.log("## distributeDollars   excessDollars:%s", excessDollars);
         if (excessDollars > _minAmountToDistribute) {
             address treasuryAddress = manager.treasuryAddress();
 
@@ -61,7 +60,6 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         address[] memory path = new address[](2);
         path[0] = manager.uADTokenAddress();
         path[1] = manager.uGOVTokenAddress();
-        console.log("## _swapUADForUGOV   amountIn:%s", amountIn.toUInt());
         uint256[] memory amounts =
             _router.swapExactTokensForTokens(
                 amountIn.toUInt(),
@@ -97,12 +95,7 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
             address(_router),
             amountUGOV
         );
-        console.log(
-            "## amount:%s amountUGOV:%s amountUAD:%s",
-            amount,
-            amountUGOV,
-            amountUAD.toUInt()
-        );
+
         // deposit liquidity and transfer to zero address (burn)
         _router.addLiquidity(
             manager.uADTokenAddress(),

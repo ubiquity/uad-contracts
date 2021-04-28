@@ -1,11 +1,11 @@
 import { BigNumber, Signer } from "ethers";
 import { ethers, getNamedAccounts } from "hardhat";
 import { expect } from "chai";
-import { Big, RoundingMode } from "big.js";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { MockuADToken } from "../artifacts/types/MockuADToken";
 import { MockTWAPOracle } from "../artifacts/types/MockTWAPOracle";
 import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
+import { calcDollarsToMint } from "./utils/calc";
 
 describe("DollarMintingCalculator", () => {
   let metaPoolAddr: string;
@@ -15,11 +15,7 @@ describe("DollarMintingCalculator", () => {
   let dollarMintingCalculator: DollarMintingCalculator;
   let admin: Signer;
   let uAD: MockuADToken;
-  // to have decent precision
-  Big.DP = 35;
-  // to avoid exponential notation
-  Big.PE = 105;
-  Big.NE = -35;
+
   const setup = async (
     uADTotalSupply: BigNumber,
     priceUAD: BigNumber,
@@ -43,19 +39,7 @@ describe("DollarMintingCalculator", () => {
 
     await manager.setTwapOracleAddress(twapOracle.address);
   };
-  const calcDollarsToMint = (
-    uADTotalSupply: Big,
-    twapPrice: Big
-  ): BigNumber => {
-    const one = new Big(ethers.utils.parseEther("1").toString());
-    return BigNumber.from(
-      twapPrice
-        .sub(one)
-        .mul(uADTotalSupply.div(one))
-        .round(0, RoundingMode.RoundDown)
-        .toString()
-    );
-  };
+
   beforeEach(async () => {
     ({ curve3CrvToken } = await getNamedAccounts());
     // list of accounts
@@ -107,8 +91,8 @@ describe("DollarMintingCalculator", () => {
     await setup(totSupply, uadPrice, uadPrice);
     const toMint = await dollarMintingCalculator.getDollarsToMint();
     const calculatedToMint = calcDollarsToMint(
-      new Big(totSupply.toString()),
-      new Big(uadPrice.toString())
+      totSupply.toString(),
+      uadPrice.toString()
     );
     expect(toMint).to.equal(calculatedToMint);
   });
@@ -120,8 +104,8 @@ describe("DollarMintingCalculator", () => {
     // check tfor overflow revert
     const toMint = await dollarMintingCalculator.getDollarsToMint();
     const calculatedToMint = calcDollarsToMint(
-      new Big(totSupply.toString()),
-      new Big(uadPrice.toString())
+      totSupply.toString(),
+      uadPrice.toString()
     );
     const delta = calculatedToMint.sub(toMint);
 
@@ -137,8 +121,8 @@ describe("DollarMintingCalculator", () => {
     // check tfor overflow revert
     const toMint = await dollarMintingCalculator.getDollarsToMint();
     const calculatedToMint = calcDollarsToMint(
-      new Big(totSupply.toString()),
-      new Big(uadPrice.toString())
+      totSupply.toString(),
+      uadPrice.toString()
     );
     expect(toMint).to.equal(calculatedToMint);
   });

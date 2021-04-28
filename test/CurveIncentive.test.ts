@@ -1,7 +1,6 @@
-import { BigNumber, ContractTransaction, Signer } from "ethers";
+import { ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
-import Big, { RoundingMode } from "big.js";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
@@ -17,6 +16,7 @@ import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { swap3CRVtoUAD, swapDAItoUAD, swapUADto3CRV } from "./utils/swap";
+import { calculateIncentiveAmount } from "./utils/calc";
 
 describe("CurveIncentive", () => {
   let metaPool: IMetaPool;
@@ -46,28 +46,6 @@ describe("CurveIncentive", () => {
   let mockAutoRedeemToken: MockAutoRedeemToken;
   let excessDollarsDistributor: ExcessDollarsDistributor;
   const oneETH = ethers.utils.parseEther("1");
-
-  const calculateIncentiveAmount = (
-    amountInWEI: string,
-    curPriceInWEI: string
-  ): BigNumber => {
-    // to have decent precision
-    Big.DP = 35;
-    // to avoid exponential notation
-    Big.PE = 105;
-    Big.NE = -35;
-    // should be in ETH
-    const one = new Big(ethers.utils.parseEther("1").toString());
-    const amount = new Big(amountInWEI);
-    // returns amount +  (1- TWAP_Price)%.
-    return BigNumber.from(
-      one
-        .sub(curPriceInWEI)
-        .mul(amount.div(one))
-        .round(0, RoundingMode.RoundDown)
-        .toString()
-    );
-  };
 
   const couponLengthBlocks = 100;
   beforeEach(async () => {
