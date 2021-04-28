@@ -1,4 +1,4 @@
-import { BigNumber, ContractTransaction, Signer } from "ethers";
+import { ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { describe, it } from "mocha";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
@@ -9,6 +9,7 @@ import { ERC20 } from "../artifacts/types/ERC20";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { ICurveFactory } from "../artifacts/types/ICurveFactory";
+import { swapDAItoUAD, swapUADto3CRV, swapUADtoDAI } from "./utils/swap";
 
 describe("MetaPool", () => {
   let metaPool: IMetaPool;
@@ -29,76 +30,7 @@ describe("MetaPool", () => {
   let daiWhaleAddress: string;
   let curveWhale: Signer;
   let twapOracle: TWAPOracle;
-  const swapDAItoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyUAD = await metaPool["get_dy_underlying(int128,int128,uint256)"](
-      1,
-      0,
-      amount
-    );
-    const expectedMinDAI = dyUAD.div(100).mul(99);
-    // secondAccount need to approve metaPool for sending its uAD
-    await daiToken.connect(signer).approve(metaPool.address, amount);
-    // swap 1 DAI  =>  1uAD
-    await metaPool
-      .connect(signer)
-      ["exchange_underlying(int128,int128,uint256,uint256)"](
-        1,
-        0,
-        amount,
-        expectedMinDAI
-      );
-    return dyUAD;
-  };
-  const swapUADtoDAI = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyuADtoDAI = await metaPool[
-      "get_dy_underlying(int128,int128,uint256)"
-    ](0, 1, amount);
-    const expectedMinDAI = dyuADtoDAI.div(100).mul(99);
 
-    // secondAccount need to approve metaPool for sending its uAD
-    await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap 1uAD => 1 DAI
-    await metaPool
-      .connect(signer)
-      ["exchange_underlying(int128,int128,uint256,uint256)"](
-        0,
-        1,
-        amount,
-        expectedMinDAI
-      );
-    return dyuADtoDAI;
-  };
-
-  const swapUADto3CRV = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
-      0,
-      1,
-      amount
-    );
-    const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap  uAD => x 3CRV
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](
-        0,
-        1,
-        amount,
-        expectedMin3CRV
-      );
-    return dyuADto3CRV;
-  };
   beforeEach(async () => {
     ({
       DAI,
@@ -199,9 +131,11 @@ describe("MetaPool", () => {
         secondAccountAdr
       );
       // Exchange (swap) DAI to UAD
-      const dyUAD = await swapDAItoUAD(amountToSwap, secondAccount);
-      const adminFee = await curvePoolFactory.get_admin_balances(
-        metaPool.address
+      const dyUAD = await swapDAItoUAD(
+        metaPool,
+        daiToken,
+        amountToSwap,
+        secondAccount
       );
 
       const secondAccountDAIBalanceAfter = await daiToken.balanceOf(
@@ -230,6 +164,8 @@ describe("MetaPool", () => {
 
       // Exchange (swap)
       const dyuADtoDAI = await swapUADtoDAI(
+        metaPool,
+        uAD,
         ethers.utils.parseEther("1"),
         secondAccount
       );
@@ -252,6 +188,8 @@ describe("MetaPool", () => {
 
       // Exchange (swap)
       const dyuADto3CRV = await swapUADto3CRV(
+        metaPool,
+        uAD,
         ethers.utils.parseEther("1"),
         secondAccount
       );

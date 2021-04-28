@@ -4,11 +4,14 @@ pragma solidity ^0.8.3;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IERC20Ubiquity.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./interfaces/IExcessDollarsDistributor.sol";
 import "./interfaces/IMetaPool.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
-import "./UbiquityAlgorithmicDollar.sol";
+import "./SushiSwapPool.sol";
 import "./libs/ABDKMathQuad.sol";
+import "hardhat/console.sol";
 
 /// @title An excess dollar distributor which sends dollars to treasury,
 /// lp rewards and inflation rewards
@@ -18,6 +21,9 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;
     UbiquityAlgorithmicDollarManager public manager;
+    uint256 private immutable _minAmountToDistribute = 100 ether;
+    IUniswapV2Router02 private immutable _router =
+        IUniswapV2Router02(0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F); // SushiV2Router02
 
     /// @param _manager the address of the manager contract so we can fetch variables
     constructor(address _manager) {
@@ -27,18 +33,16 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
     function distributeDollars() external override {
         //the excess dollars which were sent to this contract by the coupon manager
         uint256 excessDollars =
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress()).balanceOf(
-                address(this)
-            );
-
-        if (excessDollars > 0) {
+            IERC20Ubiquity(manager.uADTokenAddress()).balanceOf(address(this));
+        console.log("## distributeDollars   excessDollars:%s", excessDollars);
+        if (excessDollars > _minAmountToDistribute) {
             address treasuryAddress = manager.treasuryAddress();
 
             // curve uAD-3CRV liquidity pool
             uint256 tenPercent =
                 excessDollars.fromUInt().div(uint256(10).fromUInt()).toUInt();
 
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress()).transfer(
+            IERC20Ubiquity(manager.uADTokenAddress()).safeTransfer(
                 treasuryAddress,
                 tenPercent
             );
@@ -52,17 +56,63 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         }
     }
 
+    // swap half amount to uGOV
+    function _swapUADForUGOV(bytes16 amountIn) internal returns (uint256) {
+        address[] memory path = new address[](2);
+        path[0] = manager.uADTokenAddress();
+        path[1] = manager.uGOVTokenAddress();
+        console.log("## _swapUADForUGOV   amountIn:%s", amountIn.toUInt());
+        uint256[] memory amounts =
+            _router.swapExactTokensForTokens(
+                amountIn.toUInt(),
+                0,
+                path,
+                address(this),
+                block.timestamp + 100
+            );
+
+        return amounts[1];
+    }
+
     // buy-back and burn uGOV
     function _uGovBuyBackLPAndBurn(uint256 amount) internal {
-        //swap half amount to uGOV
-        // we need to approve sushi pool
-        // swap uAD=> x uGOV
-        // deposit liquidity
-        // burn LP token
-        // TODO BURN LP  here uad to let the tests pass
-        IERC20Ubiquity(manager.uADTokenAddress()).transfer(
-            manager.uADTokenAddress(),
+        bytes16 amountUAD = (amount.fromUInt()).div(uint256(2).fromUInt());
+
+        // we need to approve sushi router
+        IERC20Ubiquity(manager.uADTokenAddress()).safeApprove(
+            address(_router),
+            0
+        );
+        IERC20Ubiquity(manager.uADTokenAddress()).safeApprove(
+            address(_router),
             amount
+        );
+        uint256 amountUGOV = _swapUADForUGOV(amountUAD);
+
+        IERC20Ubiquity(manager.uGOVTokenAddress()).safeApprove(
+            address(_router),
+            0
+        );
+        IERC20Ubiquity(manager.uGOVTokenAddress()).safeApprove(
+            address(_router),
+            amountUGOV
+        );
+        console.log(
+            "## amount:%s amountUGOV:%s amountUAD:%s",
+            amount,
+            amountUGOV,
+            amountUAD.toUInt()
+        );
+        // deposit liquidity and transfer to zero address (burn)
+        _router.addLiquidity(
+            manager.uADTokenAddress(),
+            manager.uGOVTokenAddress(),
+            amountUAD.toUInt(),
+            amountUGOV,
+            0,
+            0,
+            address(0),
+            block.timestamp + 100
         );
     }
 

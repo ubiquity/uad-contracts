@@ -44,6 +44,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public autoRedeemPoolTokenAddress;
     address public treasuryAddress;
     address public uGOVTokenAddress;
+    address public sushiSwapPoolAddress; // sushi pool uAD-uGOV
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -67,7 +68,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     }
 
     // TODO Add a generic setter for extra addresses that needs to be linked
-
     function setTwapOracleAddress(address _twapOracleAddress)
         external
         onlyAdmin
@@ -125,6 +125,13 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         _excessDollarDistributors[
             debtCouponManagerAddress
         ] = excessCouponDistributor;
+    }
+
+    function setSushiSwapPoolAddress(address _sushiSwapPoolAddress)
+        external
+        onlyAdmin
+    {
+        sushiSwapPoolAddress = _sushiSwapPoolAddress;
     }
 
     /**

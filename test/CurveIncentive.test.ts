@@ -16,6 +16,7 @@ import { ExcessDollarsDistributor } from "../artifacts/types/ExcessDollarsDistri
 import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { ICurveFactory } from "../artifacts/types/ICurveFactory";
+import { swap3CRVtoUAD, swapDAItoUAD, swapUADto3CRV } from "./utils/swap";
 
 describe("CurveIncentive", () => {
   let metaPool: IMetaPool;
@@ -46,72 +47,6 @@ describe("CurveIncentive", () => {
   let excessDollarsDistributor: ExcessDollarsDistributor;
   const oneETH = ethers.utils.parseEther("1");
 
-  const swapDAItoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyDAITouAD = await metaPool[
-      "get_dy_underlying(int128,int128,uint256)"
-    ](1, 0, amount);
-    const expectedMinUAD = dyDAITouAD.div(100).mul(99);
-
-    // secondAccount need to approve metaPool for sending its uAD
-    await daiToken.connect(signer).approve(metaPool.address, amount);
-    // swap 1 DAI  =>  1uAD
-    await metaPool
-      .connect(signer)
-      ["exchange_underlying(int128,int128,uint256,uint256)"](
-        1,
-        0,
-        amount,
-        expectedMinUAD
-      );
-    return dyDAITouAD;
-  };
-
-  const swap3CRVtoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
-      1,
-      0,
-      amount
-    );
-    const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await crvToken.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
-    return dy3CRVtouAD;
-  };
-  const swapUADto3CRV = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
-      0,
-      1,
-      amount
-    );
-    const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](
-        0,
-        1,
-        amount,
-        expectedMin3CRV
-      );
-    return dyuADto3CRV;
-  };
   const calculateIncentiveAmount = (
     amountInWEI: string,
     curPriceInWEI: string
@@ -327,7 +262,12 @@ describe("CurveIncentive", () => {
     const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
 
-    const amountToBeSwapped = await swapUADto3CRV(amount, secondAccount);
+    const amountToBeSwapped = await swapUADto3CRV(
+      metaPool,
+      uAD,
+      amount,
+      secondAccount
+    );
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
@@ -361,6 +301,8 @@ describe("CurveIncentive", () => {
     const balanceUgovBefore = await uGOV.balanceOf(secondAccountAdr);
     // swap
     const amountToBeSwapped = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
       ethers.utils.parseEther("1000"),
       secondAccount
     );
@@ -404,7 +346,12 @@ describe("CurveIncentive", () => {
     const balanceDAIBefore = await daiToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
     const balanceUgovBefore = await uGOV.balanceOf(secondAccountAdr);
-    const amountToBeSwapped = await swapDAItoUAD(amount, secondAccount);
+    const amountToBeSwapped = await swapDAItoUAD(
+      metaPool,
+      daiToken,
+      amount,
+      secondAccount
+    );
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
@@ -461,6 +408,8 @@ describe("CurveIncentive", () => {
     const metaPoolBalanceUADBefore = await uAD.balanceOf(metaPool.address);
     // swap
     const amountToBeSwapped = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
       ethers.utils.parseEther("1000"),
       secondAccount
     );
@@ -502,7 +451,12 @@ describe("CurveIncentive", () => {
     const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
 
-    const amountToBeSwapped = await swapUADto3CRV(amount, secondAccount);
+    const amountToBeSwapped = await swapUADto3CRV(
+      metaPool,
+      uAD,
+      amount,
+      secondAccount
+    );
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);

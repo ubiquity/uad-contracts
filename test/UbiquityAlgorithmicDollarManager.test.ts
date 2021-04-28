@@ -7,6 +7,7 @@ import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { DebtCoupon } from "../artifacts/types/DebtCoupon";
+import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 
 describe("UbiquityAlgorithmicDollarManager", () => {
   // let bonding: Bonding;
@@ -63,6 +64,48 @@ describe("UbiquityAlgorithmicDollarManager", () => {
 
       expect(bondingShare.address.toLowerCase()).to.equal(
         bondingShareAddr.toLowerCase()
+      );
+    });
+  });
+  describe("sushiSwapPoolAddress", () => {
+    it("Set should revert if uAD is not set", async () => {
+      const sushiSwapPoolFactory = await ethers.getContractFactory(
+        "SushiSwapPool"
+      );
+      await expect(
+        sushiSwapPoolFactory.deploy(manager.address)
+      ).to.be.revertedWith("uAD Address not set");
+    });
+    it("Set should revert if uGOV is not set", async () => {
+      await manager.connect(admin).setuADTokenAddress(uAD.address);
+      const sushiSwapPoolFactory = await ethers.getContractFactory(
+        "SushiSwapPool"
+      );
+      await expect(
+        sushiSwapPoolFactory.deploy(manager.address)
+      ).to.be.revertedWith("uGOV Address not set");
+    });
+    it("Set should work", async () => {
+      await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
+      await manager.connect(admin).setuADTokenAddress(uAD.address);
+
+      const sushiSwapPoolFactory = await ethers.getContractFactory(
+        "SushiSwapPool"
+      );
+      const sushiSwapPool = (await sushiSwapPoolFactory.deploy(
+        manager.address
+      )) as SushiSwapPool;
+
+      await manager
+        .connect(admin)
+        .setSushiSwapPoolAddress(sushiSwapPool.address);
+
+      const sushiSwapPoolAddr = BigNumber.from(
+        await ethers.provider.getStorageAt(manager.address, 13)
+      ).toHexString();
+
+      expect(sushiSwapPool.address.toLowerCase()).to.equal(
+        sushiSwapPoolAddr.toLowerCase()
       );
     });
   });
