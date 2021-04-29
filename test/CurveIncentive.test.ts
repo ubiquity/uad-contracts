@@ -14,7 +14,6 @@ import { MockAutoRedeemToken } from "../artifacts/types/MockAutoRedeemToken";
 import { ExcessDollarsDistributor } from "../artifacts/types/ExcessDollarsDistributor";
 import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
-import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { swap3CRVtoUAD, swapDAItoUAD, swapUADto3CRV } from "./utils/swap";
 import { calculateIncentiveAmount } from "./utils/calc";
 
@@ -27,7 +26,6 @@ describe("CurveIncentive", () => {
   let daiToken: ERC20;
   let twapOracle: TWAPOracle;
   let debtCoupon: DebtCoupon;
-  let curvePoolFactory: ICurveFactory;
   let admin: Signer;
   let secondAccount: Signer;
   let operation: Signer;
@@ -206,7 +204,6 @@ describe("CurveIncentive", () => {
     await manager.setAutoRedeemPoolTokenAddress(mockAutoRedeemToken.address);
 
     // when the debtManager mint uAD it there is too much it distribute the excess to
-    // ????TODO
     const excessDollarsDistributorFactory = await ethers.getContractFactory(
       "ExcessDollarsDistributor"
     );
@@ -221,11 +218,6 @@ describe("CurveIncentive", () => {
 
     // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
     await manager.setTreasuryAddress(await treasury.getAddress());
-
-    curvePoolFactory = (await ethers.getContractAt(
-      "ICurveFactory",
-      curveFactory
-    )) as ICurveFactory;
   });
 
   it("curve sell penalty should be call when swapping uAD for 3CRV when uAD <1$", async () => {
@@ -500,8 +492,4 @@ describe("CurveIncentive", () => {
     expect(metaPoolBalanceUADBefore).to.equal(metaPoolBalanceUADAfter);
     expect(balance3CRVBefore).to.equal(balance3CRVAfter);
   });
-  // todo ugov incetive
-  // todo emit event set incentive
-  // todo exempt address
-  // update incetive contract
 });
