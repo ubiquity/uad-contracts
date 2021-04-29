@@ -26,11 +26,14 @@ contract Bonding is CollectableDust {
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
     uint256 public blockRonding = 100;
+    uint256 public uGOVPerBlock = 1;
 
     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
     event SablierUpdated(address _sablier);
     event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
     event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
+    event BlockRondingUpdated(uint256 _blockRonding);
+    event UGOVPerBlockUpdated(uint256 _uGOVPerBlock);
 
     modifier onlyBondingManager() {
         require(
@@ -99,6 +102,15 @@ contract Bonding is CollectableDust {
         onlyBondingManager
     {
         blockRonding = _blockRonding;
+        emit BlockRondingUpdated(_blockRonding);
+    }
+
+    function setUGOVPerBlock(uint256 _uGOVPerBlock)
+        external
+        onlyBondingManager
+    {
+        uGOVPerBlock = _uGOVPerBlock;
+        emit UGOVPerBlockUpdated(_uGOVPerBlock);
     }
 
     /*
@@ -213,6 +225,8 @@ contract Bonding is CollectableDust {
                 manager.uADTokenAddress()
             );
     }
+
+    function currentPendingUGovReward() public view returns (uint256) {}
 
     function _mint(uint256 _sharesAmount, uint256 _id) internal {
         uint256 _currentShareValue = currentShareValue();
