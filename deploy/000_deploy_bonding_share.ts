@@ -18,6 +18,7 @@ const deployFunc: DeployFunction = async ({ deployments }) => {
   )) as BondingShare;
 
   console.log(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     await bs.connect(admin).getRoleMember(ethers.utils.id("MINTER_ROLE"), "0")
   );
 };

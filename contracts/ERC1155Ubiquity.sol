@@ -6,11 +6,6 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 
-/**
- * @dev ERC1155Ubiquitu token with totalSupply (per id).
- *
- */
-
 /// @title ERC1155 Ubiquity preset
 /// @author Ubiquity Algorithmic Dollar
 /// @notice ERC1155 with :
@@ -67,33 +62,6 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         manager = UbiquityAlgorithmicDollarManager(_manager);
     }
 
-    /**
-     * @dev Total amount of tokens in with a given id.
-     */
-    function totalSupply() public view virtual returns (uint256) {
-        return _totalSupply;
-    }
-
-    function _burn(
-        address account,
-        uint256 id,
-        uint256 amount
-    ) internal virtual override whenNotPaused {
-        super._burn(account, id, amount);
-        _totalSupply -= amount;
-    }
-
-    function _burnBatch(
-        address account,
-        uint256[] memory ids,
-        uint256[] memory amounts
-    ) internal virtual override whenNotPaused {
-        super._burnBatch(account, ids, amounts);
-        for (uint256 i = 0; i < ids.length; ++i) {
-            _totalSupply -= amounts[i];
-        }
-    }
-
     // @dev Creates `amount` new tokens for `to`, of token type `id`.
     function mint(
         address to,
@@ -136,6 +104,33 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
      */
     function unpause() public virtual onlyPauser {
         _unpause();
+    }
+
+    /**
+     * @dev Total amount of tokens in with a given id.
+     */
+    function totalSupply() public view virtual returns (uint256) {
+        return _totalSupply;
+    }
+
+    function _burn(
+        address account,
+        uint256 id,
+        uint256 amount
+    ) internal virtual override whenNotPaused {
+        super._burn(account, id, amount);
+        _totalSupply -= amount;
+    }
+
+    function _burnBatch(
+        address account,
+        uint256[] memory ids,
+        uint256[] memory amounts
+    ) internal virtual override whenNotPaused {
+        super._burnBatch(account, ids, amounts);
+        for (uint256 i = 0; i < ids.length; ++i) {
+            _totalSupply -= amounts[i];
+        }
     }
 
     function _beforeTokenTransfer(

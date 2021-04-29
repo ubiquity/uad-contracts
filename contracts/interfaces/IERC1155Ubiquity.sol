@@ -6,10 +6,6 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 /// @title ERC1155 Ubiquiti preset interface
 /// @author Ubiquity Algorithmic Dollar
 interface IERC1155Ubiquity is IERC1155 {
-    function totalSupply() external view returns (uint256);
-
-    function exists(uint256 id) external view returns (bool);
-
     function mint(
         address to,
         uint256 id,
@@ -27,4 +23,8 @@ interface IERC1155Ubiquity is IERC1155 {
     function pause() external;
 
     function unpause() external;
+
+    function totalSupply() external view returns (uint256);
+
+    function exists(uint256 id) external view returns (bool);
 }

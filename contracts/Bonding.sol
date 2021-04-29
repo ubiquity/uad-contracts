@@ -215,11 +215,12 @@ contract Bonding is CollectableDust {
         //     }
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function redeemAllShares() public {
-        // for each id in chained list
+        // for each id of msg.sender
         // redeemShares(
         //     IERC20(manager.bondingShareAddress()).balanceOf(msg.sender),
-        //     _id
+        //     id
         // );
     }
 
