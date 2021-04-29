@@ -94,7 +94,7 @@ contract CurveUADIncentive is IIncentive {
 
         uint256 incentive = _getPercentDeviationFromUnderPeg(amountIn);
         /* swapping 3CRV (or underlying) for uAD (aka buying uAD) will mint x% of uGOV.
-             Where x = (1- TWAP_Price) *100.
+             Where x = (1- TWAP_Price) * amountIn.
             E.g. uAD = 0.8, you buy 1000 uAD, you get (1-0.8)*1000 = 200 uGOV */
         if (incentive != 0) {
             // this means CurveIncentive should be a minter of UGOV
@@ -105,7 +105,8 @@ contract CurveUADIncentive is IIncentive {
         }
     }
 
-    /// @notice returns the percentage of deviation from the peg when uAD is <1$
+    /// @notice returns the percentage of deviation from the peg multiplied by amount
+    //          when uAD is <1$
     function _getPercentDeviationFromUnderPeg(uint256 amount)
         internal
         returns (uint256)
@@ -122,7 +123,7 @@ contract CurveUADIncentive is IIncentive {
                 .sub(curPrice.fromUInt())
                 .mul((amount.fromUInt().div(_one)))
                 .toUInt();
-        // returns (1- TWAP_Price) *100.
+        // returns (1- TWAP_Price) * amount.
         return res;
     }
 
