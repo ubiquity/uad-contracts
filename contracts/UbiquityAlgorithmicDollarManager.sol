@@ -45,6 +45,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public treasuryAddress;
     address public uGOVTokenAddress;
     address public sushiSwapPoolAddress; // sushi pool uAD-uGOV
+    address public masterChefAddress;
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -132,6 +133,13 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         onlyAdmin
     {
         sushiSwapPoolAddress = _sushiSwapPoolAddress;
+    }
+
+    function setMasterChefAddress(address _masterChefAddress)
+        external
+        onlyAdmin
+    {
+        masterChefAddress = _masterChefAddress;
     }
 
     /**
