@@ -55,7 +55,7 @@ describe("Bonding3", () => {
     });
 
     it("second account should be able to redeem after 1 week", async () => {
-      console.log("should take some time! but less than 1 week...");
+      // console.log("should take some time! but less than 1 week...");
       await mineNBlock(45361);
       await redeemShares(secondAccount, idSecond);
 
@@ -75,7 +75,7 @@ describe("Bonding3", () => {
       expect(idAdmin).to.be.equal(idSecond);
 
       const totalUBOND: BigNumber = await bondingShare.totalSupply();
-      log(totalUBOND);
+      // log(totalUBOND);
       expect(totalUBOND).to.be.gte(one.mul(150));
     });
   });

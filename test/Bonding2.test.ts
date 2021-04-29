@@ -42,8 +42,8 @@ describe("Bonding2", () => {
     it("admin should be able to bound", async () => {
       const { id, bond } = await bondTokens(admin, one.mul(100), 1);
       idAdmin = id;
-      console.log("idAdmin", idAdmin);
-      log(bond);
+      // console.log("idAdmin", idAdmin);
+      // log(bond);
       expect(bond).to.be.gte(one.mul(100));
       // console.log("total uLP", log(await metaPool.balanceOf(bonding.address)));
     });
@@ -52,16 +52,16 @@ describe("Bonding2", () => {
 
     it("total uBOND should be 100.1", async () => {
       const totalUBOND: BigNumber = await bondingShare.totalSupply();
-      log(totalUBOND);
+      // log(totalUBOND);
       expect(totalUBOND).to.be.gte(one.mul(100));
     });
 
     it("second account should be able to bound", async () => {
       const { id, bond } = await bondTokens(secondAccount, one.mul(100), 1);
       idSecond = id;
-      console.log("idSecond", idSecond);
+      // console.log("idSecond", idSecond);
 
-      log(bond);
+      // log(bond);
       expect(bond).to.be.gte(one.mul(33));
     });
     // uLP = 300
@@ -75,13 +75,13 @@ describe("Bonding2", () => {
 
     it("total uLP should be 300", async () => {
       const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
-      log(totalLP);
+      // log(totalLP);
       expect(totalLP).to.be.equal(one.mul(300));
     });
 
     it("total uBOND should be more than 133", async () => {
       const totalUBOND: BigNumber = await bondingShare.totalSupply();
-      log(totalUBOND);
+      // log(totalUBOND);
       expect(totalUBOND).to.be.gte(one.mul(133));
     });
 
@@ -97,14 +97,14 @@ describe("Bonding2", () => {
 
     it("total uLP should be 75 after first redeem", async () => {
       const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
-      log(totalLP);
+      // log(totalLP);
       expect(totalLP).to.be.gte(one.mul(75));
     });
 
     it("second account should be able to redeem uBOND", async () => {
       await redeemShares(secondAccount, idSecond);
       const bal = await bondingShare.balanceOf(secondAddress, idSecond);
-      log(bal);
+      // log(bal);
       expect(bal).to.be.equal(0);
     });
     // uLP = 1000
@@ -119,7 +119,7 @@ describe("Bonding2", () => {
 
     it("total uLP should be 0 after all redeem", async () => {
       const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
-      log(totalLP);
+      // log(totalLP);
       expect(totalLP).to.be.lt(ten9);
     });
 
