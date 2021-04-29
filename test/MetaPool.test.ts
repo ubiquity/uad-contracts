@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { describe, it } from "mocha";
@@ -497,6 +496,7 @@ describe("MetaPool", () => {
         DAI,
         USDT
       );
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       expect(indices[2]).to.be.true;
       expect(indices[0]).to.equal(1);
       expect(indices[1]).to.equal(3);
