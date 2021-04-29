@@ -3,7 +3,6 @@ pragma solidity ^0.8.3;
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "hardhat/console.sol";
 
@@ -16,6 +15,11 @@ contract SushiSwapPool {
 
     constructor(address _manager) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
+        require(manager.uADTokenAddress() != address(0), "uAD Address not set");
+        require(
+            manager.uGOVTokenAddress() != address(0),
+            "uGOV Address not set"
+        );
         // check if pair already exist
         address pool =
             factory.getPair(

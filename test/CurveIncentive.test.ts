@@ -1,7 +1,6 @@
-import { BigNumber, ContractTransaction, Signer } from "ethers";
+import { ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
-import Big, { RoundingMode } from "big.js";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
@@ -15,7 +14,8 @@ import { MockAutoRedeemToken } from "../artifacts/types/MockAutoRedeemToken";
 import { ExcessDollarsDistributor } from "../artifacts/types/ExcessDollarsDistributor";
 import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
-import { ICurveFactory } from "../artifacts/types/ICurveFactory";
+import { swap3CRVtoUAD, swapDAItoUAD, swapUADto3CRV } from "./utils/swap";
+import { calculateIncentiveAmount } from "./utils/calc";
 
 describe("CurveIncentive", () => {
   let metaPool: IMetaPool;
@@ -30,8 +30,6 @@ describe("CurveIncentive", () => {
   let secondAccount: Signer;
   let operation: Signer;
   let treasury: Signer;
-  let uGOVFund: Signer;
-  let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
   let uGOV: UbiquityGovernance;
   let crvToken: ERC20;
@@ -47,94 +45,6 @@ describe("CurveIncentive", () => {
   let excessDollarsDistributor: ExcessDollarsDistributor;
   const oneETH = ethers.utils.parseEther("1");
 
-  const swapDAItoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyDAITouAD = await metaPool[
-      "get_dy_underlying(int128,int128,uint256)"
-    ](1, 0, amount);
-    const expectedMinUAD = dyDAITouAD.div(100).mul(99);
-
-    // secondAccount need to approve metaPool for sending its uAD
-    await daiToken.connect(signer).approve(metaPool.address, amount);
-    // swap 1 DAI  =>  1uAD
-    await metaPool
-      .connect(signer)
-      ["exchange_underlying(int128,int128,uint256,uint256)"](
-        1,
-        0,
-        amount,
-        expectedMinUAD
-      );
-    return dyDAITouAD;
-  };
-
-  const swap3CRVtoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
-      1,
-      0,
-      amount
-    );
-    const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await crvToken.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
-    return dy3CRVtouAD;
-  };
-  const swapUADto3CRV = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
-      0,
-      1,
-      amount
-    );
-    const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](
-        0,
-        1,
-        amount,
-        expectedMin3CRV
-      );
-    return dyuADto3CRV;
-  };
-  const calculateIncentiveAmount = (
-    amountInWEI: string,
-    curPriceInWEI: string
-  ): BigNumber => {
-    // to have decent precision
-    Big.DP = 35;
-    // to avoid exponential notation
-    Big.PE = 105;
-    Big.NE = -35;
-    // should be in ETH
-    const one = new Big(ethers.utils.parseEther("1").toString());
-    const amount = new Big(amountInWEI);
-    // returns amount +  (1- TWAP_Price)%.
-    return BigNumber.from(
-      one
-        .sub(curPriceInWEI)
-        .mul(amount.div(one))
-        .round(0, RoundingMode.RoundDown)
-        .toString()
-    );
-  };
-
   const couponLengthBlocks = 100;
   beforeEach(async () => {
     // list of accounts
@@ -146,14 +56,7 @@ describe("CurveIncentive", () => {
       curveWhaleAddress,
       daiWhaleAddress,
     } = await getNamedAccounts());
-    [
-      admin,
-      secondAccount,
-      operation,
-      treasury,
-      uGOVFund,
-      lpReward,
-    ] = await ethers.getSigners();
+    [admin, secondAccount, operation, treasury] = await ethers.getSigners();
 
     // deploy manager
     const UADMgr = await ethers.getContractFactory(
@@ -301,7 +204,6 @@ describe("CurveIncentive", () => {
     await manager.setAutoRedeemPoolTokenAddress(mockAutoRedeemToken.address);
 
     // when the debtManager mint uAD it there is too much it distribute the excess to
-    // ????TODO
     const excessDollarsDistributorFactory = await ethers.getContractFactory(
       "ExcessDollarsDistributor"
     );
@@ -316,13 +218,6 @@ describe("CurveIncentive", () => {
 
     // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
     await manager.setTreasuryAddress(await treasury.getAddress());
-    await manager.setuGovFundAddress(await uGOVFund.getAddress());
-    await manager.setLpRewardsAddress(await lpReward.getAddress());
-
-    (await ethers.getContractAt(
-      "ICurveFactory",
-      curveFactory
-    )) as ICurveFactory;
   });
 
   it("curve sell penalty should be call when swapping uAD for 3CRV when uAD <1$", async () => {
@@ -337,7 +232,12 @@ describe("CurveIncentive", () => {
     const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
 
-    const amountToBeSwapped = await swapUADto3CRV(amount, secondAccount);
+    const amountToBeSwapped = await swapUADto3CRV(
+      metaPool,
+      uAD,
+      amount,
+      secondAccount
+    );
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
@@ -371,6 +271,8 @@ describe("CurveIncentive", () => {
     const balanceUgovBefore = await uGOV.balanceOf(secondAccountAdr);
     // swap
     const amountToBeSwapped = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
       ethers.utils.parseEther("1000"),
       secondAccount
     );
@@ -414,7 +316,12 @@ describe("CurveIncentive", () => {
     const balanceDAIBefore = await daiToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
     const balanceUgovBefore = await uGOV.balanceOf(secondAccountAdr);
-    const amountToBeSwapped = await swapDAItoUAD(amount, secondAccount);
+    const amountToBeSwapped = await swapDAItoUAD(
+      metaPool,
+      daiToken,
+      amount,
+      secondAccount
+    );
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);
@@ -471,6 +378,8 @@ describe("CurveIncentive", () => {
     const metaPoolBalanceUADBefore = await uAD.balanceOf(metaPool.address);
     // swap
     const amountToBeSwapped = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
       ethers.utils.parseEther("1000"),
       secondAccount
     );
@@ -512,7 +421,12 @@ describe("CurveIncentive", () => {
     const balance3CRVBefore = await crvToken.balanceOf(secondAccountAdr);
     const balanceUADBefore = await uAD.balanceOf(secondAccountAdr);
 
-    const amountToBeSwapped = await swapUADto3CRV(amount, secondAccount);
+    const amountToBeSwapped = await swapUADto3CRV(
+      metaPool,
+      uAD,
+      amount,
+      secondAccount
+    );
     const priceAfter = await twapOracle.consult(uAD.address);
     expect(priceAfter).to.be.lt(priceBefore);
     const balanceLPAfter = await metaPool.balanceOf(secondAccountAdr);

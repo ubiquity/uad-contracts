@@ -197,6 +197,8 @@ describe("SushiSwapPool", () => {
       );
 
       const totSupply = await poolContract.totalSupply();
+      // a small amount is burned for the first deposit
+      // see https://uniswap.org/whitepaper.pdf page 9 second paragraph
       expect(balance).to.equal(totSupply.sub(BigNumber.from(1000)));
     });
 

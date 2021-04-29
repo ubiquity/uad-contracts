@@ -209,19 +209,15 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         );
 
         mintClaimableDollars();
-
-        uint256 maxRedeemableCoupons =
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress()).balanceOf(
-                address(this)
-            );
+        UbiquityAlgorithmicDollar uAD =
+            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
+        uint256 maxRedeemableCoupons = uAD.balanceOf(address(this));
         uint256 couponsToRedeem = amount;
 
         if (amount > maxRedeemableCoupons) {
             couponsToRedeem = maxRedeemableCoupons;
         }
 
-        UbiquityAlgorithmicDollar uAD =
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         require(
             uAD.balanceOf(address(this)) > 0,
             "There aren't any uAD to redeem currently"
@@ -244,7 +240,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             IDollarMintingCalculator(manager.dollarCalculatorAddress())
                 .getDollarsToMint();
         uint256 dollarsToMint = totalMintableDollars - (dollarsMintedThisCycle);
-
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
 
@@ -252,7 +247,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         // uAD  dollars should  be minted to address(this)
         uAD.mint(address(this), dollarsToMint);
-
         MockAutoRedeemToken autoRedeemToken =
             MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
 
@@ -269,7 +263,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
                 IExcessDollarsDistributor(
                     manager.getExcessDollarsDistributor(address(this))
                 );
-
             //transfer excess dollars to the distributor and tell it to distribute
             uAD.transfer(
                 manager.getExcessDollarsDistributor(address(this)),

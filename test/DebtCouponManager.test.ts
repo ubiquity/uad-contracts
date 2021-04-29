@@ -1,7 +1,8 @@
 import { BigNumber, ContractTransaction, Signer } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
-import { Big, RoundingMode } from "big.js";
+import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
+import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
@@ -14,6 +15,9 @@ import { CouponsForDollarsCalculator } from "../artifacts/types/CouponsForDollar
 import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
 import { MockAutoRedeemToken } from "../artifacts/types/MockAutoRedeemToken";
 import { ExcessDollarsDistributor } from "../artifacts/types/ExcessDollarsDistributor";
+import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
+import { calcPercentage, calcPremium } from "./utils/calc";
+import { swap3CRVtoUAD, swapUADto3CRV } from "./utils/swap";
 
 describe("DebtCouponManager", () => {
   let metaPool: IMetaPool;
@@ -24,10 +28,11 @@ describe("DebtCouponManager", () => {
   let debtCoupon: DebtCoupon;
   let admin: Signer;
   let secondAccount: Signer;
+  let thirdAccount: Signer;
   let treasury: Signer;
-  let uGOVFund: Signer;
   let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
+  let uGOV: UbiquityGovernance;
   let crvToken: ERC20;
   let curveFactory: string;
   let curve3CrvBasePool: string;
@@ -37,71 +42,43 @@ describe("DebtCouponManager", () => {
   let dollarMintingCalculator: DollarMintingCalculator;
   let mockAutoRedeemToken: MockAutoRedeemToken;
   let excessDollarsDistributor: ExcessDollarsDistributor;
+  const routerAdr = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // SushiV2Router02
+  let router: IUniswapV2Router02;
   const oneETH = ethers.utils.parseEther("1");
-  const swap3CRVtoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
-      1,
-      0,
-      amount
-    );
-    const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
 
-    // signer need to approve metaPool for sending its coin
-    await crvToken.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
-    return dy3CRVtouAD;
-  };
-  const swapUADto3CRV = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
-      0,
-      1,
-      amount
+  const deployUADUGOVSushiPool = async (signer: Signer): Promise<void> => {
+    const signerAdr = await signer.getAddress();
+    // need some uGOV to provide liquidity
+    await uGOV.mint(signerAdr, ethers.utils.parseEther("1000"));
+    // add liquidity to the pair uAD-UGOV 1 UGOV = 10 UAD
+    const blockBefore = await ethers.provider.getBlock(
+      await ethers.provider.getBlockNumber()
     );
-    const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
+    // must allow to transfer token
+    await uAD
       .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](
-        0,
-        1,
-        amount,
-        expectedMin3CRV
+      .approve(routerAdr, ethers.utils.parseEther("10000"));
+    await uGOV
+      .connect(signer)
+      .approve(routerAdr, ethers.utils.parseEther("1000"));
+    await router
+      .connect(signer)
+      .addLiquidity(
+        uAD.address,
+        uGOV.address,
+        ethers.utils.parseEther("10000"),
+        ethers.utils.parseEther("1000"),
+        ethers.utils.parseEther("9900"),
+        ethers.utils.parseEther("990"),
+        signerAdr,
+        blockBefore.timestamp + 100
       );
-    return dyuADto3CRV;
-  };
-  const calcPercentage = (amount: string, percentage: string): BigNumber => {
-    const value = new Big(amount);
-    const one = new Big(ethers.utils.parseEther("1").toString());
-    const percent = new Big(percentage).div(one);
-    return BigNumber.from(
-      value.mul(percent).round(0, RoundingMode.RoundDown).toString()
-    );
-  };
-  const calcPremium = (
-    amount: string,
-    uADTotalSupply: string,
-    totalDebt: string
-  ): BigNumber => {
-    const one = new Big(1);
-    const uADTotSupply = new Big(uADTotalSupply);
-    const TotDebt = new Big(totalDebt);
-    const amountToPremium = new Big(amount);
-    const prem = amountToPremium.mul(
-      one.div(one.sub(TotDebt.div(uADTotSupply)).pow(2))
-    );
-    return BigNumber.from(prem.round(0, RoundingMode.RoundDown).toString());
+
+    const sushiFactory = await ethers.getContractFactory("SushiSwapPool");
+    const sushiUGOVPool = (await sushiFactory.deploy(
+      manager.address
+    )) as SushiSwapPool;
+    await manager.setSushiSwapPoolAddress(sushiUGOVPool.address);
   };
   const couponLengthBlocks = 100;
   beforeEach(async () => {
@@ -115,11 +92,16 @@ describe("DebtCouponManager", () => {
     [
       admin,
       secondAccount,
+      thirdAccount,
       treasury,
-      uGOVFund,
       lpReward,
     ] = await ethers.getSigners();
     await resetFork(12150000);
+    router = (await ethers.getContractAt(
+      "IUniswapV2Router02",
+      routerAdr
+    )) as IUniswapV2Router02;
+
     // deploy manager
     const UADMgr = await ethers.getContractFactory(
       "UbiquityAlgorithmicDollarManager"
@@ -131,7 +113,9 @@ describe("DebtCouponManager", () => {
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
     await manager.connect(admin).setuADTokenAddress(uAD.address);
-
+    const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
+    uGOV = (await uGOVFactory.deploy(manager.address)) as UbiquityGovernance;
+    await manager.setuGOVTokenAddress(uGOV.address);
     // set twap Oracle Address
     crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
 
@@ -147,7 +131,11 @@ describe("DebtCouponManager", () => {
       .transfer(manager.address, ethers.utils.parseEther("10000"));
     // just mint som uAD
     // mint 10000 uAD each for admin, manager and secondAccount
-    const mintings = [await secondAccount.getAddress(), manager.address].map(
+    const mintings = [
+      await secondAccount.getAddress(),
+      await thirdAccount.getAddress(),
+      manager.address,
+    ].map(
       async (signer): Promise<ContractTransaction> =>
         uAD.connect(admin).mint(signer, ethers.utils.parseEther("10000"))
     );
@@ -268,12 +256,11 @@ describe("DebtCouponManager", () => {
     await manager
       .connect(admin)
       .setTreasuryAddress(await treasury.getAddress());
+
     await manager
       .connect(admin)
-      .setuGovFundAddress(await uGOVFund.getAddress());
-    await manager
-      .connect(admin)
-      .setLpRewardsAddress(await lpReward.getAddress());
+      .setBondingContractAddress(await lpReward.getAddress());
+    await deployUADUGOVSushiPool(thirdAccount);
   });
   it("exchangeDollarsForCoupons should fail if uAD price is >= 1", async () => {
     await expect(
@@ -318,10 +305,6 @@ describe("DebtCouponManager", () => {
     const secondAccountAdr = await secondAccount.getAddress();
     const balanceBefore = await uAD.balanceOf(secondAccountAdr);
 
-    // approve debtCouponManager to burn user's token
-    /*   await uAD
-        .connect(secondAccount)
-        .approve(debtCouponMgr.address, amountToExchangeForCoupon); */
     const lastBlock = await ethers.provider.getBlock(
       await ethers.provider.getBlockNumber()
     );
@@ -367,11 +350,13 @@ describe("DebtCouponManager", () => {
 
     // Exchange (swap)
     let dy3CRVtouAD = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
       CRVAmountToSwap.sub(BigNumber.from(1)),
       curveWhale
     );
     await twapOracle.update();
-    await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
+    await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
     dy3CRVtouAD = dy3CRVtouAD.add(BigNumber.from(1));
     await twapOracle.update();
 
@@ -495,11 +480,13 @@ describe("DebtCouponManager", () => {
 
     // Exchange (swap)
     let dy3CRVtouAD = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
       CRVAmountToSwap.sub(BigNumber.from(1)),
       curveWhale
     );
     await twapOracle.update();
-    await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
+    await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
     dy3CRVtouAD = dy3CRVtouAD.add(BigNumber.from(1));
     await twapOracle.update();
     const whale3CRVBalance = await crvToken.balanceOf(curveWhaleAddress);
@@ -578,18 +565,6 @@ describe("DebtCouponManager", () => {
         await treasury.getAddress(),
         excessUAD.div(10).toString()
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        excessUAD.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        excessUAD.sub(excessUAD.div(10)).sub(excessUAD.div(10))
-      )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
         debtCouponMgr.address,
@@ -621,7 +596,10 @@ describe("DebtCouponManager", () => {
     const excessDistributoUADBalance = await uAD.balanceOf(
       excessDollarsDistributor.address
     );
-    expect(excessDistributoUADBalance).to.equal(0);
+    // small change remain
+    expect(excessDistributoUADBalance).to.equal(
+      BigNumber.from("16108107056259934")
+    );
   });
   it("calling exchangeDollarsForCoupons twice in up cycle should mint uAD a second time only based on the inflation", async () => {
     // Price must be below 1 to mint coupons
@@ -682,12 +660,17 @@ describe("DebtCouponManager", () => {
     // Note that we previously burnt uAD but as we get the price from curve the
     // uAD burnt didn't affect the price
 
-    const CRVAmountToSwap = ethers.utils.parseEther("1000");
+    const CRVAmountToSwap = ethers.utils.parseEther("10000");
 
     // Exchange (swap)
-    await swap3CRVtoUAD(CRVAmountToSwap.sub(BigNumber.from(1)), curveWhale);
+    await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
+      CRVAmountToSwap.sub(BigNumber.from(1)),
+      curveWhale
+    );
     await twapOracle.update();
-    await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
+    await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
     await twapOracle.update();
 
     const uADPriceAfterSwap = await twapOracle.consult(uAD.address);
@@ -712,7 +695,11 @@ describe("DebtCouponManager", () => {
     const mintableUAD = await dollarMintingCalculator.getDollarsToMint();
     const excessUAD = mintableUAD.sub(debtCoupons);
     const totalSupply = await uAD.totalSupply();
+    console.log(`mintableUAD:${ethers.utils.formatEther(mintableUAD)}
+    totalSupply:${ethers.utils.formatEther(totalSupply)}
+    uADPriceAfterSwap:${ethers.utils.formatEther(uADPriceAfterSwap)}
 
+    `);
     expect(mintableUAD).to.equal(
       calcPercentage(
         totalSupply.toString(),
@@ -730,6 +717,7 @@ describe("DebtCouponManager", () => {
       .to.emit(debtCoupon, "ApprovalForAll")
       .withArgs(secondAccountAdr, debtCouponMgr.address, true);
     // only redeem 1 coupon
+    console.log(`redeem coupon 1 `);
     await expect(
       debtCouponMgr.connect(secondAccount).redeemCoupons(expiryBlock, oneETH)
     )
@@ -754,18 +742,6 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         await treasury.getAddress(),
         excessUAD.div(10).toString()
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        excessUAD.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        excessUAD.sub(excessUAD.div(10)).sub(excessUAD.div(10))
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
@@ -799,19 +775,25 @@ describe("DebtCouponManager", () => {
     const excessDistributoUADBalance = await uAD.balanceOf(
       excessDollarsDistributor.address
     );
+    // no UAD should be left
     expect(excessDistributoUADBalance).to.equal(0);
     //  make sure that calling getDollarsToMint twice doesn't mint all dollars twice
     const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
     const dollarsToMint = mintableUADThisTime.sub(mintableUAD);
     // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
+    const beforeSecondRedeemTotalSupply = await uAD.totalSupply();
 
     const newCalculatedMintedUAD = calcPercentage(
-      mintableUAD.toString(),
+      beforeSecondRedeemTotalSupply.toString(),
       uADPriceAfterSwap.sub(oneETH).toString()
     );
-    expect(newCalculatedMintedUAD).to.equal(dollarsToMint);
+    const calculatedDollarToMint = newCalculatedMintedUAD.sub(mintableUAD);
 
+    // check that our calculation match the SC calculation
+    expect(calculatedDollarToMint).to.equal(dollarsToMint);
+    console.log(`dollarsToMint:${ethers.utils.formatEther(dollarsToMint)}`);
     // redeem the last 1 coupon
+    console.log(`redeem coupon 2`);
     await expect(
       debtCouponMgr.connect(secondAccount).redeemCoupons(expiryBlock, oneETH)
     )
@@ -837,18 +819,6 @@ describe("DebtCouponManager", () => {
         await treasury.getAddress(),
         dollarsToMint.div(10)
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        dollarsToMint.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        dollarsToMint.sub(dollarsToMint.div(10)).sub(dollarsToMint.div(10))
-      )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
         debtCouponMgr.address,
@@ -857,6 +827,14 @@ describe("DebtCouponManager", () => {
         expiryBlock,
         oneETH
       );
+
+    const finalTotalSupply = await uAD.totalSupply();
+
+    // total supply should only be increased by the difference between what has
+    // been calculated and what has been already minted
+    expect(finalTotalSupply).to.equal(
+      beforeSecondRedeemTotalSupply.add(dollarsToMint)
+    );
   });
   it("calling exchangeDollarsForCoupons twice after up and down cycle should reset dollarsMintedThisCycle to zero", async () => {
     // Price must be below 1 to mint coupons
@@ -914,12 +892,17 @@ describe("DebtCouponManager", () => {
     // Note that we previously burnt uAD but as we get the price from curve the
     // uAD burnt didn't affect the price
 
-    let CRVAmountToSwap = ethers.utils.parseEther("1000");
+    let CRVAmountToSwap = ethers.utils.parseEther("10000");
 
     // Exchange (swap)
-    await swap3CRVtoUAD(CRVAmountToSwap.sub(BigNumber.from(1)), curveWhale);
+    await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
+      CRVAmountToSwap.sub(BigNumber.from(1)),
+      curveWhale
+    );
     await twapOracle.update();
-    await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
+    await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
     await twapOracle.update();
 
     let uADPriceAfterSwap = await twapOracle.consult(uAD.address);
@@ -987,18 +970,6 @@ describe("DebtCouponManager", () => {
         await treasury.getAddress(),
         excessUAD.div(10).toString()
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        excessUAD.div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        excessUAD.sub(excessUAD.div(10)).sub(excessUAD.div(10))
-      )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
         debtCouponMgr.address,
@@ -1028,13 +999,19 @@ describe("DebtCouponManager", () => {
     const excessDistributoUADBalance = await uAD.balanceOf(
       excessDollarsDistributor.address
     );
+    // no UAD should be left
     expect(excessDistributoUADBalance).to.equal(0);
 
     // swap again to go down 1$ and up again
     const uADAmountToSwap = ethers.utils.parseEther("1000");
-    await swapUADto3CRV(uADAmountToSwap.sub(BigNumber.from(1)), secondAccount);
+    await swapUADto3CRV(
+      metaPool,
+      uAD,
+      uADAmountToSwap.sub(BigNumber.from(1)),
+      secondAccount
+    );
     await twapOracle.update();
-    await swapUADto3CRV(BigNumber.from(1), secondAccount);
+    await swapUADto3CRV(metaPool, uAD, BigNumber.from(1), secondAccount);
     await twapOracle.update();
 
     uADPriceAfterSwap = await twapOracle.consult(uAD.address);
@@ -1058,12 +1035,17 @@ describe("DebtCouponManager", () => {
       calcPremium(oneETH.toString(), totalSupply.toString(), oneETH.toString())
     );
     // swap to be > 1$
-    CRVAmountToSwap = ethers.utils.parseEther("1000");
+    CRVAmountToSwap = ethers.utils.parseEther("10000");
 
     // Exchange (swap)
-    await swap3CRVtoUAD(CRVAmountToSwap.sub(BigNumber.from(1)), curveWhale);
+    await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
+      CRVAmountToSwap.sub(BigNumber.from(1)),
+      curveWhale
+    );
     await twapOracle.update();
-    await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
+    await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
     await twapOracle.update();
 
     uADPriceAfterSwap = await twapOracle.consult(uAD.address);
@@ -1071,9 +1053,8 @@ describe("DebtCouponManager", () => {
 
     //  make sure that calling getDollarsToMint twice doesn't mint all dollars twice
     const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
-    // const dollarsToMint = mintableUADThisTime.sub(mintableUAD);
-    // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
 
+    // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
     totalSupply = await uAD.totalSupply();
     const newCalculatedMintedUAD = calcPercentage(
       totalSupply.toString(),
@@ -1108,21 +1089,6 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         await treasury.getAddress(),
         mintableUADThisTime.sub(newDebtCoupons).div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to uGov
-      .withArgs(
-        excessDollarsDistributor.address,
-        await uGOVFund.getAddress(),
-        mintableUADThisTime.sub(newDebtCoupons).div(10)
-      )
-      .and.to.emit(uAD, "Transfer") //  transfer of 80% of excess minted uAD to lpRewards
-      .withArgs(
-        excessDollarsDistributor.address,
-        await lpReward.getAddress(),
-        mintableUADThisTime
-          .sub(newDebtCoupons)
-          .sub(mintableUADThisTime.sub(newDebtCoupons).div(10))
-          .sub(mintableUADThisTime.sub(newDebtCoupons).div(10))
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(

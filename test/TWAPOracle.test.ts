@@ -9,6 +9,7 @@ import { ERC20 } from "../artifacts/types/ERC20";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { ICurveFactory } from "../artifacts/types/ICurveFactory";
+import { swap3CRVtoUAD, swapUADto3CRV, swapUADtoDAI } from "./utils/swap";
 
 describe("TWAPOracle", () => {
   let metaPool: IMetaPool;
@@ -27,71 +28,6 @@ describe("TWAPOracle", () => {
   let curveWhale: Signer;
   let twapOracle: TWAPOracle;
 
-  const swapUADtoDAI = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyuADtoDAI = await metaPool[
-      "get_dy_underlying(int128,int128,uint256)"
-    ](0, 1, amount);
-    const expectedMinDAI = dyuADtoDAI.div(100).mul(99);
-
-    // secondAccount need to approve metaPool for sending its uAD
-    await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap 1uAD => 1 DAI
-    await metaPool
-      .connect(signer)
-      ["exchange_underlying(int128,int128,uint256,uint256)"](
-        0,
-        1,
-        amount,
-        expectedMinDAI
-      );
-    return dyuADtoDAI;
-  };
-  const swap3CRVtoUAD = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dy3CRVtouAD = await metaPool["get_dy(int128,int128,uint256)"](
-      1,
-      0,
-      amount
-    );
-    const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await crvToken.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
-    return dy3CRVtouAD;
-  };
-  const swapUADto3CRV = async (
-    amount: BigNumber,
-    signer: Signer
-  ): Promise<BigNumber> => {
-    const dyuADto3CRV = await metaPool["get_dy(int128,int128,uint256)"](
-      0,
-      1,
-      amount
-    );
-    const expectedMin3CRV = dyuADto3CRV.div(100).mul(99);
-
-    // signer need to approve metaPool for sending its coin
-    await uAD.connect(signer).approve(metaPool.address, amount);
-    // secondAccount swap   3CRV=> x uAD
-    await metaPool
-      .connect(signer)
-      ["exchange(int128,int128,uint256,uint256)"](
-        0,
-        1,
-        amount,
-        expectedMin3CRV
-      );
-    return dyuADto3CRV;
-  };
   beforeEach(async () => {
     ({
       DAI,
@@ -212,6 +148,8 @@ describe("TWAPOracle", () => {
 
       // Exchange (swap)  uAD=>  3CRV
       const dyUADto3CRV = await swapUADto3CRV(
+        metaPool,
+        uAD,
         amountOfuADToSwap.sub(BigNumber.from(1)),
         secondAccount
       );
@@ -232,7 +170,7 @@ describe("TWAPOracle", () => {
       expect(curve3CRVPriceAfterSwap).to.be.gt(curve3CRVPriceBefore);
       expect(curveUADPriceAfterSwap).to.be.lt(curveUADPriceBefore);
       // to reflect the new price inside the TWAP we need one more swap
-      await swapUADto3CRV(BigNumber.from(1), secondAccount);
+      await swapUADto3CRV(metaPool, uAD, BigNumber.from(1), secondAccount);
       dyUADto3CRV.add(BigNumber.from(1));
 
       await twapOracle.update();
@@ -316,6 +254,8 @@ describe("TWAPOracle", () => {
 
       // Exchange (swap)  3CRV => uAD
       const dy3CRVtouAD = await swap3CRVtoUAD(
+        metaPool,
+        crvToken,
         amountOf3CRVToSwap.sub(BigNumber.from(1)),
         curveWhale
       );
@@ -333,7 +273,7 @@ describe("TWAPOracle", () => {
       ](0, 1, ethers.utils.parseEther("1"));
       expect(uADPrice).to.be.gt(ethers.utils.parseEther("1"));
       // to reflect the new price inside the TWAP we need one more swap
-      await swap3CRVtoUAD(BigNumber.from(1), curveWhale);
+      await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
       dy3CRVtouAD.add(BigNumber.from(1));
 
       await twapOracle.update();
@@ -412,6 +352,8 @@ describe("TWAPOracle", () => {
       expect(oraclePrice3Crv).to.equal(ethers.utils.parseEther("1"));
       // Exchange (swap) uAD => 3CRV
       const dyuADto3CRV = await swapUADto3CRV(
+        metaPool,
+        uAD,
         ethers.utils.parseEther("1"),
         secondAccount
       );
@@ -484,6 +426,8 @@ describe("TWAPOracle", () => {
       expect(oraclePrice3Crv).to.equal(ethers.utils.parseEther("1"));
       // Exchange (swap)
       const dyuADtoDAI = await swapUADtoDAI(
+        metaPool,
+        uAD,
         ethers.utils.parseEther("1"),
         secondAccount
       );
