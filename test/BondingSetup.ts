@@ -19,7 +19,7 @@ let uAD: UbiquityAlgorithmicDollar;
 let sablier: string;
 let DAI: string;
 let USDC: string;
-let curvePoolFactory: ICurveFactory;
+// let curvePoolFactory: ICurveFactory;
 let curveFactory: string;
 let curve3CrvBasePool: string;
 let curve3CrvToken: string;
@@ -77,6 +77,7 @@ async function redeemShares(signer: Signer, id: number): Promise<BigNumber> {
   const address = await signer.getAddress();
   const bond: BigNumber = await bondingShare.balanceOf(address, id);
 
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   await bondingShare.connect(signer).setApprovalForAll(bonding.address, true);
   await bonding.connect(signer).redeemShares(bond, id);
 
@@ -113,7 +114,7 @@ async function bondingSetup(): Promise<{
   [admin, secondAccount, thirdAccount] = await ethers.getSigners();
   adminAddress = await admin.getAddress();
   secondAddress = await secondAccount.getAddress();
-  thirdAddress = await thirdAccount.getAddress();
+  // thirdAddress = await thirdAccount.getAddress();
 
   // DEPLOY UbiquityAlgorithmicDollarManager Contract
   manager = (await (
@@ -133,7 +134,7 @@ async function bondingSetup(): Promise<{
       },
     })
   ).deploy(manager.address, sablier)) as Bonding;
-  await manager.setLpRewardsAddress(bonding.address);
+  await manager.setBondingContractAddress(bonding.address);
 
   // DEPLOY BondingShare Contract
   bondingShare = (await (
@@ -154,10 +155,10 @@ async function bondingSetup(): Promise<{
   )) as ERC20;
 
   // GET curve factory contract
-  curvePoolFactory = (await ethers.getContractAt(
-    "ICurveFactory",
-    curveFactory
-  )) as ICurveFactory;
+  // curvePoolFactory = (await ethers.getContractAt(
+  //   "ICurveFactory",
+  //   curveFactory
+  // )) as ICurveFactory;
 
   // Mint 10000 uAD each for admin, second account and manager
   const mintings = [adminAddress, secondAddress, manager.address].map(

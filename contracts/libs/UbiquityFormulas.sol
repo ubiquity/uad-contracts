@@ -66,7 +66,7 @@ library UbiquityFormulas {
         uint256 _totalULP,
         uint256 _totalUBOND,
         uint256 _targetPrice
-    ) public view returns (uint256 _priceUBOND) {
+    ) public pure returns (uint256 _priceUBOND) {
         bytes16 LP = _totalULP.fromUInt();
         bytes16 S = _totalUBOND.fromUInt();
         bytes16 R = _totalUBOND == 0 ? uint256(1).fromUInt() : LP.div(S);
