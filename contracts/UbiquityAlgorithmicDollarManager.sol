@@ -10,6 +10,9 @@ import "./interfaces/IUbiquityAlgorithmicDollar.sol";
 import "./interfaces/ICurveFactory.sol";
 import "./interfaces/IMetaPool.sol";
 
+import "./TWAPOracle.sol";
+import "hardhat/console.sol";
+
 /// @title A central config for the uAD system. Also acts as a central
 /// access control manager.
 /// @notice For storing constants. For storing variables and allowing them to
@@ -72,6 +75,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         onlyAdmin
     {
         twapOracleAddress = _twapOracleAddress;
+        // to be removed
+
+        TWAPOracle oracle = TWAPOracle(twapOracleAddress);
+        oracle.update();
     }
 
     function setDebtCouponAddress(address _debtCouponAddress)
@@ -157,7 +164,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
                 _amplificationCoefficient,
                 _fee
             );
-
         stableSwapMetaPoolAddress = metaPool;
 
         // Approve the newly-deployed meta pool to transfer this contract's funds

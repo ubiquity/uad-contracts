@@ -15,6 +15,7 @@ describe("MetaPool", () => {
   let manager: UbiquityAlgorithmicDollarManager;
   let admin: Signer;
   let secondAccount: Signer;
+  let daiToken: ERC20;
   let uAD: UbiquityAlgorithmicDollar;
   let DAI: string;
   let USDC: string;
@@ -24,11 +25,33 @@ describe("MetaPool", () => {
   let curve3CrvBasePool: string;
   let curve3CrvToken: string;
   let crvToken: ERC20;
-  let daiToken: ERC20;
   let curveWhaleAddress: string;
+  let daiWhaleAddress: string;
   let curveWhale: Signer;
   let twapOracle: TWAPOracle;
-
+  const swapDAItoUAD = async (
+    amount: BigNumber,
+    signer: Signer
+  ): Promise<BigNumber> => {
+    const dyUAD = await metaPool["get_dy_underlying(int128,int128,uint256)"](
+      1,
+      0,
+      amount
+    );
+    const expectedMinDAI = dyUAD.div(100).mul(99);
+    // secondAccount need to approve metaPool for sending its uAD
+    await daiToken.connect(signer).approve(metaPool.address, amount);
+    // swap 1 DAI  =>  1uAD
+    await metaPool
+      .connect(signer)
+      ["exchange_underlying(int128,int128,uint256,uint256)"](
+        1,
+        0,
+        amount,
+        expectedMinDAI
+      );
+    return dyUAD;
+  };
   const swapUADtoDAI = async (
     amount: BigNumber,
     signer: Signer
@@ -85,6 +108,7 @@ describe("MetaPool", () => {
       curve3CrvBasePool,
       curve3CrvToken,
       curveWhaleAddress,
+      daiWhaleAddress,
     } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
     await resetFork(12150000);
@@ -159,6 +183,42 @@ describe("MetaPool", () => {
     )) as ICurveFactory;
   });
   describe("MetaPool", () => {
+    it("should perform an exchange between DAI to UAD ", async () => {
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [daiWhaleAddress],
+      });
+      const daiWhale = ethers.provider.getSigner(daiWhaleAddress);
+      const secondAccountAdr = await secondAccount.getAddress();
+      const amountToSwap = ethers.utils.parseEther("10000");
+      await daiToken.connect(daiWhale).transfer(secondAccountAdr, amountToSwap);
+
+      // Performs an exchange between two tokens.
+      const uAD2ndBalbeforeSWAP = await uAD.balanceOf(secondAccountAdr);
+      const secondAccountDAIBalanceBefore = await daiToken.balanceOf(
+        secondAccountAdr
+      );
+      // Exchange (swap) DAI to UAD
+      const dyUAD = await swapDAItoUAD(amountToSwap, secondAccount);
+
+      const secondAccountDAIBalanceAfter = await daiToken.balanceOf(
+        secondAccountAdr
+      );
+      const secondAccountuADBalanceAfter = await uAD.balanceOf(
+        secondAccountAdr
+      );
+      expect(secondAccountDAIBalanceAfter).to.equal(
+        secondAccountDAIBalanceBefore.sub(amountToSwap)
+      );
+      const expectedUAD = uAD2ndBalbeforeSWAP.add(dyUAD);
+
+      // assert expected presision
+
+      expect(secondAccountuADBalanceAfter).to.be.lte(expectedUAD);
+      expect(secondAccountuADBalanceAfter).to.be.gte(
+        expectedUAD.mul(9999).div(10000)
+      );
+    });
     it("should perform an exchange between uAD and DAI", async () => {
       // Performs an exchange between two tokens.
       const uAD2ndBalbeforeSWAP = await uAD.balanceOf(
