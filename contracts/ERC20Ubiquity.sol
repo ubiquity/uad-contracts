@@ -144,6 +144,7 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
     // @dev Creates `amount` new tokens for `to`.
     function mint(address to, uint256 amount) public onlyMinter whenNotPaused {
         _mint(to, amount);
+        emit Minting(to, msg.sender, amount);
     }
 
     // @dev Pauses all token transfers.

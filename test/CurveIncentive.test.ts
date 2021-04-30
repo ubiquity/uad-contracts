@@ -10,7 +10,7 @@ import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { CouponsForDollarsCalculator } from "../artifacts/types/CouponsForDollarsCalculator";
 import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
-import { MockAutoRedeemToken } from "../artifacts/types/MockAutoRedeemToken";
+import { UbiquityAutoRedeem } from "../artifacts/types/UbiquityAutoRedeem";
 import { ExcessDollarsDistributor } from "../artifacts/types/ExcessDollarsDistributor";
 import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
@@ -41,7 +41,7 @@ describe("CurveIncentive", () => {
   let daiWhaleAddress: string;
   let curveWhale: Signer;
   let dollarMintingCalculator: DollarMintingCalculator;
-  let mockAutoRedeemToken: MockAutoRedeemToken;
+  let autoRedeemToken: UbiquityAutoRedeem;
   let excessDollarsDistributor: ExcessDollarsDistributor;
   const oneETH = ethers.utils.parseEther("1");
 
@@ -195,14 +195,14 @@ describe("CurveIncentive", () => {
     // turn off  buy incentive Penalty
     await curveIncentive.switchBuyIncentive();
     // to calculate the totalOutstanding debt we need to take into account autoRedeemToken.totalSupply
-    const mockAutoRedeemTokenFactory = await ethers.getContractFactory(
-      "MockAutoRedeemToken"
+    const autoRedeemTokenFactory = await ethers.getContractFactory(
+      "UbiquityAutoRedeem"
     );
-    mockAutoRedeemToken = (await mockAutoRedeemTokenFactory.deploy(
-      0
-    )) as MockAutoRedeemToken;
+    autoRedeemToken = (await autoRedeemTokenFactory.deploy(
+      manager.address
+    )) as UbiquityAutoRedeem;
 
-    await manager.setAutoRedeemPoolTokenAddress(mockAutoRedeemToken.address);
+    await manager.setuARTokenAddress(autoRedeemToken.address);
 
     // when the debtManager mint uAD it there is too much it distribute the excess to
     const excessDollarsDistributorFactory = await ethers.getContractFactory(

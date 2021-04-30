@@ -41,12 +41,13 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public bondingContractAddress;
     address public stableSwapMetaPoolAddress;
     address public curve3PoolTokenAddress; // 3CRV
-    address public autoRedeemPoolTokenAddress;
     address public treasuryAddress;
     address public uGOVTokenAddress;
     address public sushiSwapPoolAddress; // sushi pool uAD-uGOV
     address public masterChefAddress;
     address public formulasAddress;
+    address public autoRedeemTokenAddress; // uAR
+    address public uarCalculatorAddress; // uAR calculator
 
     //key = address of couponmanager, value = excessdollardistributor
     mapping(address => address) private _excessDollarDistributors;
@@ -81,6 +82,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         oracle.update();
     }
 
+    function setuARTokenAddress(address _uarTokenAddress) external onlyAdmin {
+        autoRedeemTokenAddress = _uarTokenAddress;
+    }
+
     function setDebtCouponAddress(address _debtCouponAddress)
         external
         onlyAdmin
@@ -106,6 +111,20 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         uGOVTokenAddress = _uGOVTokenAddress;
     }
 
+    function setSushiSwapPoolAddress(address _sushiSwapPoolAddress)
+        external
+        onlyAdmin
+    {
+        sushiSwapPoolAddress = _sushiSwapPoolAddress;
+    }
+
+    function setUARCalculatorAddress(address _uarCalculatorAddress)
+        external
+        onlyAdmin
+    {
+        uarCalculatorAddress = _uarCalculatorAddress;
+    }
+
     function setCouponCalculatorAddress(address _couponCalculatorAddress)
         external
         onlyAdmin
@@ -127,13 +146,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         _excessDollarDistributors[
             debtCouponManagerAddress
         ] = excessCouponDistributor;
-    }
-
-    function setSushiSwapPoolAddress(address _sushiSwapPoolAddress)
-        external
-        onlyAdmin
-    {
-        sushiSwapPoolAddress = _sushiSwapPoolAddress;
     }
 
     function setMasterChefAddress(address _masterChefAddress)
@@ -223,13 +235,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         onlyAdmin
     {
         stableSwapMetaPoolAddress = _stableSwapMetaPoolAddress;
-    }
-
-    function setAutoRedeemPoolTokenAddress(address _autoRedeemPoolTokenAddress)
-        external
-        onlyAdmin
-    {
-        autoRedeemPoolTokenAddress = _autoRedeemPoolTokenAddress;
     }
 
     /**

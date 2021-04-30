@@ -12,8 +12,9 @@ import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { mineNBlock, resetFork } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { CouponsForDollarsCalculator } from "../artifacts/types/CouponsForDollarsCalculator";
+import { UARForDollarsCalculator } from "../artifacts/types/UARForDollarsCalculator";
+import { UbiquityAutoRedeem } from "../artifacts/types/UbiquityAutoRedeem";
 import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
-import { MockAutoRedeemToken } from "../artifacts/types/MockAutoRedeemToken";
 import { ExcessDollarsDistributor } from "../artifacts/types/ExcessDollarsDistributor";
 import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { calcPercentage, calcPremium } from "./utils/calc";
@@ -33,6 +34,7 @@ describe("DebtCouponManager", () => {
   let lpReward: Signer;
   let uAD: UbiquityAlgorithmicDollar;
   let uGOV: UbiquityGovernance;
+  let uAR: UbiquityAutoRedeem;
   let crvToken: ERC20;
   let curveFactory: string;
   let curve3CrvBasePool: string;
@@ -40,7 +42,7 @@ describe("DebtCouponManager", () => {
   let curveWhaleAddress: string;
   let curveWhale: Signer;
   let dollarMintingCalculator: DollarMintingCalculator;
-  let mockAutoRedeemToken: MockAutoRedeemToken;
+  let uarForDollarsCalculator: UARForDollarsCalculator;
   let excessDollarsDistributor: ExcessDollarsDistributor;
   const routerAdr = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // SushiV2Router02
   let router: IUniswapV2Router02;
@@ -107,6 +109,7 @@ describe("DebtCouponManager", () => {
     const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await uGOVFactory.deploy(manager.address)) as UbiquityGovernance;
     await manager.setuGOVTokenAddress(uGOV.address);
+
     // set twap Oracle Address
     crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
 
@@ -156,6 +159,18 @@ describe("DebtCouponManager", () => {
     )) as TWAPOracle;
 
     await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
+    // set uAR for dollar Calculator
+    const UARForDollarsCalculatorFactory = await ethers.getContractFactory(
+      "UARForDollarsCalculator"
+    );
+    uarForDollarsCalculator = (await UARForDollarsCalculatorFactory.deploy(
+      manager.address
+    )) as UARForDollarsCalculator;
+
+    await manager
+      .connect(admin)
+      .setUARCalculatorAddress(uarForDollarsCalculator.address);
+
     // set coupon for dollar Calculator
     const couponsForDollarsCalculatorFactory = await ethers.getContractFactory(
       "CouponsForDollarsCalculator"
@@ -217,16 +232,9 @@ describe("DebtCouponManager", () => {
       .grantRole(UBQ_BURNER_ROLE, debtCouponMgr.address);
 
     // to calculate the totalOutstanding debt we need to take into account autoRedeemToken.totalSupply
-    const mockAutoRedeemTokenFactory = await ethers.getContractFactory(
-      "MockAutoRedeemToken"
-    );
-    mockAutoRedeemToken = (await mockAutoRedeemTokenFactory.deploy(
-      0
-    )) as MockAutoRedeemToken;
-
-    await manager
-      .connect(admin)
-      .setAutoRedeemPoolTokenAddress(mockAutoRedeemToken.address);
+    const uARFactory = await ethers.getContractFactory("UbiquityAutoRedeem");
+    uAR = (await uARFactory.deploy(manager.address)) as UbiquityAutoRedeem;
+    await manager.setuARTokenAddress(uAR.address);
 
     // when the debtManager mint uAD it there is too much it distribute the excess to
     // ????TODO
@@ -253,6 +261,519 @@ describe("DebtCouponManager", () => {
       .connect(admin)
       .setBondingContractAddress(await lpReward.getAddress());
     await deployUADUGOVSushiPool(thirdAccount);
+  });
+  it.only("exchangeDollarsForUAR should work", async () => {
+    const pool0bal = await metaPool.balances(0);
+    const pool1bal = await metaPool.balances(1);
+    expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
+    expect(pool1bal).to.equal(ethers.utils.parseEther("10000"));
+
+    // remove liquidity one coin 3CRV only so that uAD will be worth less
+    const admBalance = await metaPool.balanceOf(await admin.getAddress());
+    // calculation to withdraw 1e18 LP token
+    // Calculate the amount received when withdrawing and unwrapping in a single coin.
+    // Useful for setting _max_burn_amount when calling remove_liquidity_one_coin.
+    const lpTo3CRV = await metaPool["calc_withdraw_one_coin(uint256,int128)"](
+      oneETH,
+      1
+    );
+
+    const expected = lpTo3CRV.div(100).mul(99);
+    // approve metapool to burn LP on behalf of admin
+    await metaPool.approve(metaPool.address, admBalance);
+
+    // Withdraw a single asset from the pool.
+    await metaPool["remove_liquidity_one_coin(uint256,int128,uint256)"](
+      oneETH,
+      1,
+      expected
+    );
+
+    await twapOracle.update();
+    // Price must be below 1 to mint coupons
+    const uADPrice = await twapOracle.consult(uAD.address);
+    expect(uADPrice).to.be.lt(oneETH);
+    // check that total debt is null
+    const totalDebt = await debtCoupon.getTotalOutstandingDebt();
+    expect(totalDebt).to.equal(0);
+    // launch it once to initialize the debt cycle so that getUARReturnedForDollars
+    // can give us accurate result
+    await debtCouponMgr.connect(secondAccount).exchangeDollarsForUAR(1);
+
+    const amountToExchangeForCoupon = oneETH;
+    const secondAccountAdr = await secondAccount.getAddress();
+    const balanceBefore = await uAD.balanceOf(secondAccountAdr);
+
+    // approve debtCouponManager to burn user's token
+    await uAD
+      .connect(secondAccount)
+      .approve(debtCouponMgr.address, amountToExchangeForCoupon);
+    const lastBlock = await ethers.provider.getBlock(
+      await ethers.provider.getBlockNumber()
+    );
+    const couponToMint = await debtCouponMgr.getUARReturnedForDollars(
+      amountToExchangeForCoupon
+    );
+    console.log(`couponToMint:${couponToMint} amountToExchangeForCoupon:${amountToExchangeForCoupon}
+    `);
+    const expiryBlock = lastBlock.number + 1 + couponLengthBlocks;
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .exchangeDollarsForUAR(amountToExchangeForCoupon)
+    )
+      .to.emit(uAR, "Minting")
+      .withArgs(secondAccountAdr, debtCouponMgr.address, couponToMint);
+
+    const balanceAfter = await uAD.balanceOf(secondAccountAdr);
+
+    expect(
+      balanceBefore.sub(balanceAfter).sub(amountToExchangeForCoupon)
+    ).to.equal(0);
+    // check that we have a debt coupon with correct premium
+    const debtCoupons = await uAR.balanceOf(secondAccountAdr);
+    expect(debtCoupons).to.equal(couponToMint);
+
+    // check outstanding debt now
+    const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
+    expect(totalOutstandingDebt).to.equal(debtCoupons);
+
+    // Price must be above 1 to redeem coupon
+    // we previously removed 3CRV from the pool meaning uAD is <1$ because
+    // we have more uAD than 3CRV. In order to make uAD >1$ we will swap 3CRV
+    // for uAD.
+    // Note that we previously burnt uAD but as we get the price from curve the
+    // uAD burnt didn't affect the price
+    const whale3CRVBalanceBeforeSwap = await crvToken.balanceOf(
+      curveWhaleAddress
+    );
+    const CRVAmountToSwap = ethers.utils.parseEther("1000");
+
+    // Exchange (swap)
+    let dy3CRVtouAD = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
+      CRVAmountToSwap.sub(BigNumber.from(1)),
+      curveWhale
+    );
+    await twapOracle.update();
+    await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
+    dy3CRVtouAD = dy3CRVtouAD.add(BigNumber.from(1));
+    await twapOracle.update();
+    const whale3CRVBalance = await crvToken.balanceOf(curveWhaleAddress);
+    const whaleuADBalance = await uAD.balanceOf(curveWhaleAddress);
+
+    expect(whaleuADBalance).to.equal(dy3CRVtouAD);
+    expect(whale3CRVBalance).to.equal(
+      whale3CRVBalanceBeforeSwap.sub(CRVAmountToSwap)
+    );
+
+    await twapOracle.update();
+    const uADPriceAfterSwap = await twapOracle.consult(uAD.address);
+    expect(uADPriceAfterSwap).to.be.gt(oneETH);
+
+    // now we can redeem the coupon
+    // 1. this will update the total debt by going through all the debt coupon that are
+    // not expired it should be equal to debtCoupons here as we don't have uAR
+    // 2. it calculates the mintable uAD based on the mint rules
+    // where we don't expand the supply of uAD too much during an up cyle
+    // (down cycle begins when we burn uAD for debtCoupon see func: exchangeDollarsForCoupons() )
+    // we only expand (price-1)* total Supply % more uAD at maximum see func: getDollarsToMint()
+    // this means that you may have coupon left after calling redeemCoupons()
+    // this is indeed on a first come first served basis
+    // 3. if the minted amount is > totalOutstandingDebt the excess is distributed
+    // 10% to treasury 10% to uGov fund and 80% to LP provider
+
+    // debtCouponMgr uad balance should be empty
+    let debtUADBalance = await uAD.balanceOf(debtCouponMgr.address);
+    expect(debtUADBalance).to.equal(0);
+    const userUADBalanceBeforeRedeem = await uAD.balanceOf(secondAccountAdr);
+    const mintableUAD = await dollarMintingCalculator.getDollarsToMint();
+    const excessUAD = mintableUAD.sub(debtCoupons);
+    const totalSupply = await uAD.totalSupply();
+
+    expect(mintableUAD).to.equal(
+      calcPercentage(
+        totalSupply.toString(),
+        uADPriceAfterSwap.sub(oneETH).toString()
+      )
+    );
+
+    // secondAccount must approve debtCouponMgr to manage all of its debtCoupons
+    // indeed debtCouponMgr will burn the user's debtCoupon
+    await expect(
+      debtCoupon
+        .connect(secondAccount)
+        .setApprovalForAll(debtCouponMgr.address, true)
+    )
+      .to.emit(debtCoupon, "ApprovalForAll")
+      .withArgs(secondAccountAdr, debtCouponMgr.address, true);
+
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .burnAutoRedeemTokensForDollars(debtCoupons)
+    )
+      .to.emit(uAR, "Burning")
+      .withArgs(secondAccountAdr, debtCoupons)
+      .and.to.emit(uAD, "Transfer") //  minting of uad;
+      .withArgs(
+        ethers.constants.AddressZero,
+        debtCouponMgr.address,
+        mintableUAD
+      )
+      .and.to.emit(uAD, "Transfer") //  transfer of uAD to user
+      .withArgs(debtCouponMgr.address, secondAccountAdr, debtCoupons)
+      .and.to.emit(uAD, "Transfer") //  transfer  excess minted uAD to excess distributor
+      .withArgs(
+        debtCouponMgr.address,
+        excessDollarsDistributor.address,
+        excessUAD
+      )
+      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .withArgs(
+        excessDollarsDistributor.address,
+        await treasury.getAddress(),
+        excessUAD.div(10).toString()
+      )
+      .and.to.emit(uAR, "Transfe") // ERC1155
+      .withArgs(
+        debtCouponMgr.address,
+        secondAccountAdr,
+        ethers.constants.AddressZero,
+        debtCoupons
+      );
+    // we minted more uAD than what we needed for our coupon
+    expect(mintableUAD).to.be.gt(debtCoupons);
+
+    const userUADBalanceAfterRedeem = await uAD.balanceOf(secondAccountAdr);
+    expect(userUADBalanceAfterRedeem).to.equal(
+      userUADBalanceBeforeRedeem.add(debtCoupons)
+    );
+    // check that we don't have debt coupon anymore
+    const debtCouponsAfterRedeem = await debtCoupon.balanceOf(
+      secondAccountAdr,
+      expiryBlock
+    );
+    expect(debtCouponsAfterRedeem).to.equal(0);
+
+    // debtCouponMgr uad balance should be empty because all minted UAD have been transfered
+    // to coupon holder and excessDistributor
+    debtUADBalance = await uAD.balanceOf(debtCouponMgr.address);
+    expect(debtUADBalance).to.equal(0);
+
+    // excess distributor have distributed everything
+    const excessDistributoUADBalance = await uAD.balanceOf(
+      excessDollarsDistributor.address
+    );
+    // small change remain
+    expect(excessDistributoUADBalance).to.equal(
+      BigNumber.from("16108107056259934")
+    );
+  });
+  it("burnExpiredCouponsForUGOV should revert if balance is not insufficient", async () => {
+    const pool0bal = await metaPool.balances(0);
+    const pool1bal = await metaPool.balances(1);
+    expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
+    expect(pool1bal).to.equal(ethers.utils.parseEther("10000"));
+
+    // Price must be below 1 to mint coupons
+    // remove liquidity one coin 3CRV only so that uAD will be worth less
+    const admBalance = await metaPool.balanceOf(await admin.getAddress());
+
+    // calculation to withdraw 1e18 LP token
+    // Calculate the amount received when withdrawing and unwrapping in a single coin.
+    // Useful for setting _max_burn_amount when calling remove_liquidity_one_coin.
+    const lpTo3CRV = await metaPool["calc_withdraw_one_coin(uint256,int128)"](
+      oneETH,
+      1
+    );
+
+    const expected = lpTo3CRV.div(100).mul(99);
+    // approve metapool to burn LP on behalf of admin
+    await metaPool.approve(metaPool.address, admBalance);
+
+    // Withdraw a single asset from the pool.
+    await metaPool["remove_liquidity_one_coin(uint256,int128,uint256)"](
+      oneETH,
+      1,
+      expected
+    );
+    await twapOracle.update();
+
+    // check that total debt is null
+    const totalDebt = await debtCoupon.getTotalOutstandingDebt();
+    expect(totalDebt).to.equal(0);
+    const amountToExchangeForCoupon = oneETH;
+    const secondAccountAdr = await secondAccount.getAddress();
+    const balanceBefore = await uAD.balanceOf(secondAccountAdr);
+
+    const lastBlock = await ethers.provider.getBlock(
+      await ethers.provider.getBlockNumber()
+    );
+    const couponToMint = await couponsForDollarsCalculator.getCouponAmount(
+      amountToExchangeForCoupon
+    );
+    const expiryBlock = lastBlock.number + 1 + couponLengthBlocks;
+
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .exchangeDollarsForCoupons(amountToExchangeForCoupon)
+    )
+      .to.emit(debtCoupon, "MintedCoupons")
+      .withArgs(secondAccountAdr, expiryBlock, couponToMint);
+
+    const balanceAfter = await uAD.balanceOf(secondAccountAdr);
+
+    expect(
+      balanceBefore.sub(balanceAfter).sub(amountToExchangeForCoupon)
+    ).to.equal(0);
+
+    // check that we have a debt coupon with correct premium
+    const debtCoupons = await debtCoupon.balanceOf(
+      secondAccountAdr,
+      expiryBlock
+    );
+    expect(debtCoupons).to.equal(couponToMint);
+    await mineNBlock(couponLengthBlocks);
+    // increase time so that our coupon are expired
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .burnExpiredCouponsForUGOV(expiryBlock, debtCoupons.add(oneETH))
+    ).to.revertedWith("User doesnt have enough coupons");
+  });
+  it("burnExpiredCouponsForUGOV should revert if coupon is not expired", async () => {
+    const pool0bal = await metaPool.balances(0);
+    const pool1bal = await metaPool.balances(1);
+    expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
+    expect(pool1bal).to.equal(ethers.utils.parseEther("10000"));
+
+    // Price must be below 1 to mint coupons
+    // remove liquidity one coin 3CRV only so that uAD will be worth less
+    const admBalance = await metaPool.balanceOf(await admin.getAddress());
+
+    // calculation to withdraw 1e18 LP token
+    // Calculate the amount received when withdrawing and unwrapping in a single coin.
+    // Useful for setting _max_burn_amount when calling remove_liquidity_one_coin.
+    const lpTo3CRV = await metaPool["calc_withdraw_one_coin(uint256,int128)"](
+      oneETH,
+      1
+    );
+
+    const expected = lpTo3CRV.div(100).mul(99);
+    // approve metapool to burn LP on behalf of admin
+    await metaPool.approve(metaPool.address, admBalance);
+
+    // Withdraw a single asset from the pool.
+    await metaPool["remove_liquidity_one_coin(uint256,int128,uint256)"](
+      oneETH,
+      1,
+      expected
+    );
+    await twapOracle.update();
+
+    // check that total debt is null
+    const totalDebt = await debtCoupon.getTotalOutstandingDebt();
+    expect(totalDebt).to.equal(0);
+    const amountToExchangeForCoupon = oneETH;
+    const secondAccountAdr = await secondAccount.getAddress();
+    const balanceBefore = await uAD.balanceOf(secondAccountAdr);
+
+    const lastBlock = await ethers.provider.getBlock(
+      await ethers.provider.getBlockNumber()
+    );
+    const couponToMint = await couponsForDollarsCalculator.getCouponAmount(
+      amountToExchangeForCoupon
+    );
+    const expiryBlock = lastBlock.number + 1 + couponLengthBlocks;
+
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .exchangeDollarsForCoupons(amountToExchangeForCoupon)
+    )
+      .to.emit(debtCoupon, "MintedCoupons")
+      .withArgs(secondAccountAdr, expiryBlock, couponToMint);
+
+    const balanceAfter = await uAD.balanceOf(secondAccountAdr);
+
+    expect(
+      balanceBefore.sub(balanceAfter).sub(amountToExchangeForCoupon)
+    ).to.equal(0);
+
+    // check that we have a debt coupon with correct premium
+    const debtCoupons = await debtCoupon.balanceOf(
+      secondAccountAdr,
+      expiryBlock
+    );
+    expect(debtCoupons).to.equal(couponToMint);
+
+    // increase time so that our coupon are expired
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .burnExpiredCouponsForUGOV(expiryBlock, debtCoupons.sub(oneETH))
+    ).to.revertedWith("Coupon has not expired");
+  });
+  it("burnExpiredCouponsForUGOV should work if coupon is expired", async () => {
+    const pool0bal = await metaPool.balances(0);
+    const pool1bal = await metaPool.balances(1);
+    expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
+    expect(pool1bal).to.equal(ethers.utils.parseEther("10000"));
+
+    // Price must be below 1 to mint coupons
+    // remove liquidity one coin 3CRV only so that uAD will be worth less
+    const admBalance = await metaPool.balanceOf(await admin.getAddress());
+
+    // calculation to withdraw 1e18 LP token
+    // Calculate the amount received when withdrawing and unwrapping in a single coin.
+    // Useful for setting _max_burn_amount when calling remove_liquidity_one_coin.
+    const lpTo3CRV = await metaPool["calc_withdraw_one_coin(uint256,int128)"](
+      oneETH,
+      1
+    );
+
+    const expected = lpTo3CRV.div(100).mul(99);
+    // approve metapool to burn LP on behalf of admin
+    await metaPool.approve(metaPool.address, admBalance);
+
+    // Withdraw a single asset from the pool.
+    await metaPool["remove_liquidity_one_coin(uint256,int128,uint256)"](
+      oneETH,
+      1,
+      expected
+    );
+    await twapOracle.update();
+
+    // check that total debt is null
+    const totalDebt = await debtCoupon.getTotalOutstandingDebt();
+    expect(totalDebt).to.equal(0);
+    const amountToExchangeForCoupon = oneETH;
+    const secondAccountAdr = await secondAccount.getAddress();
+    const balanceBefore = await uAD.balanceOf(secondAccountAdr);
+
+    const lastBlock = await ethers.provider.getBlock(
+      await ethers.provider.getBlockNumber()
+    );
+    const couponToMint = await couponsForDollarsCalculator.getCouponAmount(
+      amountToExchangeForCoupon
+    );
+    const expiryBlock = lastBlock.number + 1 + couponLengthBlocks;
+
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .exchangeDollarsForCoupons(amountToExchangeForCoupon)
+    )
+      .to.emit(debtCoupon, "MintedCoupons")
+      .withArgs(secondAccountAdr, expiryBlock, couponToMint);
+
+    const balanceAfter = await uAD.balanceOf(secondAccountAdr);
+
+    expect(
+      balanceBefore.sub(balanceAfter).sub(amountToExchangeForCoupon)
+    ).to.equal(0);
+
+    // check that we have a debt coupon with correct premium
+    const debtCoupons = await debtCoupon.balanceOf(
+      secondAccountAdr,
+      expiryBlock
+    );
+    expect(debtCoupons).to.equal(couponToMint);
+
+    // check outstanding debt now
+    const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
+    expect(totalOutstandingDebt).to.equal(debtCoupons);
+    const balanceUGOVBefore = await uGOV.balanceOf(secondAccountAdr);
+    // increase time so that our coupon are expired
+    await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
+    await mineNBlock(couponLengthBlocks);
+    await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
+    const expiredCouponConvertionRate = await debtCouponMgr.expiredCouponConvertionRate();
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .burnExpiredCouponsForUGOV(expiryBlock, debtCoupons.sub(oneETH))
+    )
+      .to.emit(debtCoupon, "BurnedCoupons")
+      .withArgs(secondAccountAdr, expiryBlock, debtCoupons.sub(oneETH))
+      .and.to.emit(uGOV, "Minting")
+      .withArgs(
+        secondAccountAdr,
+        debtCouponMgr.address,
+        debtCoupons.sub(oneETH).div(expiredCouponConvertionRate)
+      )
+      .and.to.emit(uGOV, "Transfer")
+      .withArgs(
+        ethers.constants.AddressZero,
+        secondAccountAdr,
+        debtCoupons.sub(oneETH).div(expiredCouponConvertionRate)
+      );
+    const balanceUGOVAfter = await uGOV.balanceOf(secondAccountAdr);
+    expect(balanceUGOVAfter.sub(balanceUGOVBefore)).to.equal(
+      debtCoupons.sub(oneETH).div(expiredCouponConvertionRate)
+    );
+    // Even if price is above 1 we should be able to redeem coupon
+
+    const CRVAmountToSwap = ethers.utils.parseEther("1000");
+
+    // Exchange (swap)
+    let dy3CRVtouAD = await swap3CRVtoUAD(
+      metaPool,
+      crvToken,
+      CRVAmountToSwap.sub(BigNumber.from(1)),
+      curveWhale
+    );
+    await twapOracle.update();
+    await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
+    dy3CRVtouAD = dy3CRVtouAD.add(BigNumber.from(1));
+    await twapOracle.update();
+
+    const whaleuADBalance = await uAD.balanceOf(curveWhaleAddress);
+    expect(whaleuADBalance).to.equal(dy3CRVtouAD);
+
+    await twapOracle.update();
+    const uADPriceAfterSwap = await twapOracle.consult(uAD.address);
+
+    expect(uADPriceAfterSwap).to.be.gt(oneETH);
+
+    // should work if not enough coupon
+
+    await expect(
+      debtCouponMgr
+        .connect(secondAccount)
+        .burnExpiredCouponsForUGOV(expiryBlock, oneETH)
+    )
+      .to.emit(debtCoupon, "BurnedCoupons")
+      .withArgs(secondAccountAdr, expiryBlock, oneETH)
+      .and.to.emit(uGOV, "Minting")
+      .withArgs(
+        secondAccountAdr,
+        debtCouponMgr.address,
+        oneETH.div(expiredCouponConvertionRate)
+      )
+      .and.to.emit(uGOV, "Transfer")
+      .withArgs(
+        ethers.constants.AddressZero,
+        secondAccountAdr,
+        oneETH.div(expiredCouponConvertionRate)
+      );
+    const balanceUGOVAfter2ndRedeem = await uGOV.balanceOf(secondAccountAdr);
+    expect(balanceUGOVAfter2ndRedeem.sub(balanceUGOVAfter)).to.equal(
+      oneETH.div(expiredCouponConvertionRate)
+    );
+  });
+  it("setExpiredCouponConvertionRate should work", async () => {
+    const expiredCouponConvertionRate = await debtCouponMgr.expiredCouponConvertionRate();
+    expect(expiredCouponConvertionRate).to.equal(2);
+    await expect(debtCouponMgr.setExpiredCouponConvertionRate(42))
+      .to.emit(debtCouponMgr, "ExpiredCouponConvertionRateChanged")
+      .withArgs(42, 2);
+
+    const expiredCouponConvertionRateAfter = await debtCouponMgr.expiredCouponConvertionRate();
+    expect(expiredCouponConvertionRateAfter).to.equal(42);
   });
   it("exchangeDollarsForCoupons should fail if uAD price is >= 1", async () => {
     await expect(
