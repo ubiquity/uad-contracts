@@ -6,7 +6,7 @@ import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { ERC20 } from "../artifacts/types/ERC20";
-import { ICurveFactory } from "../artifacts/types/ICurveFactory";
+// import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 
@@ -30,7 +30,6 @@ let secondAccount: Signer;
 let thirdAccount: Signer;
 let adminAddress: string;
 let secondAddress: string;
-let thirdAddress: string;
 let ubiquityFormulas: UbiquityFormulas;
 
 function log(bigN: BigNumber): void {

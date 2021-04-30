@@ -2,9 +2,8 @@
 
 import { expect } from "chai";
 import { Signer, BigNumber } from "ethers";
-import { Bonding } from "../artifacts/types/Bonding";
 import { BondingShare } from "../artifacts/types/BondingShare";
-import { bondingSetup, bondTokens, redeemShares, log } from "./BondingSetup";
+import { bondingSetup, bondTokens, redeemShares } from "./BondingSetup";
 import { mineNBlock } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 
@@ -14,15 +13,12 @@ describe("Bonding3", () => {
 
   let admin: Signer;
   let secondAccount: Signer;
-  let adminAddress: string;
   let secondAddress: string;
-  let bonding: Bonding;
   let bondingShare: BondingShare;
   let metaPool: IMetaPool;
 
   before(async () => {
     ({ admin, secondAccount, bondingShare, metaPool } = await bondingSetup());
-    adminAddress = await admin.getAddress();
     secondAddress = await secondAccount.getAddress();
   });
 

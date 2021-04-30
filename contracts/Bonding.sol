@@ -24,8 +24,6 @@ contract Bonding is CollectableDust {
     UbiquityAlgorithmicDollarManager public manager;
 
     uint256 public constant TARGET_PRICE = uint256(1 ether); // 3Crv has 18 decimals
-    // Initially set at $1,000,000 to avoid interference with growth.
-    uint256 public maxBondingPrice = uint256(1000000 ether);
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
@@ -77,14 +75,6 @@ contract Bonding is CollectableDust {
         _sendDust(_to, _token, _amount);
     }
 
-    function setMaxBondingPrice(uint256 _maxBondingPrice)
-        external
-        onlyBondingManager
-    {
-        maxBondingPrice = _maxBondingPrice;
-        emit MaxBondingPriceUpdated(_maxBondingPrice);
-    }
-
     function setSablier(address _sablier) external onlyBondingManager {
         sablier = ISablier(_sablier);
         emit SablierUpdated(_sablier);
@@ -122,15 +112,11 @@ contract Bonding is CollectableDust {
     {
         require(
             1 <= _weeks && _weeks <= 520,
-            "Bonding: duration must be between 1 and 250 weeks"
+            "Bonding: duration must be between 1 and 520 weeks"
         );
 
         _updateOracle();
-        uint256 currentPrice = currentTokenPrice();
-        require(
-            currentPrice < maxBondingPrice,
-            "Bonding: Current price is too high"
-        );
+
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
             msg.sender,
             address(this),
@@ -176,10 +162,6 @@ contract Bonding is CollectableDust {
             _sharesAmount
         );
 
-        // uint256 tokenAmount = formulaRedeemBonds(_sharesAmount, _currentShareValue);
-
-        // console.log("_sharesAmount", _sharesAmount);
-        // console.log("tokenAmount", tokenAmount);
         // if (redeemStreamTime == 0) {
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
             msg.sender,
@@ -224,10 +206,6 @@ contract Bonding is CollectableDust {
         // );
     }
 
-    // SI totalShares = 0  priceShare = TARGET_PRICE
-    // SINON               priceShare = totalLP / totalShares * TARGET_PRICE
-    // R = T == 0 ? 1 : LP / S
-    // P = R * T
     function currentShareValue() public view returns (uint256 priceShare) {
         uint256 totalLP =
             IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
@@ -241,17 +219,13 @@ contract Bonding is CollectableDust {
     }
 
     function currentTokenPrice() public view returns (uint256) {
-        /* uint256[2] memory prices =
-            IMetaPool(manager.stableSwapMetaPoolAddress())
-                .get_price_cumulative_last();
-        return prices[0]; */
         return
             ITWAPOracle(manager.twapOracleAddress()).consult(
                 manager.uADTokenAddress()
             );
     }
 
-    function _bond(uint256 _amount, uint256 _id) internal {
+    function _bond(uint256 _sharesAmount, uint256 _id) internal {
         uint256 _currentShareValue = currentShareValue();
         require(
             _currentShareValue != 0,
@@ -261,7 +235,7 @@ contract Bonding is CollectableDust {
         IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
             _id,
-            _amount.bonding(_currentShareValue, TARGET_PRICE),
+            _sharesAmount.bonding(_currentShareValue, TARGET_PRICE),
             data
         );
     }

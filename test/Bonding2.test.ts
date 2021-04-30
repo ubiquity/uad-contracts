@@ -5,7 +5,7 @@ import { Signer, BigNumber } from "ethers";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { Bonding } from "../artifacts/types/Bonding";
-import { bondingSetup, bondTokens, redeemShares, log } from "./BondingSetup";
+import { bondingSetup, bondTokens, redeemShares } from "./BondingSetup";
 import { mineNBlock } from "./utils/hardhatNode";
 
 describe("Bonding2", () => {
