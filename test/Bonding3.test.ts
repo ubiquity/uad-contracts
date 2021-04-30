@@ -66,9 +66,11 @@ describe("Bonding3", () => {
     // uBOND = 0
 
     it("admin and second account should be able to bound on same block", async () => {
-      idAdmin = (await deposit(admin, one.mul(100), 1)).id;
-      idSecond = (await deposit(secondAccount, one.mul(100), 1)).id;
-      expect(idAdmin).to.be.equal(idSecond);
+      const [bondAdmin, bondSecond] = await Promise.all([
+        deposit(admin, one.mul(100), 1),
+        deposit(secondAccount, one.mul(100), 1),
+      ]);
+      expect(bondAdmin.id).to.be.equal(bondSecond.id);
 
       const totalUBOND: BigNumber = await bondingShare.totalSupply();
       // log(totalUBOND);
