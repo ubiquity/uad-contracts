@@ -2,7 +2,8 @@
 pragma solidity ^0.8.3;
 
 import "./ABDKMathQuad.sol";
-import "hardhat/console.sol";
+
+// import "hardhat/console.sol";
 
 library UbiquityFormulas {
     using ABDKMathQuad for uint256;
@@ -89,5 +90,32 @@ library UbiquityFormulas {
         bytes16 T = _targetPrice.fromUInt();
 
         _priceUBOND = R.mul(T).toUInt();
+    }
+
+    // formula ugov multiply
+    // new_multiplier = multiplier * ( 1.05 / (1 + abs( 1 - price ) ) )
+    // nM = M * C / A
+    // A = ( 1 + abs( 1 - P)))
+    // 5 >= multiplier >= 0.2
+    function ugovMultiply(uint256 _multiplier, uint256 _price)
+        public
+        pure
+        returns (uint256 _newMultiplier)
+    {
+        bytes16 M = _multiplier.fromUInt();
+        bytes16 P = _price.fromUInt();
+        bytes16 C = uint256(105 * 1e16).fromUInt(); // 1.05
+        bytes16 U = uint256(1e18).fromUInt(); // 1
+        bytes16 A = U.add(U.sub(P).abs()); // 1 + abs( 1 - P )
+
+        _newMultiplier = M.mul(C).div(A).toUInt(); // M * C / A
+
+        if (_newMultiplier > 5e18 || _newMultiplier < 2e17)
+            _newMultiplier = _multiplier;
+
+        // console.log("M", M.toUInt());
+        // console.log("P", P.toUInt());
+        // console.log("A", A.toUInt());
+        // console.log("_newMultiplier", _newMultiplier);
     }
 }
