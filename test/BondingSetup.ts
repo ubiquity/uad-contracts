@@ -50,7 +50,7 @@ interface IbondTokens {
 // 1 week = 45361 blocks = 2371753*7/366
 // n = (block + duration * 45361)
 // id = n - n / 100
-const bondTokens: IbondTokens = async function (
+const deposit: IbondTokens = async function (
   signer: Signer,
   amount: BigNumber,
   duration: number
@@ -59,7 +59,7 @@ const bondTokens: IbondTokens = async function (
 
   await metaPool.connect(signer).approve(bonding.address, amount);
   const tx = await (
-    await bonding.connect(signer).bondTokens(amount, duration)
+    await bonding.connect(signer).deposit(amount, duration)
   ).wait();
 
   // 1 week = 45361 blocks
@@ -72,13 +72,13 @@ const bondTokens: IbondTokens = async function (
   return { id, bond };
 };
 
-async function redeemShares(signer: Signer, id: number): Promise<BigNumber> {
+async function withdraw(signer: Signer, id: number): Promise<BigNumber> {
   const address = await signer.getAddress();
   const bond: BigNumber = await bondingShare.balanceOf(address, id);
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   await bondingShare.connect(signer).setApprovalForAll(bonding.address, true);
-  await bonding.connect(signer).redeemShares(bond, id);
+  await bonding.connect(signer).withdraw(bond, id);
 
   return metaPool.balanceOf(address);
 }
@@ -228,4 +228,4 @@ async function bondingSetup(): Promise<{
   };
 }
 
-export { bondingSetup, bondTokens, redeemShares, log };
+export { bondingSetup, deposit, withdraw, log };

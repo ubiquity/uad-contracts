@@ -5,7 +5,7 @@ import { Signer, BigNumber } from "ethers";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { Bonding } from "../artifacts/types/Bonding";
-import { bondingSetup, bondTokens, redeemShares } from "./BondingSetup";
+import { bondingSetup, deposit, withdraw } from "./BondingSetup";
 import { mineNBlock } from "./utils/hardhatNode";
 
 describe("Bonding2", () => {
@@ -40,7 +40,7 @@ describe("Bonding2", () => {
     });
 
     it("admin should be able to bound", async () => {
-      const { id, bond } = await bondTokens(admin, one.mul(100), 1);
+      const { id, bond } = await deposit(admin, one.mul(100), 1);
       idAdmin = id;
       // console.log("idAdmin", idAdmin);
       // log(bond);
@@ -57,7 +57,7 @@ describe("Bonding2", () => {
     });
 
     it("second account should be able to bound", async () => {
-      const { id, bond } = await bondTokens(secondAccount, one.mul(100), 1);
+      const { id, bond } = await deposit(secondAccount, one.mul(100), 1);
       idSecond = id;
       // console.log("idSecond", idSecond);
 
@@ -69,7 +69,7 @@ describe("Bonding2", () => {
 
     it("third account should not be able to bound", async () => {
       await expect(
-        bondTokens(thirdAccount, BigNumber.from(1), 1)
+        deposit(thirdAccount, BigNumber.from(1), 1)
       ).to.be.revertedWith("revert SafeERC20: low-level call failed");
     });
 
@@ -88,7 +88,7 @@ describe("Bonding2", () => {
     it("admin account should be able to redeem uBOND", async () => {
       await mineNBlock(45361);
 
-      await redeemShares(admin, idAdmin);
+      await withdraw(admin, idAdmin);
       const bal = await bondingShare.balanceOf(adminAddress, idAdmin);
       expect(bal).to.be.equal(0);
     });
@@ -102,7 +102,7 @@ describe("Bonding2", () => {
     });
 
     it("second account should be able to redeem uBOND", async () => {
-      await redeemShares(secondAccount, idSecond);
+      await withdraw(secondAccount, idSecond);
       const bal = await bondingShare.balanceOf(secondAddress, idSecond);
       // log(bal);
       expect(bal).to.be.equal(0);
@@ -111,7 +111,7 @@ describe("Bonding2", () => {
     // uBOND = 0
 
     it("third account should be able to redeem uBOND", async () => {
-      await redeemShares(thirdAccount, idAdmin);
+      await withdraw(thirdAccount, idAdmin);
       expect(await bondingShare.balanceOf(thirdAddress, idAdmin)).to.be.equal(
         0
       );

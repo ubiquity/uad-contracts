@@ -18,12 +18,10 @@ contract Bonding is CollectableDust {
     using SafeERC20 for IERC20;
     using UbiquityFormulas for uint256;
 
-    uint16 public id = 42;
     bytes public data = "";
-
     UbiquityAlgorithmicDollarManager public manager;
 
-    uint256 public constant TARGET_PRICE = uint256(1 ether); // 3Crv has 18 decimals
+    uint256 public constant ONE = uint256(1 ether); // 3Crv has 18 decimals
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
@@ -106,7 +104,7 @@ contract Bonding is CollectableDust {
     /*
         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
      */
-    function bondTokens(uint256 _lpsAmount, uint256 _weeks)
+    function deposit(uint256 _lpsAmount, uint256 _weeks)
         public
         returns (uint256 _id)
     {
@@ -136,10 +134,10 @@ contract Bonding is CollectableDust {
         uint256 n = block.number + _weeks * 45361;
         _id = n - (n % blockRonding);
 
-        _bond(_sharesAmount, _id);
+        _mint(_sharesAmount, _id);
     }
 
-    function redeemShares(uint256 _sharesAmount, uint256 _id) public {
+    function withdraw(uint256 _sharesAmount, uint256 _id) public {
         require(
             block.number > _id,
             "Bonding: Redeem not allowed before bonding time"
@@ -165,7 +163,7 @@ contract Bonding is CollectableDust {
         // if (redeemStreamTime == 0) {
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
             msg.sender,
-            _sharesAmount.redeemBonds(_currentShareValue, TARGET_PRICE)
+            _sharesAmount.redeemBonds(_currentShareValue, ONE)
         );
         //     } else {
         //         // The transaction must be processed by the Ethereum blockchain before
@@ -197,15 +195,6 @@ contract Bonding is CollectableDust {
         //     }
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function redeemAllShares() public {
-        // for each id of msg.sender
-        // redeemShares(
-        //     IERC20(manager.bondingShareAddress()).balanceOf(msg.sender),
-        //     id
-        // );
-    }
-
     function currentShareValue() public view returns (uint256 priceShare) {
         uint256 totalLP =
             IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
@@ -215,7 +204,7 @@ contract Bonding is CollectableDust {
         uint256 totalShares =
             IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
 
-        priceShare = totalLP.bondPrice(totalShares, TARGET_PRICE);
+        priceShare = totalLP.bondPrice(totalShares, ONE);
     }
 
     function currentTokenPrice() public view returns (uint256) {
@@ -225,7 +214,7 @@ contract Bonding is CollectableDust {
             );
     }
 
-    function _bond(uint256 _sharesAmount, uint256 _id) internal {
+    function _mint(uint256 _sharesAmount, uint256 _id) internal {
         uint256 _currentShareValue = currentShareValue();
         require(
             _currentShareValue != 0,
@@ -235,7 +224,7 @@ contract Bonding is CollectableDust {
         IBondingShare(manager.bondingShareAddress()).mint(
             msg.sender,
             _id,
-            _sharesAmount.bonding(_currentShareValue, TARGET_PRICE),
+            _sharesAmount,
             data
         );
     }
