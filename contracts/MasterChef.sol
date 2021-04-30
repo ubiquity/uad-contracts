@@ -36,20 +36,14 @@ contract MasterChef {
     }
     // The uGOV TOKEN!
     IERC20Ubiquity public uGOV;
-    // Block number when bonus uGOV period ends.
-    uint256 public bonusEndBlock;
     // uGOV tokens created per block.
-    uint256 public uGOVPerBlock;
+    uint256 public uGOVPerBlock = 1e12;
     // Bonus muliplier for early uGOV makers.
-    uint256 public constant BONUS_MULTIPLIER = 10;
-    // UGOV muliplier
-    uint256 public uGOVmultiplier = 1;
+    uint256 public uGOVmultiplier = 2e18;
     // Info of each pool.
     PoolInfo public pool;
     // Info of each user that stakes LP tokens.
     mapping(address => UserInfo) public userInfo;
-    // The block number when uGOV mining starts.
-    uint256 public startBlock;
 
     event Deposit(address indexed user, uint256 amount);
 
@@ -69,7 +63,9 @@ contract MasterChef {
     constructor(address _manager) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         uGOV = IERC20Ubiquity(manager.uGOVTokenAddress());
-        pool.lpToken = IERC20Ubiquity(manager.curve3PoolTokenAddress());
+        pool.lpToken = IERC20(manager.stableSwapMetaPoolAddress());
+        pool.lastRewardBlock = block.number;
+        pool.accuGOVPerShare = 0; // uint256(1e12);
     }
 
     function setupUGOVPerBlock(uint256 _uGOVPerBlock)
@@ -77,17 +73,6 @@ contract MasterChef {
         onlyTokenManager
     {
         uGOVPerBlock = _uGOVPerBlock;
-    }
-
-    function setupbonusEndBlock(uint256 _bonusEndBlock)
-        external
-        onlyTokenManager
-    {
-        bonusEndBlock = _bonusEndBlock;
-    }
-
-    function setupstartBlock(uint256 _startBlock) external onlyTokenManager {
-        startBlock = _startBlock;
     }
 
     function getTwapPrice() public view returns (uint256) {
@@ -98,9 +83,6 @@ contract MasterChef {
     }
 
     // UPDATE uGOV multiplier
-    //
-    // ugov_mint_multiplier = ugov_mint_multiplier * (1.05/(1+abs(1-TWAP_PRICE)))
-    // 5>=multiplier >=0.2
     function updateUGOVMultiplier() public {
         uGOVmultiplier = uGOVmultiplier.ugovMultiply(getTwapPrice());
     }
@@ -110,22 +92,16 @@ contract MasterChef {
         view
         returns (uint256)
     {
-        if (_to <= bonusEndBlock) {
-            return (_to - _from) * BONUS_MULTIPLIER;
-        } else if (_from >= bonusEndBlock) {
-            return _to - _from;
-        } else {
-            return
-                ((bonusEndBlock - _from) * BONUS_MULTIPLIER) +
-                (_to - bonusEndBlock);
-        }
+        return (_to - _from) * uGOVmultiplier;
     }
 
     // View function to see pending uGOVs on frontend.
-    function pendinguGOV(address _user) external view returns (uint256) {
+    function pendingUGOV(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
+
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier =
                 getMultiplier(pool.lastRewardBlock, block.number);
@@ -142,7 +118,9 @@ contract MasterChef {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
+        updateUGOVMultiplier();
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
@@ -163,7 +141,7 @@ contract MasterChef {
         if (user.amount > 0) {
             uint256 pending =
                 (user.amount * pool.accuGOVPerShare) / (1e12 - user.rewardDebt);
-            safeuGOVTransfer(msg.sender, pending);
+            safeUGOVTransfer(msg.sender, pending);
         }
         pool.lpToken.safeTransferFrom(
             address(msg.sender),
@@ -182,7 +160,7 @@ contract MasterChef {
         updatePool();
         uint256 pending =
             ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
-        safeuGOVTransfer(msg.sender, pending);
+        safeUGOVTransfer(msg.sender, pending);
         user.amount = user.amount - _amount;
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
         pool.lpToken.safeTransfer(address(msg.sender), _amount);
@@ -199,7 +177,7 @@ contract MasterChef {
     }
 
     // Safe uGOV transfer function, just in case if rounding error causes pool to not have enough uGOVs.
-    function safeuGOVTransfer(address _to, uint256 _amount) internal {
+    function safeUGOVTransfer(address _to, uint256 _amount) internal {
         uint256 uGOVBal = uGOV.balanceOf(address(this));
         if (_amount > uGOVBal) {
             uGOV.transfer(_to, uGOVBal);

@@ -92,8 +92,11 @@ library UbiquityFormulas {
         _priceUBOND = R.mul(T).toUInt();
     }
 
-    // formula ugov multiply
-    // new_multiplier = multiplier * ( 1.05 / (1 + abs( 1 - price ) ) )
+    /// @dev formula ugov multiply
+    /// @param _multiplier , initial ugov min multiplier
+    /// @param _price , current share price
+    /// @return _newMultiplier , new ugov min multiplier
+    /// @notice new_multiplier = multiplier * ( 1.05 / (1 + abs( 1 - price ) ) )
     // nM = M * C / A
     // A = ( 1 + abs( 1 - P)))
     // 5 >= multiplier >= 0.2
@@ -108,14 +111,10 @@ library UbiquityFormulas {
         bytes16 U = uint256(1e18).fromUInt(); // 1
         bytes16 A = U.add(U.sub(P).abs()); // 1 + abs( 1 - P )
 
-        _newMultiplier = M.mul(C).div(A).toUInt(); // M * C / A
+        _newMultiplier = M.mul(C).div(A).toUInt(); // nM = M * C / A
 
+        // 5 >= multiplier >= 0.2
         if (_newMultiplier > 5e18 || _newMultiplier < 2e17)
             _newMultiplier = _multiplier;
-
-        // console.log("M", M.toUInt());
-        // console.log("P", P.toUInt());
-        // console.log("A", A.toUInt());
-        // console.log("_newMultiplier", _newMultiplier);
     }
 }

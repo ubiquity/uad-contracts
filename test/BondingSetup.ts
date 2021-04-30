@@ -3,6 +3,7 @@ import { ethers, getNamedAccounts, network } from "hardhat";
 import { Bonding } from "../artifacts/types/Bonding";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
+import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { ERC20 } from "../artifacts/types/ERC20";
@@ -16,6 +17,7 @@ let bonding: Bonding;
 let bondingShare: BondingShare;
 let manager: UbiquityAlgorithmicDollarManager;
 let uAD: UbiquityAlgorithmicDollar;
+let uGOV: UbiquityGovernance;
 let sablier: string;
 let DAI: string;
 let USDC: string;
@@ -88,6 +90,7 @@ async function bondingSetup(): Promise<{
   secondAccount: Signer;
   thirdAccount: Signer;
   uAD: UbiquityAlgorithmicDollar;
+  uGOV: UbiquityGovernance;
   metaPool: IMetaPool;
   bonding: Bonding;
   bondingShare: BondingShare;
@@ -146,6 +149,12 @@ async function bondingSetup(): Promise<{
     await ethers.getContractFactory("UbiquityAlgorithmicDollar")
   ).deploy(manager.address)) as UbiquityAlgorithmicDollar;
   await manager.setuADTokenAddress(uAD.address);
+
+  // DEPLOY UGOV token Contract
+  uGOV = (await (await ethers.getContractFactory("UbiquityGovernance")).deploy(
+    manager.address
+  )) as UbiquityGovernance;
+  await manager.setuGOVTokenAddress(uGOV.address);
 
   // GET 3CRV token contract
   const crvToken: ERC20 = (await ethers.getContractAt(
@@ -216,6 +225,7 @@ async function bondingSetup(): Promise<{
     secondAccount,
     thirdAccount,
     uAD,
+    uGOV,
     metaPool,
     bonding,
     bondingShare,
