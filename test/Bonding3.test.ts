@@ -24,7 +24,6 @@ describe("Bonding3", () => {
   });
 
   describe("Bonding time and redeem", () => {
-    let idAdmin: number;
     let idSecond: number;
     // let lp0: BigNumber;
     // let lp1: BigNumber;

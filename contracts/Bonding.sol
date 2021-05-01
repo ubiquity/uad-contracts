@@ -238,8 +238,6 @@ contract Bonding is CollectableDust {
             );
     }
 
-    function currentPendingUGovReward() public view returns (uint256) {}
-
     function _mint(uint256 _sharesAmount, uint256 _id) internal {
         uint256 _currentShareValue = currentShareValue();
         require(
