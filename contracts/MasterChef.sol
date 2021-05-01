@@ -5,12 +5,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC20Ubiquity.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ITWAPOracle.sol";
-import "./libs/UbiquityFormulas.sol";
+import "./interfaces/IUbiquityFormulas.sol";
 
 contract MasterChef {
     UbiquityAlgorithmicDollarManager public manager;
     using SafeERC20 for IERC20;
-    using UbiquityFormulas for uint256;
 
     // Info of each user.
     struct UserInfo {
@@ -84,7 +83,8 @@ contract MasterChef {
 
     // UPDATE uGOV multiplier
     function updateUGOVMultiplier() public {
-        uGOVmultiplier = uGOVmultiplier.ugovMultiply(getTwapPrice());
+        uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
+            .ugovMultiply(uGOVmultiplier, getTwapPrice());
     }
 
     function getMultiplier(uint256 _from, uint256 _to)

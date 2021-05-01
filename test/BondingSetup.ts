@@ -127,15 +127,14 @@ async function bondingSetup(): Promise<{
   ubiquityFormulas = (await (
     await ethers.getContractFactory("UbiquityFormulas")
   ).deploy()) as UbiquityFormulas;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+  await manager.setFormulasAddress(ubiquityFormulas.address);
 
   // DEPLOY Bonding Contract
-  bonding = (await (
-    await ethers.getContractFactory("Bonding", {
-      libraries: {
-        UbiquityFormulas: ubiquityFormulas.address,
-      },
-    })
-  ).deploy(manager.address, sablier)) as Bonding;
+  bonding = (await (await ethers.getContractFactory("Bonding")).deploy(
+    manager.address,
+    sablier
+  )) as Bonding;
   await manager.setBondingContractAddress(bonding.address);
 
   // DEPLOY BondingShare Contract

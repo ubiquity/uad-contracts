@@ -5,7 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC1155Ubiquity.sol";
 
-import "./libs/UbiquityFormulas.sol";
+import "./interfaces/IUbiquityFormulas.sol";
+
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
 import "./interfaces/ITWAPOracle.sol";
@@ -16,7 +17,6 @@ import "hardhat/console.sol";
 
 contract Bonding is CollectableDust {
     using SafeERC20 for IERC20;
-    using UbiquityFormulas for uint256;
 
     bytes public data = "";
     UbiquityAlgorithmicDollarManager public manager;
@@ -134,7 +134,11 @@ contract Bonding is CollectableDust {
         );
 
         uint256 _sharesAmount =
-            _lpsAmount.durationMultiply(_weeks, bondingDiscountMultiplier);
+            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
+                _lpsAmount,
+                _weeks,
+                bondingDiscountMultiplier
+            );
 
         // First block 2020 = 9193266 https://etherscan.io/block/9193266
         // First block 2021 = 11565019 https://etherscan.io/block/11565019
@@ -175,7 +179,11 @@ contract Bonding is CollectableDust {
         // if (redeemStreamTime == 0) {
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
             msg.sender,
-            _sharesAmount.redeemBonds(_currentShareValue, ONE)
+            IUbiquityFormulas(manager.formulasAddress()).redeemBonds(
+                _sharesAmount,
+                _currentShareValue,
+                ONE
+            )
         );
         //     } else {
         //         // The transaction must be processed by the Ethereum blockchain before
@@ -216,7 +224,11 @@ contract Bonding is CollectableDust {
         uint256 totalShares =
             IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
 
-        priceShare = totalLP.bondPrice(totalShares, ONE);
+        priceShare = IUbiquityFormulas(manager.formulasAddress()).bondPrice(
+            totalLP,
+            totalShares,
+            ONE
+        );
     }
 
     function currentTokenPrice() public view returns (uint256) {

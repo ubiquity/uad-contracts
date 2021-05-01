@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-import "./ABDKMathQuad.sol";
+import "./libs/ABDKMathQuad.sol";
 
 // import "hardhat/console.sol";
 
-library UbiquityFormulas {
+contract UbiquityFormulas {
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;
 

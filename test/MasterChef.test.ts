@@ -5,9 +5,8 @@ import { describe, it } from "mocha";
 import { BigNumber, Signer } from "ethers";
 import { expect } from "./setup";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
-import { bondingSetup, log } from "./BondingSetup";
+import { bondingSetup } from "./BondingSetup";
 import { MasterChef } from "../artifacts/types/MasterChef";
-import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { mineNBlock } from "./utils/hardhatNode";
 // import "./interfaces/ITWAPOracle.sol";
@@ -17,11 +16,7 @@ describe("MasterChef", () => {
     it("Should deploy MasterChef", async () => {
       // DEPLOY MasterChef
       masterChef = (await (
-        await ethers.getContractFactory("MasterChef", {
-          libraries: {
-            UbiquityFormulas: ubiquityFormulas.address,
-          },
-        })
+        await ethers.getContractFactory("MasterChef")
       ).deploy(manager.address)) as MasterChef;
       await manager.setMasterChefAddress(masterChef.address);
       await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
@@ -83,7 +78,6 @@ describe("MasterChef", () => {
   let manager: UbiquityAlgorithmicDollarManager;
   let secondAccount: Signer;
   let secondAddress: string;
-  let ubiquityFormulas: UbiquityFormulas;
   let metaPool: IMetaPool;
 
   const UBQ_MINTER_ROLE = ethers.utils.keccak256(
@@ -91,12 +85,7 @@ describe("MasterChef", () => {
   );
 
   before(async () => {
-    ({
-      manager,
-      secondAccount,
-      metaPool,
-      ubiquityFormulas,
-    } = await bondingSetup());
+    ({ manager, secondAccount, metaPool } = await bondingSetup());
     secondAddress = await secondAccount.getAddress();
   });
 });
