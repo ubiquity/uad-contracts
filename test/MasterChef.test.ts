@@ -58,9 +58,11 @@ describe("MasterChef", () => {
       await masterChef.connect(secondAccount).deposit(amount);
     });
 
-    it("Should retrieve pendingUGOV", async () => {
+    it("Should retrieve 0.000231525 pendingUGOV after 100 blocks", async () => {
       await mineNBlock(100);
-      log(await masterChef.pendingUGOV(secondAddress));
+      const pendingUGOV = await masterChef.pendingUGOV(secondAddress);
+
+      expect(pendingUGOV.sub(ten9.mul(231525))).to.be.lt(ten9);
     });
   });
 
@@ -70,11 +72,12 @@ describe("MasterChef", () => {
     });
 
     it("Should retrieve pendingUGOV", async () => {
-      log(await masterChef.pendingUGOV(secondAddress));
+      expect(await masterChef.pendingUGOV(secondAddress)).to.be.equal(0);
     });
   });
 
   const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
+  const ten9: BigNumber = BigNumber.from(10).pow(9); // ten9 = 10^-9 ether = 10^9
   let masterChef: MasterChef;
 
   let manager: UbiquityAlgorithmicDollarManager;

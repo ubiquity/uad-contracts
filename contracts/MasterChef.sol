@@ -99,18 +99,28 @@ contract MasterChef {
     function pendingUGOV(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
-
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+
+        // console.log("accuGOVPerShare", accuGOVPerShare);
+        // console.log("lpSupply", lpSupply);
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier =
                 getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 uGOVReward = multiplier * uGOVPerBlock;
+
+            uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
+
             accuGOVPerShare =
-                (accuGOVPerShare + uGOVReward) *
-                (1e12 / lpSupply);
+                ((accuGOVPerShare + uGOVReward) * 1e12) /
+                lpSupply;
+
+            // console.log("multiplier", multiplier);
+            // console.log("uGOVReward", uGOVReward);
         }
-        return user.amount * (accuGOVPerShare / 1e12) - user.rewardDebt;
+        // console.log("user.amount", user.amount);
+        // console.log("user.rewardDebt", user.rewardDebt);
+        // console.log("accuGOVPerShare", accuGOVPerShare);
+        return (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
     }
 
     // Update reward variables of the given pool to be up-to-date.
@@ -129,8 +139,8 @@ contract MasterChef {
         uint256 uGOVReward = multiplier * uGOVPerBlock;
         uGOV.mint(address(this), uGOVReward);
         pool.accuGOVPerShare =
-            (pool.accuGOVPerShare + uGOVReward) *
-            (1e12 / lpSupply);
+            ((pool.accuGOVPerShare + uGOVReward) * 1e12) /
+            lpSupply;
         pool.lastRewardBlock = block.number;
     }
 
