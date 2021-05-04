@@ -25,6 +25,7 @@ contract Bonding is CollectableDust {
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+    uint256 public blockCountInAWeek = 45361;
     uint256 public blockRonding = 100;
     uint256 public uGOVPerBlock = 1;
 
@@ -33,6 +34,7 @@ contract Bonding is CollectableDust {
     event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
     event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
     event BlockRondingUpdated(uint256 _blockRonding);
+    event BlockCountInAWeekUpdated(uint256 _blockCountInAWeek);
     event UGOVPerBlockUpdated(uint256 _uGOVPerBlock);
 
     modifier onlyBondingManager() {
@@ -105,6 +107,14 @@ contract Bonding is CollectableDust {
         emit BlockRondingUpdated(_blockRonding);
     }
 
+    function setBlockCountInAWeek(uint256 _blockCountInAWeek)
+        external
+        onlyBondingManager
+    {
+        blockCountInAWeek = _blockCountInAWeek;
+        emit BlockCountInAWeekUpdated(_blockCountInAWeek);
+    }
+
     function setUGOVPerBlock(uint256 _uGOVPerBlock)
         external
         onlyBondingManager
@@ -121,8 +131,8 @@ contract Bonding is CollectableDust {
         returns (uint256 _id)
     {
         require(
-            1 <= _weeks && _weeks <= 520,
-            "Bonding: duration must be between 1 and 520 weeks"
+            1 <= _weeks && _weeks <= 208,
+            "Bonding: duration must be between 1 and 208 weeks"
         );
 
         _updateOracle();
@@ -147,7 +157,7 @@ contract Bonding is CollectableDust {
         // n = (block + duration * 45361)
         // id = n - n % blockRonding
         // blockRonding = 100 => 2 ending zeros
-        uint256 n = block.number + _weeks * 45361;
+        uint256 n = block.number + _weeks * blockCountInAWeek;
         _id = n - (n % blockRonding);
 
         _mint(_sharesAmount, _id);

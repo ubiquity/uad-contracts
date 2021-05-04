@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
-
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";

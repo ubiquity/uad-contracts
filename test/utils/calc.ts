@@ -43,6 +43,47 @@ export function calculateIncentiveAmount(
   );
 }
 
+// returns true if amountA - AmountB < precision. precision is in decimal
+export function isAmountEquivalent(
+  amountA: string,
+  amountB: string,
+  precision?: string
+): boolean {
+  console.log("amountA", amountA);
+  console.log("amountB", amountB);
+
+  const a = new Big(amountA);
+  const b = new Big(amountB);
+  const delta = new Big(precision || "0.0000000000000000000000000000000001");
+
+  const diff = a.gt(b) ? a.div(b).sub(1) : b.div(a).sub(1);
+
+  console.log("diff", diff.toString());
+  console.log("delta", delta.toString());
+  // assert expected presision
+  return diff.lte(delta);
+}
+
+// returns shares / totalShares * totalToken (in wei)
+export function calcShareInToken(
+  totalShares: string,
+  shares: string,
+  totalToken: string
+): BigNumber {
+  // calculate  shares / totalShares * totalToken
+  const totShares = new Big(totalShares);
+  const userShares = new Big(shares);
+  const totToken = new Big(totalToken);
+
+  return BigNumber.from(
+    userShares
+      .div(totShares)
+      .mul(totToken)
+      .round(0, RoundingMode.RoundDown)
+      .toString()
+  );
+}
+
 // returns amount * percentage (in wei)
 export function calcPercentage(amount: string, percentage: string): BigNumber {
   // calculate amount * percentage

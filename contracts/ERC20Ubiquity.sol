@@ -23,19 +23,6 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint256) public nonces;
 
-    // ----------- Events -----------
-    event Minting(
-        address indexed _to,
-        address indexed _minter,
-        uint256 _amount
-    );
-
-    event Burning(
-        address indexed _to,
-        address indexed _burner,
-        uint256 _amount
-    );
-
     // ----------- Modifiers -----------
     modifier onlyMinter() {
         require(
@@ -140,7 +127,6 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
     /// @param amount the amount to burn
     function burn(uint256 amount) public override(ERC20Burnable) whenNotPaused {
         super.burn(amount);
-        emit Burning(msg.sender, msg.sender, amount);
     }
 
     /// @notice burn uAD tokens from specified account
@@ -153,13 +139,11 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
         whenNotPaused // to suppress ? if BURNER_ROLE should do it even paused ?
     {
         _burn(account, amount);
-        emit Burning(account, msg.sender, amount);
     }
 
     // @dev Creates `amount` new tokens for `to`.
     function mint(address to, uint256 amount) public onlyMinter whenNotPaused {
         _mint(to, amount);
-        emit Minting(to, msg.sender, amount);
     }
 
     // @dev Pauses all token transfers.

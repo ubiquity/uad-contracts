@@ -1,17 +1,46 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
-
 import { ethers } from "hardhat";
 import { describe, it } from "mocha";
 import { BigNumber, Signer } from "ethers";
 import { expect } from "./setup";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { bondingSetup } from "./BondingSetup";
+import { TWAPOracle } from "../artifacts/types/TWAPOracle";
+import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { MasterChef } from "../artifacts/types/MasterChef";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { mineNBlock } from "./utils/hardhatNode";
-// import "./interfaces/ITWAPOracle.sol";
+import { swap3CRVtoUAD } from "./utils/swap";
+import { ERC20 } from "../artifacts/types/ERC20";
 
 describe("MasterChef", () => {
+  const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
+  const ten9: BigNumber = BigNumber.from(10).pow(9); // ten9 = 10^-9 ether = 10^9
+  let masterChef: MasterChef;
+
+  let manager: UbiquityAlgorithmicDollarManager;
+  let secondAccount: Signer;
+  let admin: Signer;
+  let secondAddress: string;
+  let metaPool: IMetaPool;
+  let twapOracle: TWAPOracle;
+  let uAD: UbiquityAlgorithmicDollar;
+  let crvToken: ERC20;
+  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
+  );
+
+  before(async () => {
+    ({
+      manager,
+      admin,
+      crvToken,
+      secondAccount,
+      metaPool,
+      twapOracle,
+      uAD,
+    } = await bondingSetup());
+    secondAddress = await secondAccount.getAddress();
+  });
   describe("Init", () => {
     it("Should deploy MasterChef", async () => {
       // DEPLOY MasterChef
@@ -28,21 +57,33 @@ describe("MasterChef", () => {
       expect(masterChef.address).to.be.equal(managerMasterChefAddress);
     });
   });
+
   describe("TwapPrice", () => {
     it("TwapPrice should be 1", async () => {
-      expect(await masterChef.getTwapPrice()).to.be.equal(one);
+      const twapPrice = await twapOracle.consult(uAD.address);
+      expect(twapPrice).to.be.equal(one);
     });
   });
 
   describe("updateUGOVMultiplier", () => {
     it("Should update UGOVMultiplier, and get multiplied by 1.05 at price 1", async () => {
       const m0 = await masterChef.uGOVmultiplier();
-      await masterChef.updateUGOVMultiplier();
+      expect(m0).to.equal(ethers.utils.parseEther("1")); // m0 = m1 * 1.05
+      // pushPriceUp
+      await swap3CRVtoUAD(
+        metaPool,
+        crvToken,
+        ethers.utils.parseEther("100"),
+        admin
+      );
+      const twapPrice = await twapOracle.consult(uAD.address);
+      expect(twapPrice).to.be.gt(one);
+      // await masterChef.uGOVmultiplier();
       const m1 = await masterChef.uGOVmultiplier();
-      expect(m0.mul(105)).to.be.equal(m1.mul(100)); // m0 = m1 * 1.05
-      await masterChef.updateUGOVMultiplier();
+      expect(m0.mul(105)).to.equal(m1.mul(100)); // m0 = m1 * 1.05
+      await masterChef.uGOVmultiplier();
       const m2 = await masterChef.uGOVmultiplier();
-      expect(m1.mul(105)).to.be.equal(m2.mul(100)); // m2 = m1 * 1.05
+      expect(m1.mul(105)).to.equal(m2.mul(100)); // m2 = m1 * 1.05
     });
   });
 
@@ -69,23 +110,5 @@ describe("MasterChef", () => {
     it("Should retrieve pendingUGOV", async () => {
       expect(await masterChef.pendingUGOV(secondAddress)).to.be.equal(0);
     });
-  });
-
-  const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
-  const ten9: BigNumber = BigNumber.from(10).pow(9); // ten9 = 10^-9 ether = 10^9
-  let masterChef: MasterChef;
-
-  let manager: UbiquityAlgorithmicDollarManager;
-  let secondAccount: Signer;
-  let secondAddress: string;
-  let metaPool: IMetaPool;
-
-  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
-  );
-
-  before(async () => {
-    ({ manager, secondAccount, metaPool } = await bondingSetup());
-    secondAddress = await secondAccount.getAddress();
   });
 });

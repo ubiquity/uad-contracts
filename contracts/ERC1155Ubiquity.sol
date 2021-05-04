@@ -17,19 +17,6 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
 
     uint256 private _totalSupply;
 
-    // ----------- Events -----------
-    event Minting(
-        address indexed _to,
-        address indexed _minter,
-        uint256 _amount
-    );
-
-    event Burning(
-        address indexed _to,
-        address indexed _burner,
-        uint256 _amount
-    );
-
     // ----------- Modifiers -----------
     modifier onlyMinter() {
         require(
@@ -68,10 +55,26 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256 id,
         uint256 amount,
         bytes memory data
-    ) public virtual {
+    ) public virtual onlyMinter {
         _mint(to, id, amount, data);
         _totalSupply += amount;
     }
+
+    /*     /// @notice burn boinding shares tokens from specified account
+    /// @param account the account to burn from
+    /// @param amount the amount to burn
+    function burnFrom(
+        address account,
+        uint256 id,
+        uint256 amount
+    )
+        public
+        onlyBurner
+        whenNotPaused // to suppress ? if BURNER_ROLE should do it even paused ?
+    {
+        _burn(account, amount);
+           _totalSupply -= amount;
+    } */
 
     // @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
     function mintBatch(

@@ -1,3 +1,4 @@
+import { expect } from "chai";
 import { ContractTransaction, Signer, BigNumber } from "ethers";
 import { ethers, getNamedAccounts, network } from "hardhat";
 import { Bonding } from "../artifacts/types/Bonding";
@@ -25,6 +26,7 @@ let USDC: string;
 let curveFactory: string;
 let curve3CrvBasePool: string;
 let curve3CrvToken: string;
+let crvToken: ERC20;
 let curveWhaleAddress: string;
 let metaPoolAddr: string;
 let admin: Signer;
@@ -33,10 +35,7 @@ let thirdAccount: Signer;
 let adminAddress: string;
 let secondAddress: string;
 let ubiquityFormulas: UbiquityFormulas;
-
-function log(bigN: BigNumber): void {
-  console.log(ethers.utils.formatEther(bigN));
-}
+let blockCountInAWeek: BigNumber;
 
 type IdBond = {
   id: number;
@@ -57,35 +56,61 @@ const deposit: IbondTokens = async function (
   amount: BigNumber,
   duration: number
 ) {
-  const address = await signer.getAddress();
-
+  const signerAdr = await signer.getAddress();
   await metaPool.connect(signer).approve(bonding.address, amount);
-  const tx = await (
-    await bonding.connect(signer).deposit(amount, duration)
-  ).wait();
-
-  // 1 week = 45361 blocks
-  const n = tx.blockNumber + duration * 45361;
+  const blockBefore = await ethers.provider.getBlock(
+    await ethers.provider.getBlockNumber()
+  );
+  const n = blockBefore.number + 1 + duration * blockCountInAWeek.toNumber();
   const id = n - (n % 100);
-  // console.log("n", n);
-  // console.log("id", id);
-  const bond: BigNumber = await bondingShare.balanceOf(address, id);
+  const zz1 = await bonding.bondingDiscountMultiplier(); // zz1 = zerozero1 = 0.001 ether = 10^16
+  const mult = BigNumber.from(
+    await ubiquityFormulas.durationMultiply(amount, duration, zz1)
+  );
+  console.log("zz1", ethers.utils.formatEther(zz1));
+  console.log("mult", ethers.utils.formatEther(mult));
+
+  //     event TransferSingle(address indexed operator,
+  // address indexed from, address indexed to, uint256 id, uint256 value);
+  await expect(bonding.connect(signer).deposit(amount, duration))
+    .to.emit(bondingShare, "TransferSingle")
+    .withArgs(
+      bonding.address,
+      ethers.constants.AddressZero,
+      signerAdr,
+      id,
+      mult
+    );
+  // 1 week = blockCountInAWeek blocks
+
+  console.log("n", n);
+  console.log("id", id);
+  const bond: BigNumber = await bondingShare.balanceOf(signerAdr, id);
 
   return { id, bond };
 };
 
+// withdraw bonding shares of ID belonging to the signer and return the
+// bonding share balance of the signer
 async function withdraw(signer: Signer, id: number): Promise<BigNumber> {
-  const address = await signer.getAddress();
-  const bond: BigNumber = await bondingShare.balanceOf(address, id);
+  const signerAdr = await signer.getAddress();
+  const bond: BigNumber = await bondingShare.balanceOf(signerAdr, id);
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  await bondingShare.connect(signer).setApprovalForAll(bonding.address, true);
-  await bonding.connect(signer).withdraw(bond, id);
+  await expect(bonding.connect(signer).withdraw(bond, id))
+    .to.emit(bondingShare, "TransferSingle")
+    .withArgs(
+      bonding.address,
+      signerAdr,
+      ethers.constants.AddressZero,
+      id,
+      bond
+    );
 
-  return metaPool.balanceOf(address);
+  return metaPool.balanceOf(signerAdr);
 }
 
 async function bondingSetup(): Promise<{
+  crvToken: ERC20;
   admin: Signer;
   secondAccount: Signer;
   thirdAccount: Signer;
@@ -100,6 +125,7 @@ async function bondingSetup(): Promise<{
   DAI: string;
   USDC: string;
   manager: UbiquityAlgorithmicDollarManager;
+  blockCountInAWeek: BigNumber;
 }> {
   // GET contracts adresses
   ({
@@ -116,7 +142,6 @@ async function bondingSetup(): Promise<{
   [admin, secondAccount, thirdAccount] = await ethers.getSigners();
   adminAddress = await admin.getAddress();
   secondAddress = await secondAccount.getAddress();
-  // thirdAddress = await thirdAccount.getAddress();
 
   // DEPLOY UbiquityAlgorithmicDollarManager Contract
   manager = (await (
@@ -127,7 +152,6 @@ async function bondingSetup(): Promise<{
   ubiquityFormulas = (await (
     await ethers.getContractFactory("UbiquityFormulas")
   ).deploy()) as UbiquityFormulas;
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   await manager.setFormulasAddress(ubiquityFormulas.address);
 
   // DEPLOY Bonding Contract
@@ -135,6 +159,9 @@ async function bondingSetup(): Promise<{
     manager.address,
     sablier
   )) as Bonding;
+
+  await bonding.setBlockCountInAWeek(420);
+  blockCountInAWeek = await bonding.blockCountInAWeek();
   await manager.setBondingContractAddress(bonding.address);
 
   // DEPLOY BondingShare Contract
@@ -142,6 +169,16 @@ async function bondingSetup(): Promise<{
     await ethers.getContractFactory("BondingShare")
   ).deploy(manager.address)) as BondingShare;
   await manager.setBondingShareAddress(bondingShare.address);
+  // set bonding as operator for second account so that it can burn its bonding shares
+  await bondingShare
+    .connect(secondAccount)
+    .setApprovalForAll(bonding.address, true);
+  // set bonding as operator for admin account so that it can burn its bonding shares
+  await bondingShare.setApprovalForAll(bonding.address, true);
+  // set bonding as operator for third account so that it can burn its bonding shares
+  await bondingShare
+    .connect(thirdAccount)
+    .setApprovalForAll(bonding.address, true);
 
   // DEPLOY UAD token Contract
   uAD = (await (
@@ -156,10 +193,7 @@ async function bondingSetup(): Promise<{
   await manager.setuGOVTokenAddress(uGOV.address);
 
   // GET 3CRV token contract
-  const crvToken: ERC20 = (await ethers.getContractAt(
-    "ERC20",
-    curve3CrvToken
-  )) as ERC20;
+  crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
 
   // GET curve factory contract
   // curvePoolFactory = (await ethers.getContractAt(
@@ -181,6 +215,17 @@ async function bondingSetup(): Promise<{
   });
   const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
 
+  // bonding should have the UBQ_MINTER_ROLE to mint bonding shares
+  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
+  );
+  // bonding should have the UBQ_BURNER_ROLE to burn bonding shares
+  const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
+  );
+  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, bonding.address);
+  await manager.connect(admin).grantRole(UBQ_BURNER_ROLE, bonding.address);
+
   // Mint uAD for whale
   await uAD.mint(curveWhaleAddress, ethers.utils.parseEther("10"));
   await crvToken
@@ -201,7 +246,8 @@ async function bondingSetup(): Promise<{
     metaPoolAddr
   )) as IMetaPool;
 
-  // TRANSFER some uLP tokens to bonding contract to pay premium
+  // TRANSFER some uLP tokens to bonding contract to simulate
+  // the 80% premium from inflation
   await metaPool
     .connect(admin)
     .transfer(bonding.address, ethers.utils.parseEther("100"));
@@ -221,6 +267,7 @@ async function bondingSetup(): Promise<{
 
   return {
     admin,
+    crvToken,
     secondAccount,
     thirdAccount,
     uAD,
@@ -234,7 +281,8 @@ async function bondingSetup(): Promise<{
     DAI,
     USDC,
     manager,
+    blockCountInAWeek,
   };
 }
 
-export { bondingSetup, deposit, withdraw, log };
+export { bondingSetup, deposit, withdraw };
