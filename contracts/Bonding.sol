@@ -9,8 +9,9 @@ import "./interfaces/IUbiquityFormulas.sol";
 
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
+import "./interfaces/IMasterChef.sol";
 import "./interfaces/ITWAPOracle.sol";
-import "./interfaces/IBondingShare.sol";
+import "./interfaces/IERC1155Ubiquity.sol";
 import "./utils/CollectableDust.sol";
 
 import "hardhat/console.sol";
@@ -77,6 +78,7 @@ contract Bonding is CollectableDust {
     ) external override onlyBondingManager {
         _sendDust(_to, _token, _amount);
     }
+
 
     function setSablier(address _sablier) external onlyBondingManager {
         sablier = ISablier(_sablier);
@@ -161,6 +163,8 @@ contract Bonding is CollectableDust {
         _id = n - (n % blockRonding);
 
         _mint(_sharesAmount, _id);
+        // set masterchef for uGOV rewards
+        IMasterChef(manager.masterChefAddress()).deposit(_sharesAmount, msg.sender);
     }
 
     function withdraw(uint256 _sharesAmount, uint256 _id) public {
@@ -180,7 +184,7 @@ contract Bonding is CollectableDust {
         _updateOracle();
         uint256 _currentShareValue = currentShareValue();
 
-        IBondingShare(manager.bondingShareAddress()).burn(
+        IERC1155Ubiquity(manager.bondingShareAddress()).burn(
             msg.sender,
             _id,
             _sharesAmount
@@ -195,6 +199,9 @@ contract Bonding is CollectableDust {
                 ONE
             )
         );
+        // get masterchef for uGOV rewards
+        IMasterChef(manager.masterChefAddress()).withdraw(_sharesAmount, msg.sender);
+
         //     } else {
         //         // The transaction must be processed by the Ethereum blockchain before
         //         // the start time of the stream, or otherwise the sablier contract
@@ -255,7 +262,7 @@ contract Bonding is CollectableDust {
             "Bonding: Share Value should not be nul"
         );
 
-        IBondingShare(manager.bondingShareAddress()).mint(
+        IERC1155Ubiquity(manager.bondingShareAddress()).mint(
             msg.sender,
             _id,
             _sharesAmount,

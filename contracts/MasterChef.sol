@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC20Ubiquity.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ITWAPOracle.sol";
+import "./interfaces/IERC1155Ubiquity.sol";
 import "./interfaces/IUbiquityFormulas.sol";
 
 contract MasterChef {
@@ -28,7 +29,6 @@ contract MasterChef {
     }
     // Info of each pool.
     struct PoolInfo {
-        IERC20 lpToken; // Address of uAD-3CRV LP token contract.
         uint256 lastRewardBlock; // Last block number that uGOVs distribution occurs.
         uint256 accuGOVPerShare; // Accumulated uGOVs per share, times 1e12. See below.
     }
@@ -51,21 +51,24 @@ contract MasterChef {
 
     event Withdraw(address indexed user, uint256 amount);
 
-    event EmergencyWithdraw(address indexed user, uint256 amount);
-
     // ----------- Modifiers -----------
     modifier onlyTokenManager() {
         require(
             manager.hasRole(manager.UBQ_TOKEN_MANAGER_ROLE(), msg.sender),
-            "UBQ token: not manager"
+            "MasterChef: not UBQ manager"
+        );
+        _;
+    }
+    modifier onlyBondingContract() {
+        require(
+            msg.sender == manager.bondingContractAddress(),
+            "MasterChef: not Bonding Contract"
         );
         _;
     }
 
     constructor(address _manager) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
-
-        pool.lpToken = IERC20(manager.stableSwapMetaPoolAddress());
         pool.lastRewardBlock = block.number;
         pool.accuGOVPerShare = 0; // uint256(1e12);
         _updateUGOVMultiplier();
@@ -85,7 +88,11 @@ contract MasterChef {
     function pendingUGOV(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply =
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        /*   IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
+                manager.bondingContractAddress()
+            ); */
 
         // console.log("accuGOVPerShare", accuGOVPerShare);
         // console.log("lpSupply", lpSupply);
@@ -145,7 +152,11 @@ contract MasterChef {
             return;
         }
         _updateUGOVMultiplier();
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        uint256 lpSupply =
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        /*  IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
+                manager.bondingContractAddress()
+            ); */
 
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
@@ -169,36 +180,42 @@ contract MasterChef {
     }
 
     // Deposit LP tokens to MasterChef for uGOV allocation.
-    function deposit(uint256 _amount) public {
-        UserInfo storage user = userInfo[msg.sender];
+    function deposit(uint256 _amount, address sender)
+        external
+        onlyBondingContract
+    {
+        UserInfo storage user = userInfo[sender];
         _updatePool();
         if (user.amount > 0) {
             uint256 pending =
                 ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
-            _safeUGOVTransfer(msg.sender, pending);
+            _safeUGOVTransfer(sender, pending);
         }
-        pool.lpToken.safeTransferFrom(
+        /*  pool.lpToken.safeTransferFrom(
             address(msg.sender),
             address(this),
             _amount
-        );
+        ); */
         user.amount = user.amount + _amount;
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
-        emit Deposit(msg.sender, _amount);
+        emit Deposit(sender, _amount);
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _amount) public {
-        UserInfo storage user = userInfo[msg.sender];
+    function withdraw(uint256 _amount, address sender)
+        external
+        onlyBondingContract
+    {
+        UserInfo storage user = userInfo[sender];
         require(user.amount >= _amount, "MC: amount too high");
         _updatePool();
         uint256 pending =
             ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
-        _safeUGOVTransfer(msg.sender, pending);
+        _safeUGOVTransfer(sender, pending);
         user.amount = user.amount - _amount;
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
-        pool.lpToken.safeTransfer(address(msg.sender), _amount);
-        emit Withdraw(msg.sender, _amount);
+        /*  pool.lpToken.safeTransfer(msg.sender, _amount); */
+        emit Withdraw(sender, _amount);
     }
 
     /// @dev get pending uGOV rewards from MasterChef.
@@ -212,15 +229,6 @@ contract MasterChef {
         _safeUGOVTransfer(msg.sender, pending);
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
         return pending;
-    }
-
-    // Withdraw without caring about rewards. EMERGENCY ONLY.
-    function emergencyWithdraw() public {
-        UserInfo storage user = userInfo[msg.sender];
-        pool.lpToken.safeTransfer(address(msg.sender), user.amount);
-        emit EmergencyWithdraw(msg.sender, user.amount);
-        user.amount = 0;
-        user.rewardDebt = 0;
     }
 
     function _getMultiplier() internal view returns (uint256) {

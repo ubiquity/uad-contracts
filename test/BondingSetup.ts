@@ -11,11 +11,13 @@ import { ERC20 } from "../artifacts/types/ERC20";
 // import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
+import { MasterChef } from "../artifacts/types/MasterChef";
 
 let twapOracle: TWAPOracle;
 let metaPool: IMetaPool;
 let bonding: Bonding;
 let bondingShare: BondingShare;
+let masterChef: MasterChef;
 let manager: UbiquityAlgorithmicDollarManager;
 let uAD: UbiquityAlgorithmicDollar;
 let uGOV: UbiquityGovernance;
@@ -120,6 +122,7 @@ async function bondingSetup(): Promise<{
   uGOV: UbiquityGovernance;
   metaPool: IMetaPool;
   bonding: Bonding;
+  masterChef: MasterChef;
   bondingShare: BondingShare;
   twapOracle: TWAPOracle;
   ubiquityFormulas: UbiquityFormulas;
@@ -144,7 +147,12 @@ async function bondingSetup(): Promise<{
   [admin, secondAccount, thirdAccount] = await ethers.getSigners();
   adminAddress = await admin.getAddress();
   secondAddress = await secondAccount.getAddress();
-
+  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
+  );
+  const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
+  );
   // DEPLOY UbiquityAlgorithmicDollarManager Contract
   manager = (await (
     await ethers.getContractFactory("UbiquityAlgorithmicDollarManager")
@@ -218,14 +226,8 @@ async function bondingSetup(): Promise<{
   curveWhale = ethers.provider.getSigner(curveWhaleAddress);
 
   // bonding should have the UBQ_MINTER_ROLE to mint bonding shares
-  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
-  );
-  // bonding should have the UBQ_BURNER_ROLE to burn bonding shares
-  const UBQ_BURNER_ROLE = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
-  );
   await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, bonding.address);
+  // bonding should have the UBQ_BURNER_ROLE to burn bonding shares
   await manager.connect(admin).grantRole(UBQ_BURNER_ROLE, bonding.address);
 
   // Mint uAD for whale
@@ -267,8 +269,18 @@ async function bondingSetup(): Promise<{
   )) as TWAPOracle;
   await manager.setTwapOracleAddress(twapOracle.address);
 
+  // DEPLOY MasterChef
+  masterChef = (await (await ethers.getContractFactory("MasterChef")).deploy(
+    manager.address
+  )) as MasterChef;
+  await manager.setMasterChefAddress(masterChef.address);
+  await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
+
+  const managerMasterChefAddress = await manager.masterChefAddress();
+  expect(masterChef.address).to.be.equal(managerMasterChefAddress);
   return {
     curveWhale,
+    masterChef,
     admin,
     crvToken,
     secondAccount,

@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 import { describe, it } from "mocha";
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, constants, Signer } from "ethers";
 import { expect } from "./setup";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { bondingSetup } from "./BondingSetup";
@@ -13,6 +13,8 @@ import { swap3CRVtoUAD } from "./utils/swap";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { calculateUGOVMultiplier, isAmountEquivalent } from "./utils/calc";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
+import { Bonding } from "../artifacts/types/Bonding";
+import { BondingShare } from "../artifacts/types/BondingShare";
 
 describe("MasterChef", () => {
   const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
@@ -29,14 +31,16 @@ describe("MasterChef", () => {
   let crvToken: ERC20;
   let uGOV: UbiquityGovernance;
   let uGOVRewardForHundredBlock: BigNumber;
-  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
-    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
-  );
+  let bonding: Bonding;
+  let bondingShare: BondingShare;
 
   before(async () => {
     ({
       manager,
       admin,
+      masterChef,
+      bonding,
+      bondingShare,
       uGOV,
       curveWhale,
       crvToken,
@@ -46,22 +50,8 @@ describe("MasterChef", () => {
       uAD,
     } = await bondingSetup());
     secondAddress = await secondAccount.getAddress();
-  });
-  describe("Init", () => {
-    it("Should deploy MasterChef", async () => {
-      // DEPLOY MasterChef
-      masterChef = (await (
-        await ethers.getContractFactory("MasterChef")
-      ).deploy(manager.address)) as MasterChef;
-      await manager.setMasterChefAddress(masterChef.address);
-      await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
-
-      expect(masterChef.address.length).to.be.equal(42);
-    });
-    it("Should register MasterChef on Manager", async () => {
-      const managerMasterChefAddress = await manager.masterChefAddress();
-      expect(masterChef.address).to.be.equal(managerMasterChefAddress);
-    });
+    // for testing purposes set the week equal to one block
+    await bonding.setBlockCountInAWeek(1);
   });
 
   describe("TwapPrice", () => {
@@ -96,10 +86,10 @@ describe("MasterChef", () => {
       );
 
       // need to do a deposit to trigger the uGOV Multiplier calculation
-
-      await metaPool.connect(secondAccount).approve(masterChef.address, one);
-      await masterChef.connect(secondAccount).deposit(one);
-
+      console.log("iiiiiiiiiiii");
+      await metaPool.connect(secondAccount).approve(bonding.address, one);
+      await bonding.connect(secondAccount).deposit(one, 1);
+      console.log("00000000000");
       const m1 = await masterChef.uGOVmultiplier();
 
       expect(m1).to.equal(calcMultiplier);
@@ -107,7 +97,13 @@ describe("MasterChef", () => {
       const user = await masterChef
         .connect(secondAccount)
         .userInfo(secondAddress);
-      await masterChef.connect(secondAccount).withdraw(user.amount);
+      const tokenIds = await bondingShare.connect(secondAccount).holderTokens();
+      console.log(
+        "*--*-*-*-*-* tokkk",
+        tokenIds.length,
+        tokenIds[0].toString()
+      );
+      await bonding.connect(secondAccount).withdraw(user.amount, tokenIds[0]);
 
       const m2 = await masterChef.uGOVmultiplier();
       expect(m1).to.equal(m2); // m2 = m1 * 1.05
@@ -117,8 +113,8 @@ describe("MasterChef", () => {
   describe("deposit", () => {
     it("Should be able to deposit", async () => {
       const amount = one.mul(100);
-      await metaPool.connect(secondAccount).approve(masterChef.address, amount);
-      await expect(masterChef.connect(secondAccount).deposit(amount))
+      await metaPool.connect(secondAccount).approve(bonding.address, amount);
+      await expect(bonding.connect(secondAccount).deposit(amount, 1))
         .to.emit(metaPool, "Transfer")
         .withArgs(secondAddress, masterChef.address, amount);
 
@@ -158,7 +154,7 @@ describe("MasterChef", () => {
       console.log("uGOVmultiplier", uGOVmultiplier.toString());
 
       console.log(
-        `**/*//**/--uGOVRewardForHundredBlock:${ethers.utils.formatEther(
+        `---uGOVRewardForHundredBlock:${ethers.utils.formatEther(
           uGOVRewardForHundredBlock
         )}`
       );
@@ -315,7 +311,7 @@ describe("MasterChef", () => {
         uGOVRewardForHundredBlock.div(BigNumber.from(2))
       );
       console.log(
-        `**/*//**/--NewuGOVRewardForHundredBlock:${ethers.utils.formatEther(
+        `---NewuGOVRewardForHundredBlock:${ethers.utils.formatEther(
           NewuGOVRewardForHundredBlock
         )}`
       );
@@ -331,9 +327,6 @@ describe("MasterChef", () => {
         .div(one)
         .mul(user.amount)
         .div(totalLPSupply);
-      /*  const pendingCalculated = user.amount
-        .mul(accuGOVPerShare)
-        .div(BigNumber.from(10).pow(12)); */
 
       console.log(
         `*pendingCalculated:${ethers.utils.formatEther(pendingCalculated)}`
@@ -347,19 +340,26 @@ describe("MasterChef", () => {
         `
       );
       // when withdrawing we also get our UGOV Rewards
-      await expect(masterChef.connect(secondAccount).withdraw(one.mul(100)))
+      const tokenIds = await bondingShare.connect(secondAccount).holderTokens();
+      console.log(
+        "*--*-*-*-*-* tokkk",
+        tokenIds.length,
+        tokenIds[0].toString()
+      );
+      await expect(
+        bonding.connect(secondAccount).withdraw(one.mul(100), tokenIds[0])
+      )
         .to.emit(uGOV, "Transfer")
         .withArgs(
           masterChef.address,
           secondAddress,
           pendingCalculated.sub(lostPrecision)
         );
-      /* .and.to.emit(uGOV, "Transfer")
-        .withArgs(masterChef.address, secondAddress, pendingCalculated); */
     });
 
     it("Should retrieve pendingUGOV", async () => {
       expect(await masterChef.pendingUGOV(secondAddress)).to.be.equal(0);
     });
+    //TODO CANT DEPOSIT WITHDRAW DIRECTLY
   });
 });
