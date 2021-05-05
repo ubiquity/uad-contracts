@@ -30,6 +30,7 @@ let crvToken: ERC20;
 let curveWhaleAddress: string;
 let metaPoolAddr: string;
 let admin: Signer;
+let curveWhale: Signer;
 let secondAccount: Signer;
 let thirdAccount: Signer;
 let adminAddress: string;
@@ -111,6 +112,7 @@ async function withdraw(signer: Signer, id: number): Promise<BigNumber> {
 
 async function bondingSetup(): Promise<{
   crvToken: ERC20;
+  curveWhale: Signer;
   admin: Signer;
   secondAccount: Signer;
   thirdAccount: Signer;
@@ -213,7 +215,7 @@ async function bondingSetup(): Promise<{
     method: "hardhat_impersonateAccount",
     params: [curveWhaleAddress],
   });
-  const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
+  curveWhale = ethers.provider.getSigner(curveWhaleAddress);
 
   // bonding should have the UBQ_MINTER_ROLE to mint bonding shares
   const UBQ_MINTER_ROLE = ethers.utils.keccak256(
@@ -266,6 +268,7 @@ async function bondingSetup(): Promise<{
   await manager.setTwapOracleAddress(twapOracle.address);
 
   return {
+    curveWhale,
     admin,
     crvToken,
     secondAccount,

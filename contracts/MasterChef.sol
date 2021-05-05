@@ -37,9 +37,10 @@ contract MasterChef {
     UbiquityAlgorithmicDollarManager public manager;
 
     // uGOV tokens created per block.
-    uint256 public uGOVPerBlock = 1e12;
+    uint256 public uGOVPerBlock = 1e18;
     // Bonus muliplier for early uGOV makers.
     uint256 public uGOVmultiplier = 1e18;
+    uint256 public minPriceDiffToUpdateMultiplier = 1000000000000000;
     uint256 public lastPrice = 1 ether;
     // Info of each pool.
     PoolInfo public pool;
@@ -74,6 +75,12 @@ contract MasterChef {
         uGOVPerBlock = _uGOVPerBlock;
     }
 
+    function setMinPriceDiffToUpdateMultiplier(
+        uint256 _minPriceDiffToUpdateMultiplier
+    ) external onlyTokenManager {
+        minPriceDiffToUpdateMultiplier = _minPriceDiffToUpdateMultiplier;
+    }
+
     // View function to see pending uGOVs on frontend.
     function pendingUGOV(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
@@ -84,14 +91,17 @@ contract MasterChef {
         // console.log("lpSupply", lpSupply);
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier =
-                _getMultiplier(pool.lastRewardBlock, block.number);
+            uint256 multiplier = _getMultiplier();
 
             uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
-
+            console.log(
+                "## PENDING NEW MULTIPLIER multiplier:%s uGOVReward:%s",
+                multiplier,
+                uGOVReward
+            );
             accuGOVPerShare =
-                ((accuGOVPerShare + uGOVReward) * 1e12) /
-                lpSupply;
+                accuGOVPerShare +
+                ((uGOVReward * 1e12) / lpSupply);
 
             // console.log("multiplier", multiplier);
             // console.log("uGOVReward", uGOVReward);
@@ -99,6 +109,7 @@ contract MasterChef {
         // console.log("user.amount", user.amount);
         // console.log("user.rewardDebt", user.rewardDebt);
         // console.log("accuGOVPerShare", accuGOVPerShare);
+
         return (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
     }
 
@@ -106,14 +117,25 @@ contract MasterChef {
     function _updateUGOVMultiplier() internal {
         // (1.05/(1+abs(1-TWAP_PRICE)))
         uint256 currentPrice = _getTwapPrice();
+
+        bool isPriceDiffEnough = false;
         // a minimum price variation is needed to update the multiplier
-        if (
-            currentPrice - lastPrice > 1000100000000000000 ||
-            lastPrice - currentPrice > 1000100000000000000
-        ) {
+        if (currentPrice > lastPrice) {
+            isPriceDiffEnough =
+                currentPrice - lastPrice > minPriceDiffToUpdateMultiplier;
+        } else {
+            isPriceDiffEnough =
+                lastPrice - currentPrice > minPriceDiffToUpdateMultiplier;
+        }
+
+        if (isPriceDiffEnough) {
             uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
                 .ugovMultiply(uGOVmultiplier, currentPrice);
             lastPrice = currentPrice;
+            console.log(
+                "## MULTIPLIER UPDATED  uGOVmultiplier:%s",
+                uGOVmultiplier
+            );
         }
     }
 
@@ -129,15 +151,20 @@ contract MasterChef {
             pool.lastRewardBlock = block.number;
             return;
         }
-        uint256 multiplier = _getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 uGOVReward = multiplier * uGOVPerBlock;
+        uint256 multiplier = _getMultiplier();
+        uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
+        console.log(
+            "## _updatePool  WE ARE MINTING uGOVReward:%s  uGOVPerBlock:%s",
+            uGOVReward,
+            uGOVPerBlock
+        );
         IERC20Ubiquity(manager.uGOVTokenAddress()).mint(
             address(this),
             uGOVReward
         );
         pool.accuGOVPerShare =
-            ((pool.accuGOVPerShare + uGOVReward) * 1e12) /
-            lpSupply;
+            pool.accuGOVPerShare +
+            ((uGOVReward * 1e12) / lpSupply);
         pool.lastRewardBlock = block.number;
     }
 
@@ -147,7 +174,7 @@ contract MasterChef {
         _updatePool();
         if (user.amount > 0) {
             uint256 pending =
-                (user.amount * pool.accuGOVPerShare) / (1e12 - user.rewardDebt);
+                ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
             _safeUGOVTransfer(msg.sender, pending);
         }
         pool.lpToken.safeTransferFrom(
@@ -163,7 +190,7 @@ contract MasterChef {
     // Withdraw LP tokens from MasterChef.
     function withdraw(uint256 _amount) public {
         UserInfo storage user = userInfo[msg.sender];
-        require(user.amount >= _amount, "withdraw: not good");
+        require(user.amount >= _amount, "MC: amount too high");
         _updatePool();
         uint256 pending =
             ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
@@ -172,6 +199,19 @@ contract MasterChef {
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
         pool.lpToken.safeTransfer(address(msg.sender), _amount);
         emit Withdraw(msg.sender, _amount);
+    }
+
+    /// @dev get pending uGOV rewards from MasterChef.
+    /// @return amount of pending rewards transfered to msg.sender
+    /// @notice only send pending rewards
+    function getRewards() external returns (uint256) {
+        UserInfo storage user = userInfo[msg.sender];
+        _updatePool();
+        uint256 pending =
+            ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
+        _safeUGOVTransfer(msg.sender, pending);
+        user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
+        return pending;
     }
 
     // Withdraw without caring about rewards. EMERGENCY ONLY.
@@ -183,12 +223,13 @@ contract MasterChef {
         user.rewardDebt = 0;
     }
 
-    function _getMultiplier(uint256 _from, uint256 _to)
-        internal
-        view
-        returns (uint256)
-    {
-        return (_to - _from) * uGOVmultiplier;
+    function _getMultiplier() internal view returns (uint256) {
+        console.log(
+            "## _getMultiplier  numberOfBlockB:%s  uGOVmultiplier:%s",
+            block.number - pool.lastRewardBlock,
+            uGOVmultiplier
+        );
+        return (block.number - pool.lastRewardBlock) * uGOVmultiplier;
     }
 
     function _getTwapPrice() internal view returns (uint256) {
@@ -203,9 +244,17 @@ contract MasterChef {
     function _safeUGOVTransfer(address _to, uint256 _amount) internal {
         IERC20Ubiquity uGOV = IERC20Ubiquity(manager.uGOVTokenAddress());
         uint256 uGOVBal = uGOV.balanceOf(address(this));
+
+        console.log(
+            "## _safeUGOVTransfer uGOVBal:%s  _amount:%s uGOVmultiplier:%s ",
+            uGOVBal,
+            _amount,
+            uGOVmultiplier
+        );
         if (_amount > uGOVBal) {
             uGOV.safeTransfer(_to, uGOVBal);
         } else {
+            console.log("## ON TRASNFERE AMOUNT");
             uGOV.safeTransfer(_to, _amount);
         }
     }

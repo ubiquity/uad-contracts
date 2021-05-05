@@ -25,6 +25,27 @@ export function calcDollarsToMint(
   );
 }
 
+// returns  multiplier * ( 1.05 / (1 + abs( 1 - price ) ) )
+export function calculateUGOVMultiplier(
+  multiplier: string,
+  price: string
+): BigNumber {
+  // should be in wei
+  const onez5 = new Big(ethers.utils.parseEther("1.05").toString());
+  const one = new Big(ethers.utils.parseEther("1").toString());
+
+  const mult = new Big(multiplier);
+  const p = new Big(price);
+  const priceDiff = one.sub(p).abs();
+
+  return BigNumber.from(
+    mult
+      .mul(onez5.div(one.add(priceDiff)))
+      .round(0, RoundingMode.RoundDown)
+      .toString()
+  );
+}
+
 // returns amount +  (1- TWAP_Price)%.
 export function calculateIncentiveAmount(
   amountInWEI: string,
