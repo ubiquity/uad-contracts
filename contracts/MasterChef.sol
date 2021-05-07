@@ -84,101 +84,6 @@ contract MasterChef {
         minPriceDiffToUpdateMultiplier = _minPriceDiffToUpdateMultiplier;
     }
 
-    // View function to see pending uGOVs on frontend.
-    function pendingUGOV(address _user) external view returns (uint256) {
-        UserInfo storage user = userInfo[_user];
-        uint256 accuGOVPerShare = pool.accuGOVPerShare;
-        uint256 lpSupply =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
-        /*   IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
-                manager.bondingContractAddress()
-            ); */
-
-        // console.log("accuGOVPerShare", accuGOVPerShare);
-        // console.log("lpSupply", lpSupply);
-
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = _getMultiplier();
-
-            uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
-            console.log(
-                "## PENDING NEW MULTIPLIER multiplier:%s uGOVReward:%s",
-                multiplier,
-                uGOVReward
-            );
-            accuGOVPerShare =
-                accuGOVPerShare +
-                ((uGOVReward * 1e12) / lpSupply);
-
-            // console.log("multiplier", multiplier);
-            // console.log("uGOVReward", uGOVReward);
-        }
-        // console.log("user.amount", user.amount);
-        // console.log("user.rewardDebt", user.rewardDebt);
-        // console.log("accuGOVPerShare", accuGOVPerShare);
-
-        return (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
-    }
-
-    // UPDATE uGOV multiplier
-    function _updateUGOVMultiplier() internal {
-        // (1.05/(1+abs(1-TWAP_PRICE)))
-        uint256 currentPrice = _getTwapPrice();
-
-        bool isPriceDiffEnough = false;
-        // a minimum price variation is needed to update the multiplier
-        if (currentPrice > lastPrice) {
-            isPriceDiffEnough =
-                currentPrice - lastPrice > minPriceDiffToUpdateMultiplier;
-        } else {
-            isPriceDiffEnough =
-                lastPrice - currentPrice > minPriceDiffToUpdateMultiplier;
-        }
-
-        if (isPriceDiffEnough) {
-            uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
-                .ugovMultiply(uGOVmultiplier, currentPrice);
-            lastPrice = currentPrice;
-            console.log(
-                "## MULTIPLIER UPDATED  uGOVmultiplier:%s",
-                uGOVmultiplier
-            );
-        }
-    }
-
-    // Update reward variables of the given pool to be up-to-date.
-    function _updatePool() internal {
-        if (block.number <= pool.lastRewardBlock) {
-            return;
-        }
-        _updateUGOVMultiplier();
-        uint256 lpSupply =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
-        /*  IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
-                manager.bondingContractAddress()
-            ); */
-
-        if (lpSupply == 0) {
-            pool.lastRewardBlock = block.number;
-            return;
-        }
-        uint256 multiplier = _getMultiplier();
-        uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
-        console.log(
-            "## _updatePool  WE ARE MINTING uGOVReward:%s  uGOVPerBlock:%s",
-            uGOVReward,
-            uGOVPerBlock
-        );
-        IERC20Ubiquity(manager.uGOVTokenAddress()).mint(
-            address(this),
-            uGOVReward
-        );
-        pool.accuGOVPerShare =
-            pool.accuGOVPerShare +
-            ((uGOVReward * 1e12) / lpSupply);
-        pool.lastRewardBlock = block.number;
-    }
-
     // Deposit LP tokens to MasterChef for uGOV allocation.
     function deposit(uint256 _amount, address sender)
         external
@@ -231,12 +136,88 @@ contract MasterChef {
         return pending;
     }
 
-    function _getMultiplier() internal view returns (uint256) {
-        console.log(
-            "## _getMultiplier  numberOfBlockB:%s  uGOVmultiplier:%s",
-            block.number - pool.lastRewardBlock,
-            uGOVmultiplier
+    // View function to see pending uGOVs on frontend.
+    function pendingUGOV(address _user) external view returns (uint256) {
+        UserInfo storage user = userInfo[_user];
+        uint256 accuGOVPerShare = pool.accuGOVPerShare;
+        uint256 lpSupply =
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+
+        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+            uint256 multiplier = _getMultiplier();
+
+            uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
+            accuGOVPerShare =
+                accuGOVPerShare +
+                ((uGOVReward * 1e12) / lpSupply);
+        }
+
+        return (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
+    }
+
+    // UPDATE uGOV multiplier
+    function _updateUGOVMultiplier() internal {
+        // (1.05/(1+abs(1-TWAP_PRICE)))
+        uint256 currentPrice = _getTwapPrice();
+
+        bool isPriceDiffEnough = false;
+        // a minimum price variation is needed to update the multiplier
+        if (currentPrice > lastPrice) {
+            isPriceDiffEnough =
+                currentPrice - lastPrice > minPriceDiffToUpdateMultiplier;
+        } else {
+            isPriceDiffEnough =
+                lastPrice - currentPrice > minPriceDiffToUpdateMultiplier;
+        }
+
+        if (isPriceDiffEnough) {
+            uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
+                .ugovMultiply(uGOVmultiplier, currentPrice);
+            lastPrice = currentPrice;
+        }
+    }
+
+    // Update reward variables of the given pool to be up-to-date.
+    function _updatePool() internal {
+        if (block.number <= pool.lastRewardBlock) {
+            return;
+        }
+        _updateUGOVMultiplier();
+        uint256 lpSupply =
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        /*  IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
+                manager.bondingContractAddress()
+            ); */
+
+        if (lpSupply == 0) {
+            pool.lastRewardBlock = block.number;
+            return;
+        }
+        uint256 multiplier = _getMultiplier();
+        uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
+        IERC20Ubiquity(manager.uGOVTokenAddress()).mint(
+            address(this),
+            uGOVReward
         );
+        pool.accuGOVPerShare =
+            pool.accuGOVPerShare +
+            ((uGOVReward * 1e12) / lpSupply);
+        pool.lastRewardBlock = block.number;
+    }
+
+    // Safe uGOV transfer function, just in case if rounding
+    // error causes pool to not have enough uGOVs.
+    function _safeUGOVTransfer(address _to, uint256 _amount) internal {
+        IERC20Ubiquity uGOV = IERC20Ubiquity(manager.uGOVTokenAddress());
+        uint256 uGOVBal = uGOV.balanceOf(address(this));
+        if (_amount > uGOVBal) {
+            uGOV.safeTransfer(_to, uGOVBal);
+        } else {
+            uGOV.safeTransfer(_to, _amount);
+        }
+    }
+
+    function _getMultiplier() internal view returns (uint256) {
         return (block.number - pool.lastRewardBlock) * uGOVmultiplier;
     }
 
@@ -245,25 +226,5 @@ contract MasterChef {
             ITWAPOracle(manager.twapOracleAddress()).consult(
                 manager.uADTokenAddress()
             );
-    }
-
-    // Safe uGOV transfer function, just in case if rounding
-    // error causes pool to not have enough uGOVs.
-    function _safeUGOVTransfer(address _to, uint256 _amount) internal {
-        IERC20Ubiquity uGOV = IERC20Ubiquity(manager.uGOVTokenAddress());
-        uint256 uGOVBal = uGOV.balanceOf(address(this));
-
-        console.log(
-            "## _safeUGOVTransfer uGOVBal:%s  _amount:%s uGOVmultiplier:%s ",
-            uGOVBal,
-            _amount,
-            uGOVmultiplier
-        );
-        if (_amount > uGOVBal) {
-            uGOV.safeTransfer(_to, uGOVBal);
-        } else {
-            console.log("## ON TRASNFERE AMOUNT");
-            uGOV.safeTransfer(_to, _amount);
-        }
     }
 }

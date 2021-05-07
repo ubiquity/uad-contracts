@@ -5,7 +5,6 @@ import { BondingShare } from "../artifacts/types/BondingShare";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { bondingSetup, deposit, withdraw } from "./BondingSetup";
 import { mineNBlock } from "./utils/hardhatNode";
-import logETH from "./utils/logger";
 
 describe("Bonding1", () => {
   let idBlock: number;
@@ -61,7 +60,6 @@ describe("Bonding1", () => {
     it("User should be able to bond tokens", async () => {
       const { id, bond } = await deposit(secondAccount, one.mul(100), 1);
       idBlock = id;
-      logETH(bond, "deposit lp");
       expect(bond).to.be.gte(one.mul(100));
       await mineNBlock(blockCountInAWeek.toNumber());
     });
@@ -86,9 +84,6 @@ describe("Bonding1", () => {
         await secondAccount.getAddress(),
         idBlock
       );
-      logETH(lp, "lp");
-      logETH(bondAfter, "bondAfter");
-      logETH(bondBefore, "bondBefore");
       expect(lp).to.be.gt(0);
       expect(bondBefore).to.be.gt(0);
       expect(bondAfter).to.be.equal(0);

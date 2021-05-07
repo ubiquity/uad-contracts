@@ -695,11 +695,6 @@ describe("DebtCouponManager", () => {
     const mintableUAD = await dollarMintingCalculator.getDollarsToMint();
     const excessUAD = mintableUAD.sub(debtCoupons);
     const totalSupply = await uAD.totalSupply();
-    console.log(`mintableUAD:${ethers.utils.formatEther(mintableUAD)}
-    totalSupply:${ethers.utils.formatEther(totalSupply)}
-    uADPriceAfterSwap:${ethers.utils.formatEther(uADPriceAfterSwap)}
-
-    `);
     expect(mintableUAD).to.equal(
       calcPercentage(
         totalSupply.toString(),
@@ -717,7 +712,6 @@ describe("DebtCouponManager", () => {
       .to.emit(debtCoupon, "ApprovalForAll")
       .withArgs(secondAccountAdr, debtCouponMgr.address, true);
     // only redeem 1 coupon
-    console.log(`redeem coupon 1 `);
     await expect(
       debtCouponMgr.connect(secondAccount).redeemCoupons(expiryBlock, oneETH)
     )
@@ -791,9 +785,7 @@ describe("DebtCouponManager", () => {
 
     // check that our calculation match the SC calculation
     expect(calculatedDollarToMint).to.equal(dollarsToMint);
-    console.log(`dollarsToMint:${ethers.utils.formatEther(dollarsToMint)}`);
     // redeem the last 1 coupon
-    console.log(`redeem coupon 2`);
     await expect(
       debtCouponMgr.connect(secondAccount).redeemCoupons(expiryBlock, oneETH)
     )

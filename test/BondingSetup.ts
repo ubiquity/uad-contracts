@@ -70,11 +70,7 @@ const deposit: IbondTokens = async function (
   const mult = BigNumber.from(
     await ubiquityFormulas.durationMultiply(amount, duration, zz1)
   );
-  console.log("zz1", ethers.utils.formatEther(zz1));
-  console.log("mult", ethers.utils.formatEther(mult));
 
-  //     event TransferSingle(address indexed operator,
-  // address indexed from, address indexed to, uint256 id, uint256 value);
   await expect(bonding.connect(signer).deposit(amount, duration))
     .to.emit(bondingShare, "TransferSingle")
     .withArgs(
@@ -86,8 +82,6 @@ const deposit: IbondTokens = async function (
     );
   // 1 week = blockCountInAWeek blocks
 
-  console.log("n", n);
-  console.log("id", id);
   const bond: BigNumber = await bondingShare.balanceOf(signerAdr, id);
 
   return { id, bond };

@@ -1,8 +1,7 @@
 import { ethers } from "hardhat";
 import { describe, it } from "mocha";
-import { BigNumber, constants, Signer } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import { expect } from "./setup";
-import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { bondingSetup } from "./BondingSetup";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
@@ -20,10 +19,8 @@ describe("MasterChef", () => {
   const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
   let masterChef: MasterChef;
 
-  let manager: UbiquityAlgorithmicDollarManager;
   let secondAccount: Signer;
   let curveWhale: Signer;
-  let admin: Signer;
   let secondAddress: string;
   let metaPool: IMetaPool;
   let twapOracle: TWAPOracle;
@@ -36,8 +33,6 @@ describe("MasterChef", () => {
 
   before(async () => {
     ({
-      manager,
-      admin,
       masterChef,
       bonding,
       bondingShare,
@@ -65,7 +60,6 @@ describe("MasterChef", () => {
     it("Should update UGOVMultiplier, and get multiplied by 1.05 at price 1", async () => {
       const m0 = await masterChef.uGOVmultiplier();
       expect(m0).to.equal(ethers.utils.parseEther("1")); // m0 = m1 * 1.05
-      console.log("before");
       // push uAD price down
       await swap3CRVtoUAD(
         metaPool,
@@ -86,10 +80,8 @@ describe("MasterChef", () => {
       );
 
       // need to do a deposit to trigger the uGOV Multiplier calculation
-      console.log("iiiiiiiiiiii");
       await metaPool.connect(secondAccount).approve(bonding.address, one);
       await bonding.connect(secondAccount).deposit(one, 1);
-      console.log("00000000000");
       const m1 = await masterChef.uGOVmultiplier();
 
       expect(m1).to.equal(calcMultiplier);
@@ -97,12 +89,8 @@ describe("MasterChef", () => {
       const user = await masterChef
         .connect(secondAccount)
         .userInfo(secondAddress);
-      const tokenIds = await bondingShare.connect(secondAccount).holderTokens();
-      console.log(
-        "*--*-*-*-*-* tokkk",
-        tokenIds.length,
-        tokenIds[0].toString()
-      );
+      const tokenIds = await bondingShare.holderTokens(secondAddress);
+
       await bonding.connect(secondAccount).withdraw(user.amount, tokenIds[0]);
 
       const m2 = await masterChef.uGOVmultiplier();
@@ -116,12 +104,18 @@ describe("MasterChef", () => {
       await metaPool.connect(secondAccount).approve(bonding.address, amount);
       await expect(bonding.connect(secondAccount).deposit(amount, 1))
         .to.emit(metaPool, "Transfer")
-        .withArgs(secondAddress, masterChef.address, amount);
+        .withArgs(secondAddress, bonding.address, amount);
 
       const user = await masterChef
         .connect(secondAccount)
         .userInfo(secondAddress);
-      expect(user.amount).to.equal(amount);
+      // user amount is equal to the amount of user's bonding share
+      const tokensID = await bondingShare.holderTokens(secondAddress);
+      const secondAccountSharebalance = await bondingShare.balanceOf(
+        secondAddress,
+        tokensID[0]
+      );
+      expect(user.amount).to.equal(secondAccountSharebalance);
       // do not have pending rewards just after depositing
       const pendingUGOV = await masterChef.pendingUGOV(secondAddress);
       expect(pendingUGOV).to.equal(0);
@@ -134,7 +128,6 @@ describe("MasterChef", () => {
 
     it("Should calculate pendingUGOV after 100 blocks", async () => {
       await mineNBlock(100);
-      console.log("aftermine");
       const pendingUGOV = await masterChef.pendingUGOV(secondAddress);
       const uGOVmultiplier = await masterChef.uGOVmultiplier();
       const uGOVPerBlock = await masterChef.uGOVPerBlock();
@@ -151,15 +144,12 @@ describe("MasterChef", () => {
         .mul(uGOVmultiplier)
         .mul(uGOVPerBlock)
         .div(one);
-      console.log("uGOVmultiplier", uGOVmultiplier.toString());
 
-      console.log(
-        `---uGOVRewardForHundredBlock:${ethers.utils.formatEther(
-          uGOVRewardForHundredBlock
-        )}`
-      );
-      const totalLPSupply = await metaPool.balanceOf(masterChef.address);
+      const totalLPSupply = await bondingShare.totalSupply();
       // (uGOVReward * 1e12) / lpSupply)
+      // here as the amount is the amount of bonding shares
+      // we should divide by the total supply to get
+      // the uGOV per share
       const accuGOVPerShare = uGOVRewardForHundredBlock
         .mul(BigNumber.from(10).pow(12))
         .div(totalLPSupply);
@@ -167,32 +157,17 @@ describe("MasterChef", () => {
       const user = await masterChef
         .connect(secondAccount)
         .userInfo(secondAddress);
-      // (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
-      console.log(" user.rewardDebt", user.rewardDebt.toString());
-      console.log("accuGOVPerShare", accuGOVPerShare.toString());
-      console.log(
-        "FIRST TEST SC SAYS THAT WE ARE GETTING pendingUGOV:",
-        ethers.utils.formatEther(pendingUGOV)
-      );
 
       const pendingCalculated = user.amount
         .mul(accuGOVPerShare)
         .div(BigNumber.from(10).pow(12));
-      console.log(
-        "FIRST TEST WE CALULATED pendingUGOV:",
-        ethers.utils.formatEther(pendingCalculated)
+
+      const isPrecise = isAmountEquivalent(
+        pendingUGOV.toString(),
+        pendingCalculated.toString(),
+        "0.0000000000000000001"
       );
-      const uGovBalanceSec = await uGOV.balanceOf(secondAddress);
-      console.log(
-        "FIRST TEST  uGovBalance of second adr",
-        ethers.utils.formatEther(uGovBalanceSec)
-      );
-      const uGovBalanceMster = await uGOV.balanceOf(masterChef.address);
-      console.log(
-        "FIRST TEST  uGovBalance of masterchef",
-        ethers.utils.formatEther(uGovBalanceMster)
-      );
-      expect(pendingUGOV).to.equal(pendingCalculated);
+      expect(isPrecise).to.be.true;
     });
   });
 
@@ -212,27 +187,7 @@ describe("MasterChef", () => {
         .mul(uGOVPerBlockB)
         .div(one);
 
-      console.log(
-        `
-        numberOfBlockB:${numberOfBlockB}
-        auGOVmultiplier:${ethers.utils.formatEther(auGOVmultiplier)}
-
-        uGOVRewardToBeMinted :${ethers.utils.formatEther(
-          calculatedUGOVRewardToBeMinted
-        )}`
-      );
       const uGovBalanceBefore = await uGOV.balanceOf(secondAddress);
-
-      console.log("auGOVmultiplier", auGOVmultiplier.toString());
-      console.log(
-        "secondAddress uGovBalanceBefore",
-        ethers.utils.formatEther(uGovBalanceBefore)
-      );
-      const uGovBalanceMster = await uGOV.balanceOf(masterChef.address);
-      console.log(
-        "masterchef uGovBalance of ",
-        ethers.utils.formatEther(uGovBalanceMster)
-      );
 
       await expect(masterChef.connect(secondAccount).getRewards())
         .to.emit(uGOV, "Transfer")
@@ -240,20 +195,10 @@ describe("MasterChef", () => {
           ethers.constants.AddressZero,
           masterChef.address,
           calculatedUGOVRewardToBeMinted
-        ); //minting uGOV
-
-      const buGOVmultiplier = await masterChef.uGOVmultiplier();
+        ); // minting uGOV
 
       const uGovBalanceAfter = await uGOV.balanceOf(secondAddress);
-      console.log(
-        `
-        buGOVmultiplier:${ethers.utils.formatEther(buGOVmultiplier)}
-        uGovBalanceBefore:${ethers.utils.formatEther(uGovBalanceBefore)}
 
-        uGOVRewardToBeMinted :${ethers.utils.formatEther(
-          calculatedUGOVRewardToBeMinted
-        )}`
-      );
       // as there is only one LP provider he gets pretty much all the rewards
       const isPrecise = isAmountEquivalent(
         uGovBalanceAfter.toString(),
@@ -268,7 +213,7 @@ describe("MasterChef", () => {
 
       // push the price further so that the reward should be less than previously
       // push uAD price down
-      const twapPrice1 = await twapOracle.consult(uAD.address);
+
       await swap3CRVtoUAD(
         metaPool,
         crvToken,
@@ -276,16 +221,10 @@ describe("MasterChef", () => {
         curveWhale
       );
       await twapOracle.update();
-      const twapPrice2 = await twapOracle.consult(uAD.address);
       await swap3CRVtoUAD(metaPool, crvToken, BigNumber.from(1), curveWhale);
       await twapOracle.update();
       const twapPrice3 = await twapOracle.consult(uAD.address);
-      console.log(
-        `
-        twapPrice1:${ethers.utils.formatEther(twapPrice1)}
-        twapPrice2:${ethers.utils.formatEther(twapPrice2)}
-        twapPrice3 :${ethers.utils.formatEther(twapPrice3)}`
-      );
+
       expect(twapPrice3).to.be.gt(one);
       // should withdraw rewards to trigger the uGOVmultiplier
       await masterChef.connect(secondAccount).getRewards();
@@ -310,56 +249,45 @@ describe("MasterChef", () => {
       expect(NewuGOVRewardForHundredBlock).to.be.lt(
         uGOVRewardForHundredBlock.div(BigNumber.from(2))
       );
-      console.log(
-        `---NewuGOVRewardForHundredBlock:${ethers.utils.formatEther(
-          NewuGOVRewardForHundredBlock
-        )}`
-      );
 
       // calculating uGOV Rewards
-      const totalLPSupply = await metaPool.balanceOf(masterChef.address);
+      const totalLPSupply = await bondingShare.totalSupply();
       const user = await masterChef
         .connect(secondAccount)
         .userInfo(secondAddress);
-      const pendingCalculated = BigNumber.from(101)
-        .mul(uGOVmultiplier)
+      const multiplier = BigNumber.from(101).mul(uGOVmultiplier);
+      const uGOVReward = multiplier.mul(uGOVPerBlock).div(one);
+
+      const pendingCalculated = multiplier
         .mul(uGOVPerBlock)
         .div(one)
         .mul(user.amount)
         .div(totalLPSupply);
 
-      console.log(
-        `*pendingCalculated:${ethers.utils.formatEther(pendingCalculated)}`
-      );
       // there is a loss of precision
       const lostPrecision = pendingCalculated.mod(BigNumber.from(1e8));
-      console.log(
-        `*x:${ethers.utils.formatEther(pendingCalculated.sub(lostPrecision))}
-        pendingCalculated-x
 
-        `
-      );
       // when withdrawing we also get our UGOV Rewards
-      const tokenIds = await bondingShare.connect(secondAccount).holderTokens();
-      console.log(
-        "*--*-*-*-*-* tokkk",
-        tokenIds.length,
-        tokenIds[0].toString()
-      );
+      const tokenIds = await bondingShare.holderTokens(secondAddress);
+      const baluGOVBefore = await uGOV.balanceOf(secondAddress);
       await expect(
         bonding.connect(secondAccount).withdraw(one.mul(100), tokenIds[0])
       )
         .to.emit(uGOV, "Transfer")
-        .withArgs(
-          masterChef.address,
-          secondAddress,
-          pendingCalculated.sub(lostPrecision)
-        );
+        // ugov minting
+        .withArgs(ethers.constants.AddressZero, masterChef.address, uGOVReward);
+      const baluGovAfter = await uGOV.balanceOf(secondAddress);
+
+      const isRewardPrecise = isAmountEquivalent(
+        baluGovAfter.sub(baluGOVBefore).toString(),
+        pendingCalculated.sub(lostPrecision).toString(),
+        "0.000000000001"
+      );
+      expect(isRewardPrecise).to.be.true;
     });
 
     it("Should retrieve pendingUGOV", async () => {
       expect(await masterChef.pendingUGOV(secondAddress)).to.be.equal(0);
     });
-    //TODO CANT DEPOSIT WITHDRAW DIRECTLY
   });
 });

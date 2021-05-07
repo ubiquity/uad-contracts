@@ -3,7 +3,7 @@ import { ethers, getNamedAccounts, network } from "hardhat";
 import { expect } from "chai";
 
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
-import { IMasterChef } from "../artifacts/types/IMasterChef";
+import { ISushiMasterChef } from "../artifacts/types/ISushiMasterChef";
 import { IUniswapV2Factory } from "../artifacts/types/IUniswapV2Factory";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
 import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
@@ -239,9 +239,9 @@ describe("SushiSwapPool", () => {
         );
       const balanceBefore = await poolContract.balanceOf(secondAccAdr);
       const masterChef = (await ethers.getContractAt(
-        "IMasterChef",
+        "ISushiMasterChef",
         masterChefAdr
-      )) as IMasterChef;
+      )) as ISushiMasterChef;
       const poolLengthBefore = await masterChef.poolLength();
       const owner = await masterChef.owner();
       expect(owner).to.equal("0x9a8541Ddf3a932a9A922B607e9CF7301f1d47bD1");

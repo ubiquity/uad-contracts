@@ -79,7 +79,6 @@ contract Bonding is CollectableDust {
         _sendDust(_to, _token, _amount);
     }
 
-
     function setSablier(address _sablier) external onlyBondingManager {
         sablier = ISablier(_sablier);
         emit SablierUpdated(_sablier);
@@ -136,7 +135,6 @@ contract Bonding is CollectableDust {
             1 <= _weeks && _weeks <= 208,
             "Bonding: duration must be between 1 and 208 weeks"
         );
-
         _updateOracle();
 
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
@@ -152,19 +150,18 @@ contract Bonding is CollectableDust {
                 bondingDiscountMultiplier
             );
 
-        // First block 2020 = 9193266 https://etherscan.io/block/9193266
-        // First block 2021 = 11565019 https://etherscan.io/block/11565019
-        // 2020 = 2371753 blocks = 366 days
         // 1 week = 45361 blocks = 2371753*7/366
         // n = (block + duration * 45361)
         // id = n - n % blockRonding
         // blockRonding = 100 => 2 ending zeros
         uint256 n = block.number + _weeks * blockCountInAWeek;
         _id = n - (n % blockRonding);
-
         _mint(_sharesAmount, _id);
         // set masterchef for uGOV rewards
-        IMasterChef(manager.masterChefAddress()).deposit(_sharesAmount, msg.sender);
+        IMasterChef(manager.masterChefAddress()).deposit(
+            _sharesAmount,
+            msg.sender
+        );
     }
 
     function withdraw(uint256 _sharesAmount, uint256 _id) public {
@@ -182,6 +179,13 @@ contract Bonding is CollectableDust {
         );
 
         _updateOracle();
+        // get masterchef for uGOV rewards To ensure correct computation
+        // it needs to be done BEFORE burning the shares
+        IMasterChef(manager.masterChefAddress()).withdraw(
+            _sharesAmount,
+            msg.sender
+        );
+
         uint256 _currentShareValue = currentShareValue();
 
         IERC1155Ubiquity(manager.bondingShareAddress()).burn(
@@ -199,37 +203,6 @@ contract Bonding is CollectableDust {
                 ONE
             )
         );
-        // get masterchef for uGOV rewards
-        IMasterChef(manager.masterChefAddress()).withdraw(_sharesAmount, msg.sender);
-
-        //     } else {
-        //         // The transaction must be processed by the Ethereum blockchain before
-        //         // the start time of the stream, or otherwise the sablier contract
-        //         // reverts with a "start time before block.timestamp" message.
-        //         uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
-        //         uint256 streamStop = streamStart + redeemStreamTime;
-        //         // The deposit must be a multiple of the difference between the stop
-        //         // time and the start time
-
-        //         uint256 streamDuration = streamStop - streamStart;
-        //         tokenAmount = (tokenAmount / streamDuration) * streamDuration;
-
-        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-        //             address(sablier),
-        //             0
-        //         );
-        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-        //             address(sablier),
-        //             tokenAmount
-        //         );
-        //         sablier.createStream(
-        //             msg.sender,
-        //             tokenAmount,
-        //             manager.stableSwapMetaPoolAddress(),
-        //             streamStart,
-        //             streamStop
-        //         );
-        //     }
     }
 
     function currentShareValue() public view returns (uint256 priceShare) {

@@ -117,6 +117,34 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     }
 
     /**
+     * @dev See {IERC1155-safeTransferFrom}.
+     */
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) public override {
+        super.safeTransferFrom(from, to, id, amount, data);
+        _holderBalances[to].add(id);
+    }
+
+    /**
+     * @dev See {IERC1155-safeBatchTransferFrom}.
+     */
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) public virtual override {
+        super.safeBatchTransferFrom(from, to, ids, amounts, data);
+        _holderBalances[to].add(ids);
+    }
+
+    /**
      * @dev Total amount of tokens in with a given id.
      */
     function totalSupply() public view virtual returns (uint256) {
@@ -126,9 +154,12 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     /**
      * @dev array of token Id held by the msg.sender.
      */
-    function holderTokens() public view returns (uint256[] memory) {
-        console.log("## holderTokens  msg.sender:%s", msg.sender);
-        return _holderBalances[msg.sender];
+    function holderTokens(address holder)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return _holderBalances[holder];
     }
 
     function _burn(
@@ -160,34 +191,5 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         bytes memory data
     ) internal virtual override(ERC1155, ERC1155Pausable) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-    }
-
-    /**
-     * @dev See {IERC1155-safeTransferFrom}.
-     */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) public override {
-        console.log("##########UBQ  safeTransferFrom to:%s id:%s", to, id);
-        super.safeTransferFrom(from, to, id, amount, data);
-        _holderBalances[to].add(id);
-    }
-
-    /**
-     * @dev See {IERC1155-safeBatchTransferFrom}.
-     */
-    function safeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) public virtual override {
-        super.safeBatchTransferFrom(from, to, ids, amounts, data);
-        _holderBalances[to].add(ids);
     }
 }

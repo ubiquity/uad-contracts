@@ -4,7 +4,7 @@ pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IMasterChef {
+interface ISushiMasterChef {
     struct UserInfo {
         uint256 amount; // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
@@ -56,7 +56,7 @@ interface IMasterChef {
     function userInfo(uint256 pid, address user)
         external
         view
-        returns (IMasterChef.UserInfo memory);
+        returns (ISushiMasterChef.UserInfo memory);
 
     // SUSHI tokens created per block.
     function sushiPerBlock() external view returns (uint256);
@@ -65,7 +65,7 @@ interface IMasterChef {
     function poolInfo(uint256 pid)
         external
         view
-        returns (IMasterChef.PoolInfo memory);
+        returns (ISushiMasterChef.PoolInfo memory);
 
     // Total allocation poitns. Must be the sum of all allocation points in all pools.
     function totalAllocPoint() external view returns (uint256);
