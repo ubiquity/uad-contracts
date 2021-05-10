@@ -5,7 +5,7 @@ import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlg
 import { MockuADToken } from "../artifacts/types/MockuADToken";
 import { MockTWAPOracle } from "../artifacts/types/MockTWAPOracle";
 import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
-import { calcDollarsToMint } from "./utils/calc";
+import { calcDollarsToMint, isAmountEquivalent } from "./utils/calc";
 
 describe("DollarMintingCalculator", () => {
   let metaPoolAddr: string;
@@ -107,10 +107,13 @@ describe("DollarMintingCalculator", () => {
       totSupply.toString(),
       uadPrice.toString()
     );
-    const delta = calculatedToMint.sub(toMint);
 
-    // assert expected presision
-    expect(delta.div(BigNumber.from(10).pow(8)).abs()).to.be.lte(10);
+    // assert expected precision
+    const isPrecise = isAmountEquivalent(
+      calculatedToMint.toString(),
+      toMint.toString()
+    );
+    expect(isPrecise).to.be.true;
     expect(toMint).not.to.equal(calculatedToMint);
   });
   it("getDollarsToMint should work if supply is no too large", async () => {

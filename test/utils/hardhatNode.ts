@@ -24,10 +24,29 @@ export async function mineNBlock(
   secondsBetweenBlock?: number
 ): Promise<void> {
   const blockBefore = await ethers.provider.getBlock("latest");
-  const minings = [...Array(blockCount).keys()].map((v, i) => {
-    const newTs = blockBefore.timestamp + i + (secondsBetweenBlock || 1);
+  const maxMinedBlockPerBatch = 5000;
+  let blockToMine = blockCount;
+  let blockTime = blockBefore.timestamp;
+  while (blockToMine > maxMinedBlockPerBatch) {
+    // eslint-disable-next-line @typescript-eslint/no-loop-func
+    const minings = [...Array(maxMinedBlockPerBatch).keys()].map((_v, i) => {
+      const newTs = blockTime + i + (secondsBetweenBlock || 1);
+      return mineBlock(newTs);
+    });
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(minings);
+    blockToMine -= maxMinedBlockPerBatch;
+    blockTime =
+      blockTime +
+      maxMinedBlockPerBatch -
+      1 +
+      maxMinedBlockPerBatch * (secondsBetweenBlock || 1);
+  }
+  const minings = [...Array(blockToMine).keys()].map((_v, i) => {
+    const newTs = blockTime + i + (secondsBetweenBlock || 1);
     return mineBlock(newTs);
   });
+  // eslint-disable-next-line no-await-in-loop
   await Promise.all(minings);
 }
 
@@ -37,8 +56,9 @@ export async function resetFork(blockNumber: number): Promise<void> {
     params: [
       {
         forking: {
-          jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY || ""
-            }`,
+          jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${
+            process.env.ALCHEMY_API_KEY || ""
+          }`,
           blockNumber,
         },
       },

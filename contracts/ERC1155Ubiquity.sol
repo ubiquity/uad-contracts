@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
+import "./utils/SafeAddArray.sol";
+
+import "hardhat/console.sol";
 
 /// @title ERC1155 Ubiquity preset
 /// @author Ubiquity Algorithmic Dollar
@@ -13,22 +16,11 @@ import "./UbiquityAlgorithmicDollarManager.sol";
 /// - TotatSupply per id
 /// - Ubiquity Manager access control
 contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
+    using SafeAddArray for uint256[];
     UbiquityAlgorithmicDollarManager public manager;
-
+    // Mapping from account to operator approvals
+    mapping(address => uint256[]) private _holderBalances;
     uint256 private _totalSupply;
-
-    // ----------- Events -----------
-    event Minting(
-        address indexed _to,
-        address indexed _minter,
-        uint256 _amount
-    );
-
-    event Burning(
-        address indexed _to,
-        address indexed _burner,
-        uint256 _amount
-    );
 
     // ----------- Modifiers -----------
     modifier onlyMinter() {
@@ -68,10 +60,27 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256 id,
         uint256 amount,
         bytes memory data
-    ) public virtual {
+    ) public virtual onlyMinter {
         _mint(to, id, amount, data);
         _totalSupply += amount;
+        _holderBalances[to].add(id);
     }
+
+    /*     /// @notice burn boinding shares tokens from specified account
+    /// @param account the account to burn from
+    /// @param amount the amount to burn
+    function burnFrom(
+        address account,
+        uint256 id,
+        uint256 amount
+    )
+        public
+        onlyBurner
+        whenNotPaused // to suppress ? if BURNER_ROLE should do it even paused ?
+    {
+        _burn(account, amount);
+           _totalSupply -= amount;
+    } */
 
     // @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
     function mintBatch(
@@ -84,6 +93,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         for (uint256 i = 0; i < ids.length; ++i) {
             _totalSupply += amounts[i];
         }
+        _holderBalances[to].add(ids);
     }
 
     /**
@@ -107,10 +117,49 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     }
 
     /**
+     * @dev See {IERC1155-safeTransferFrom}.
+     */
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) public override {
+        super.safeTransferFrom(from, to, id, amount, data);
+        _holderBalances[to].add(id);
+    }
+
+    /**
+     * @dev See {IERC1155-safeBatchTransferFrom}.
+     */
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) public virtual override {
+        super.safeBatchTransferFrom(from, to, ids, amounts, data);
+        _holderBalances[to].add(ids);
+    }
+
+    /**
      * @dev Total amount of tokens in with a given id.
      */
     function totalSupply() public view virtual returns (uint256) {
         return _totalSupply;
+    }
+
+    /**
+     * @dev array of token Id held by the msg.sender.
+     */
+    function holderTokens(address holder)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return _holderBalances[holder];
     }
 
     function _burn(

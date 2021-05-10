@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
-
 import { ethers, Signer } from "ethers";
 import { describe, it } from "mocha";
 import { expect } from "./setup";
@@ -9,6 +7,19 @@ import { Bonding } from "../artifacts/types/Bonding";
 import { bondingSetup } from "./BondingSetup";
 
 describe("Bonding", () => {
+  let bonding: Bonding;
+  let admin: Signer;
+  let secondAccount: Signer;
+  let uAD: UbiquityAlgorithmicDollar;
+  let sablier: string;
+  let DAI: string;
+  let USDC: string;
+  let twapOracle: TWAPOracle;
+
+  before(async () => {
+    ({ admin, secondAccount, uAD, bonding, twapOracle, sablier, DAI, USDC } =
+      await bondingSetup());
+  });
   describe("CollectableDust", () => {
     it("Admin should be able to add protocol token (CollectableDust)", async () => {
       await bonding.connect(admin).addProtocolToken(USDC);
@@ -100,116 +111,121 @@ describe("Bonding", () => {
         .withArgs(DAI);
     });
   });
-});
 
-describe("bondingDiscountMultiplier", () => {
-  it("Admin should be able to update the bondingDiscountMultiplier", async () => {
-    await bonding
-      .connect(admin)
-      .setBondingDiscountMultiplier(ethers.BigNumber.from(2));
-    expect(await bonding.bondingDiscountMultiplier()).to.equal(
-      ethers.BigNumber.from(2)
-    );
-  });
-
-  it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
-    await expect(
-      bonding
-        .connect(secondAccount)
-        .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
-    ).to.be.revertedWith("Caller is not a bonding manager");
-  });
-
-  it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
-    await expect(
-      bonding
+  describe("blockCountInAWeek", () => {
+    it("Admin should be able to update the blockCountInAWeek", async () => {
+      await bonding
         .connect(admin)
-        .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
-    )
-      .to.emit(bonding, "BondingDiscountMultiplierUpdated")
-      .withArgs(ethers.BigNumber.from(2));
-  });
-});
+        .setBlockCountInAWeek(ethers.BigNumber.from(2));
+      expect(await bonding.blockCountInAWeek()).to.equal(
+        ethers.BigNumber.from(2)
+      );
+    });
 
-describe("redeemStreamTime", () => {
-  it("Admin should be able to update the redeemStreamTime", async () => {
-    await bonding
-      .connect(admin)
-      .setRedeemStreamTime(ethers.BigNumber.from("0"));
+    it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .setBlockCountInAWeek(ethers.BigNumber.from(2))
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
 
-    expect(await bonding.redeemStreamTime()).to.equal(
-      ethers.BigNumber.from("0")
-    );
-  });
-
-  it("Should revert when unauthorized accounts try to update the redeemStreamTime", async () => {
-    await expect(
-      bonding
-        .connect(secondAccount)
-        .setRedeemStreamTime(ethers.BigNumber.from(0))
-    ).to.be.revertedWith("Caller is not a bonding manager");
+    it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
+      await expect(
+        bonding.connect(admin).setBlockCountInAWeek(ethers.BigNumber.from(2))
+      )
+        .to.emit(bonding, "BlockCountInAWeekUpdated")
+        .withArgs(ethers.BigNumber.from(2));
+    });
   });
 
-  it("Should emit the RedeemStreamTimeUpdated event", async () => {
-    await expect(
-      bonding
+  describe("bondingDiscountMultiplier", () => {
+    it("Admin should be able to update the bondingDiscountMultiplier", async () => {
+      await bonding
         .connect(admin)
-        .setRedeemStreamTime(ethers.BigNumber.from("604800"))
-    )
-      .to.emit(bonding, "RedeemStreamTimeUpdated")
-      .withArgs(ethers.BigNumber.from("604800"));
-  });
-});
+        .setBondingDiscountMultiplier(ethers.BigNumber.from(2));
+      expect(await bonding.bondingDiscountMultiplier()).to.equal(
+        ethers.BigNumber.from(2)
+      );
+    });
 
-describe("StableSwap meta pool TWAP oracle", () => {
-  it("Oracle should return the correct initial price", async () => {
-    expect(await twapOracle.consult(uAD.address)).to.equal(
-      ethers.utils.parseEther("1")
-    );
-  });
-});
+    it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
 
-describe("Sablier configuration", () => {
-  it("Should return the current Sablier address", async () => {
-    expect(await bonding.sablier()).to.equal(sablier);
-  });
-
-  it("admin should be able to update the Sablier address", async () => {
-    await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
-    expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
-  });
-
-  it("Should emit the SablierUpdated event", async () => {
-    await expect(bonding.connect(admin).setSablier(DAI))
-      .to.emit(bonding, "SablierUpdated")
-      .withArgs(DAI);
+    it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
+      await expect(
+        bonding
+          .connect(admin)
+          .setBondingDiscountMultiplier(ethers.BigNumber.from(2))
+      )
+        .to.emit(bonding, "BondingDiscountMultiplierUpdated")
+        .withArgs(ethers.BigNumber.from(2));
+    });
   });
 
-  it("Should revert when another account tries to update the Sablier address", async () => {
-    await expect(
-      bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
-    ).to.be.revertedWith("Caller is not a bonding manager");
+  describe("redeemStreamTime", () => {
+    it("Admin should be able to update the redeemStreamTime", async () => {
+      await bonding
+        .connect(admin)
+        .setRedeemStreamTime(ethers.BigNumber.from("0"));
+
+      expect(await bonding.redeemStreamTime()).to.equal(
+        ethers.BigNumber.from("0")
+      );
+    });
+
+    it("Should revert when unauthorized accounts try to update the redeemStreamTime", async () => {
+      await expect(
+        bonding
+          .connect(secondAccount)
+          .setRedeemStreamTime(ethers.BigNumber.from(0))
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+
+    it("Should emit the RedeemStreamTimeUpdated event", async () => {
+      await expect(
+        bonding
+          .connect(admin)
+          .setRedeemStreamTime(ethers.BigNumber.from("604800"))
+      )
+        .to.emit(bonding, "RedeemStreamTimeUpdated")
+        .withArgs(ethers.BigNumber.from("604800"));
+    });
   });
-});
 
-let bonding: Bonding;
-let admin: Signer;
-let secondAccount: Signer;
-let uAD: UbiquityAlgorithmicDollar;
-let sablier: string;
-let DAI: string;
-let USDC: string;
-let twapOracle: TWAPOracle;
+  describe("StableSwap meta pool TWAP oracle", () => {
+    it("Oracle should return the correct initial price", async () => {
+      expect(await twapOracle.consult(uAD.address)).to.equal(
+        ethers.utils.parseEther("1")
+      );
+    });
+  });
 
-before(async () => {
-  ({
-    admin,
-    secondAccount,
-    uAD,
-    bonding,
-    twapOracle,
-    sablier,
-    DAI,
-    USDC,
-  } = await bondingSetup());
+  describe("Sablier configuration", () => {
+    it("Should return the current Sablier address", async () => {
+      expect(await bonding.sablier()).to.equal(sablier);
+    });
+
+    it("admin should be able to update the Sablier address", async () => {
+      await bonding.connect(admin).setSablier(ethers.constants.AddressZero);
+      expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
+    });
+
+    it("Should emit the SablierUpdated event", async () => {
+      await expect(bonding.connect(admin).setSablier(DAI))
+        .to.emit(bonding, "SablierUpdated")
+        .withArgs(DAI);
+    });
+
+    it("Should revert when another account tries to update the Sablier address", async () => {
+      await expect(
+        bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
+      ).to.be.revertedWith("Caller is not a bonding manager");
+    });
+  });
 });

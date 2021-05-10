@@ -726,9 +726,7 @@ library ABDKMathQuad {
      * @return quadruple precision number
      */
     function sub(bytes16 x, bytes16 y) internal pure returns (bytes16) {
-        unchecked {
-            return add(x, y ^ 0x80000000000000000000000000000000);
-        }
+        unchecked {return add(x, y ^ 0x80000000000000000000000000000000);}
     }
 
     /**
@@ -975,9 +973,7 @@ library ABDKMathQuad {
      * @return quadruple precision number
      */
     function neg(bytes16 x) internal pure returns (bytes16) {
-        unchecked {
-            return x ^ 0x80000000000000000000000000000000;
-        }
+        unchecked {return x ^ 0x80000000000000000000000000000000;}
     }
 
     /**
@@ -987,9 +983,7 @@ library ABDKMathQuad {
      * @return quadruple precision number
      */
     function abs(bytes16 x) internal pure returns (bytes16) {
-        unchecked {
-            return x & 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-        }
+        unchecked {return x & 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;}
     }
 
     /**
@@ -1146,9 +1140,7 @@ library ABDKMathQuad {
      * @return quadruple precision number
      */
     function ln(bytes16 x) internal pure returns (bytes16) {
-        unchecked {
-            return mul(log_2(x), 0x3FFE62E42FEFA39EF35793C7673007E5);
-        }
+        unchecked {return mul(log_2(x), 0x3FFE62E42FEFA39EF35793C7673007E5);}
     }
 
     /**
@@ -1854,9 +1846,7 @@ library ABDKMathQuad {
      * @return quadruple precision number
      */
     function exp(bytes16 x) internal pure returns (bytes16) {
-        unchecked {
-            return pow_2(mul(x, 0x3FFF71547652B82FE1777D0FFDA0D23A));
-        }
+        unchecked {return pow_2(mul(x, 0x3FFF71547652B82FE1777D0FFDA0D23A));}
     }
 
     /**

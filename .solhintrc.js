@@ -6,7 +6,7 @@ module.exports = {
     "code-complexity": ["error", 10],
     "function-max-lines": ["error", 60],
     "max-line-length": ["error", 100],
-    "max-states-count": ["error", 15],
+    "max-states-count": ["error", 20],
     "no-empty-blocks": "error",
     "no-unused-vars": "error",
     "payable-fallback": "off",

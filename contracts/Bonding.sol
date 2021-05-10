@@ -5,18 +5,19 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC1155Ubiquity.sol";
 
-import "./libs/UbiquityFormulas.sol";
+import "./interfaces/IUbiquityFormulas.sol";
+
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
+import "./interfaces/IMasterChef.sol";
 import "./interfaces/ITWAPOracle.sol";
-import "./interfaces/IBondingShare.sol";
+import "./interfaces/IERC1155Ubiquity.sol";
 import "./utils/CollectableDust.sol";
 
 import "hardhat/console.sol";
 
 contract Bonding is CollectableDust {
     using SafeERC20 for IERC20;
-    using UbiquityFormulas for uint256;
 
     bytes public data = "";
     UbiquityAlgorithmicDollarManager public manager;
@@ -25,12 +26,17 @@ contract Bonding is CollectableDust {
     ISablier public sablier;
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+    uint256 public blockCountInAWeek = 45361;
     uint256 public blockRonding = 100;
+    uint256 public uGOVPerBlock = 1;
 
     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
     event SablierUpdated(address _sablier);
     event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
     event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
+    event BlockRondingUpdated(uint256 _blockRonding);
+    event BlockCountInAWeekUpdated(uint256 _blockCountInAWeek);
+    event UGOVPerBlockUpdated(uint256 _uGOVPerBlock);
 
     modifier onlyBondingManager() {
         require(
@@ -99,6 +105,23 @@ contract Bonding is CollectableDust {
         onlyBondingManager
     {
         blockRonding = _blockRonding;
+        emit BlockRondingUpdated(_blockRonding);
+    }
+
+    function setBlockCountInAWeek(uint256 _blockCountInAWeek)
+        external
+        onlyBondingManager
+    {
+        blockCountInAWeek = _blockCountInAWeek;
+        emit BlockCountInAWeekUpdated(_blockCountInAWeek);
+    }
+
+    function setUGOVPerBlock(uint256 _uGOVPerBlock)
+        external
+        onlyBondingManager
+    {
+        uGOVPerBlock = _uGOVPerBlock;
+        emit UGOVPerBlockUpdated(_uGOVPerBlock);
     }
 
     /*
@@ -109,10 +132,9 @@ contract Bonding is CollectableDust {
         returns (uint256 _id)
     {
         require(
-            1 <= _weeks && _weeks <= 520,
-            "Bonding: duration must be between 1 and 520 weeks"
+            1 <= _weeks && _weeks <= 208,
+            "Bonding: duration must be between 1 and 208 weeks"
         );
-
         _updateOracle();
 
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
@@ -122,19 +144,24 @@ contract Bonding is CollectableDust {
         );
 
         uint256 _sharesAmount =
-            _lpsAmount.durationMultiply(_weeks, bondingDiscountMultiplier);
+            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
+                _lpsAmount,
+                _weeks,
+                bondingDiscountMultiplier
+            );
 
-        // First block 2020 = 9193266 https://etherscan.io/block/9193266
-        // First block 2021 = 11565019 https://etherscan.io/block/11565019
-        // 2020 = 2371753 blocks = 366 days
         // 1 week = 45361 blocks = 2371753*7/366
         // n = (block + duration * 45361)
         // id = n - n % blockRonding
         // blockRonding = 100 => 2 ending zeros
-        uint256 n = block.number + _weeks * 45361;
+        uint256 n = block.number + _weeks * blockCountInAWeek;
         _id = n - (n % blockRonding);
-
         _mint(_sharesAmount, _id);
+        // set masterchef for uGOV rewards
+        IMasterChef(manager.masterChefAddress()).deposit(
+            _sharesAmount,
+            msg.sender
+        );
     }
 
     function withdraw(uint256 _sharesAmount, uint256 _id) public {
@@ -152,9 +179,16 @@ contract Bonding is CollectableDust {
         );
 
         _updateOracle();
+        // get masterchef for uGOV rewards To ensure correct computation
+        // it needs to be done BEFORE burning the shares
+        IMasterChef(manager.masterChefAddress()).withdraw(
+            _sharesAmount,
+            msg.sender
+        );
+
         uint256 _currentShareValue = currentShareValue();
 
-        IBondingShare(manager.bondingShareAddress()).burn(
+        IERC1155Ubiquity(manager.bondingShareAddress()).burn(
             msg.sender,
             _id,
             _sharesAmount
@@ -163,36 +197,12 @@ contract Bonding is CollectableDust {
         // if (redeemStreamTime == 0) {
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
             msg.sender,
-            _sharesAmount.redeemBonds(_currentShareValue, ONE)
+            IUbiquityFormulas(manager.formulasAddress()).redeemBonds(
+                _sharesAmount,
+                _currentShareValue,
+                ONE
+            )
         );
-        //     } else {
-        //         // The transaction must be processed by the Ethereum blockchain before
-        //         // the start time of the stream, or otherwise the sablier contract
-        //         // reverts with a "start time before block.timestamp" message.
-        //         uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
-        //         uint256 streamStop = streamStart + redeemStreamTime;
-        //         // The deposit must be a multiple of the difference between the stop
-        //         // time and the start time
-
-        //         uint256 streamDuration = streamStop - streamStart;
-        //         tokenAmount = (tokenAmount / streamDuration) * streamDuration;
-
-        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-        //             address(sablier),
-        //             0
-        //         );
-        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-        //             address(sablier),
-        //             tokenAmount
-        //         );
-        //         sablier.createStream(
-        //             msg.sender,
-        //             tokenAmount,
-        //             manager.stableSwapMetaPoolAddress(),
-        //             streamStart,
-        //             streamStop
-        //         );
-        //     }
     }
 
     function currentShareValue() public view returns (uint256 priceShare) {
@@ -204,7 +214,11 @@ contract Bonding is CollectableDust {
         uint256 totalShares =
             IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
 
-        priceShare = totalLP.bondPrice(totalShares, ONE);
+        priceShare = IUbiquityFormulas(manager.formulasAddress()).bondPrice(
+            totalLP,
+            totalShares,
+            ONE
+        );
     }
 
     function currentTokenPrice() public view returns (uint256) {
@@ -221,7 +235,7 @@ contract Bonding is CollectableDust {
             "Bonding: Share Value should not be nul"
         );
 
-        IBondingShare(manager.bondingShareAddress()).mint(
+        IERC1155Ubiquity(manager.bondingShareAddress()).mint(
             msg.sender,
             _id,
             _sharesAmount,

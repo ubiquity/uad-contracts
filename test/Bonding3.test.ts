@@ -1,50 +1,53 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
-
 import { expect } from "chai";
-import { Signer, BigNumber } from "ethers";
+import { Signer, BigNumber, ethers } from "ethers";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { bondingSetup, deposit, withdraw } from "./BondingSetup";
-// import { mineNBlock } from "./utils/hardhatNode";
-// import { IMetaPool } from "../artifacts/types/IMetaPool";
+import { mineNBlock } from "./utils/hardhatNode";
+import { IMetaPool } from "../artifacts/types/IMetaPool";
+import { calcShareInToken, isAmountEquivalent } from "./utils/calc";
+import { Bonding } from "../artifacts/types/Bonding";
 
 describe("Bonding3", () => {
   const one: BigNumber = BigNumber.from(10).pow(18);
-  const ten9: BigNumber = BigNumber.from(10).pow(9);
 
   let admin: Signer;
   let secondAccount: Signer;
   let secondAddress: string;
   let bondingShare: BondingShare;
-  // let metaPool: IMetaPool;
+  let bonding: Bonding;
+  let metaPool: IMetaPool;
+  let blockCountInAWeek: BigNumber;
 
   before(async () => {
-    // ({ admin, secondAccount, bondingShare, metaPool } = await bondingSetup());
-    ({ admin, secondAccount, bondingShare } = await bondingSetup());
+    ({
+      admin,
+      secondAccount,
+      bondingShare,
+      bonding,
+      metaPool,
+      blockCountInAWeek,
+    } = await bondingSetup());
     secondAddress = await secondAccount.getAddress();
   });
 
   describe("Bonding time and redeem", () => {
-    let idAdmin: number;
     let idSecond: number;
-    // let lp0: BigNumber;
-    // let lp1: BigNumber;
 
-    // uLP = 1000
-    // uBOND = 0
     it("second account should be able to bound for 1 weeks", async () => {
-      // lp0 = await metaPool.balanceOf(secondAddress);
+      await metaPool.balanceOf(secondAddress);
       idSecond = (await deposit(secondAccount, one.mul(100), 1)).id;
 
       const bond: BigNumber = await bondingShare.balanceOf(
         secondAddress,
         idSecond
       );
-      const epsilon = ten9.mul(100100000000).sub(bond);
-
-      expect(epsilon.div(ten9)).to.be.equal(0);
+      const isPrecise = isAmountEquivalent(
+        bond.toString(),
+        "100100000000000000000",
+        "0.00000000000000000001"
+      );
+      expect(isPrecise).to.be.true;
     });
-    // uLP = 900
-    // uBOND = 101.469
     it("second account should not be able to redeem before 1 week", async () => {
       await expect(withdraw(secondAccount, idSecond)).to.be.revertedWith(
         "Bonding: Redeem not allowed before bonding time"
@@ -52,29 +55,69 @@ describe("Bonding3", () => {
     });
 
     it("second account should be able to redeem after 1 week", async () => {
-      // console.log("should take some time! but less than 1 week...");
-      // can make test fail with core dumped : 45361 Promises in parallel...
-      // await mineNBlock(45361);
-      // await withdraw(secondAccount, idSecond);
-      // const bal = await bondingShare.balanceOf(secondAddress, idSecond);
-      // expect(bal).to.be.equal(0);
-      // lp1 = await metaPool.balanceOf(secondAddress);
-      // expect(lp1).to.be.gte(100);
-      // expect(lp1.sub(lp0)).to.be.gt(0);
+      const secondAccountAdr = await secondAccount.getAddress();
+      const balBSBefore = await bondingShare.balanceOf(
+        secondAccountAdr,
+        idSecond
+      );
+      expect(balBSBefore).to.be.equal(
+        ethers.utils.parseEther("100.099999999999999999")
+      );
+      const totalSupplyBSBefore = await bondingShare.totalSupply();
+      const TotalLPInBondingBefore = await metaPool.balanceOf(bonding.address);
+      const balLPBefore = await metaPool.balanceOf(secondAccountAdr);
+      expect(balLPBefore).to.be.equal(ethers.utils.parseEther("900"));
+      await mineNBlock(blockCountInAWeek.toNumber());
+      await withdraw(secondAccount, idSecond);
+
+      const TotalLPInBondingAfter = await metaPool.balanceOf(bonding.address);
+      const totalSupplyBSAfter = await bondingShare.totalSupply();
+      const balLPAfter = await metaPool.balanceOf(secondAccountAdr);
+      const balBSAfter = await bondingShare.balanceOf(
+        secondAccountAdr,
+        idSecond
+      );
+      const calculatedLPToWithdraw = calcShareInToken(
+        totalSupplyBSBefore.toString(),
+        balBSBefore.toString(),
+        TotalLPInBondingBefore.toString()
+      );
+      expect(balBSAfter).to.be.equal(0);
+      const lpWithdrawn = balLPAfter.sub(balLPBefore);
+      const isPrecise = isAmountEquivalent(
+        lpWithdrawn.toString(),
+        calculatedLPToWithdraw.toString(),
+        "0.000000000000000001"
+      );
+      expect(isPrecise).to.be.true;
+      expect(TotalLPInBondingBefore).to.equal(
+        TotalLPInBondingAfter.add(lpWithdrawn)
+      );
+      expect(totalSupplyBSAfter).to.equal(totalSupplyBSBefore.sub(balBSBefore));
     });
-    //   uLP = 1001.469...
-    // uBOND = 0
 
     it("admin and second account should be able to bound on same block", async () => {
+      const secondAccountAdr = await secondAccount.getAddress();
+      const adminAdr = await admin.getAddress();
+      const totalSupplyBSBefore = await bondingShare.totalSupply();
+      const TotalLPInBondingBefore = await metaPool.balanceOf(bonding.address);
       const [bondAdmin, bondSecond] = await Promise.all([
         deposit(admin, one.mul(100), 1),
         deposit(secondAccount, one.mul(100), 1),
       ]);
+      const TotalLPInBondingAfter = await metaPool.balanceOf(bonding.address);
+      expect(TotalLPInBondingAfter).to.equal(
+        TotalLPInBondingBefore.add(one.mul(200))
+      );
+      const { id } = bondAdmin;
       expect(bondAdmin.id).to.be.equal(bondSecond.id);
+      const secAccBalBS = await bondingShare.balanceOf(secondAccountAdr, id);
+      const adminBalBS = await bondingShare.balanceOf(adminAdr, id);
 
-      const totalUBOND: BigNumber = await bondingShare.totalSupply();
-      // log(totalUBOND);
-      expect(totalUBOND).to.be.gte(one.mul(150));
+      const totalSupplyBSAfter = await bondingShare.totalSupply();
+      expect(totalSupplyBSAfter).to.equal(
+        totalSupplyBSBefore.add(secAccBalBS).add(adminBalBS)
+      );
     });
   });
 });

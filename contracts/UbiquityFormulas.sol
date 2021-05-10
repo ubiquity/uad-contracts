@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-import "./ABDKMathQuad.sol";
-import "hardhat/console.sol";
+import "./libs/ABDKMathQuad.sol";
 
-library UbiquityFormulas {
+// import "hardhat/console.sol";
+
+contract UbiquityFormulas {
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;
 
@@ -22,12 +23,12 @@ library UbiquityFormulas {
         uint256 _multiplier
     ) public pure returns (uint256 _shares) {
         bytes16 unit = uint256(1 ether).fromUInt();
-        bytes16 D = _weeks.fromUInt();
-        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
+        bytes16 d = _weeks.fromUInt();
+        bytes16 d32 = (d.mul(d).mul(d)).sqrt();
         bytes16 m = _multiplier.fromUInt().div(unit); // 0.0001
-        bytes16 A = _uLP.fromUInt();
+        bytes16 a = _uLP.fromUInt();
 
-        _shares = m.mul(D32).mul(A).add(A).toUInt();
+        _shares = m.mul(d32).mul(a).add(a).toUInt();
     }
 
     /// @dev formula bonding
@@ -42,11 +43,11 @@ library UbiquityFormulas {
         uint256 _currentShareValue,
         uint256 _targetPrice
     ) public pure returns (uint256 _uBOND) {
-        bytes16 A = _shares.fromUInt();
-        bytes16 V = _currentShareValue.fromUInt();
-        bytes16 T = _targetPrice.fromUInt();
+        bytes16 a = _shares.fromUInt();
+        bytes16 v = _currentShareValue.fromUInt();
+        bytes16 t = _targetPrice.fromUInt();
 
-        _uBOND = A.div(V).mul(T).toUInt();
+        _uBOND = a.div(v).mul(t).toUInt();
     }
 
     /// @dev formula redeem bonds
@@ -61,11 +62,11 @@ library UbiquityFormulas {
         uint256 _currentShareValue,
         uint256 _targetPrice
     ) public pure returns (uint256 _uLP) {
-        bytes16 A = _uBOND.fromUInt();
-        bytes16 V = _currentShareValue.fromUInt();
-        bytes16 T = _targetPrice.fromUInt();
+        bytes16 a = _uBOND.fromUInt();
+        bytes16 v = _currentShareValue.fromUInt();
+        bytes16 t = _targetPrice.fromUInt();
 
-        _uLP = A.mul(V).div(T).toUInt();
+        _uLP = a.mul(v).div(t).toUInt();
     }
 
     /// @dev formula bond price
@@ -83,11 +84,37 @@ library UbiquityFormulas {
         uint256 _totalUBOND,
         uint256 _targetPrice
     ) public pure returns (uint256 _priceUBOND) {
-        bytes16 LP = _totalULP.fromUInt();
-        bytes16 S = _totalUBOND.fromUInt();
-        bytes16 R = _totalUBOND == 0 ? uint256(1).fromUInt() : LP.div(S);
-        bytes16 T = _targetPrice.fromUInt();
+        bytes16 lp = _totalULP.fromUInt();
+        bytes16 s = _totalUBOND.fromUInt();
+        bytes16 r = _totalUBOND == 0 ? uint256(1).fromUInt() : lp.div(s);
+        bytes16 t = _targetPrice.fromUInt();
 
-        _priceUBOND = R.mul(T).toUInt();
+        _priceUBOND = r.mul(t).toUInt();
+    }
+
+    /// @dev formula ugov multiply
+    /// @param _multiplier , initial ugov min multiplier
+    /// @param _price , current share price
+    /// @return _newMultiplier , new ugov min multiplier
+    /// @notice new_multiplier = multiplier * ( 1.05 / (1 + abs( 1 - price ) ) )
+    // nM = M * C / A
+    // A = ( 1 + abs( 1 - P)))
+    // 5 >= multiplier >= 0.2
+    function ugovMultiply(uint256 _multiplier, uint256 _price)
+        public
+        pure
+        returns (uint256 _newMultiplier)
+    {
+        bytes16 m = _multiplier.fromUInt();
+        bytes16 p = _price.fromUInt();
+        bytes16 c = uint256(105 * 1e16).fromUInt(); // 1.05
+        bytes16 u = uint256(1e18).fromUInt(); // 1
+        bytes16 a = u.add(u.sub(p).abs()); // 1 + abs( 1 - P )
+
+        _newMultiplier = m.mul(c).div(a).toUInt(); // nM = M * C / A
+
+        // 5 >= multiplier >= 0.2
+        if (_newMultiplier > 5e18 || _newMultiplier < 2e17)
+            _newMultiplier = _multiplier;
     }
 }

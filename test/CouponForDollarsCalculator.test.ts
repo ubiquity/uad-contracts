@@ -45,9 +45,10 @@ describe("CouponForDollarCalculator", () => {
     const couponsForDollarsCalculatorFactory = await ethers.getContractFactory(
       "CouponsForDollarsCalculator"
     );
-    couponsForDollarsCalculator = (await couponsForDollarsCalculatorFactory.deploy(
-      manager.address
-    )) as CouponsForDollarsCalculator;
+    couponsForDollarsCalculator =
+      (await couponsForDollarsCalculatorFactory.deploy(
+        manager.address
+      )) as CouponsForDollarsCalculator;
 
     await manager
       .connect(admin)

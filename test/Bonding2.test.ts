@@ -1,17 +1,42 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
-
 import { expect } from "chai";
-import { Signer, BigNumber } from "ethers";
+import { Signer, BigNumber, ethers } from "ethers";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { Bonding } from "../artifacts/types/Bonding";
 import { bondingSetup, deposit, withdraw } from "./BondingSetup";
 import { mineNBlock } from "./utils/hardhatNode";
+import { calcShareInToken, isAmountEquivalent } from "./utils/calc";
 
 describe("Bonding2", () => {
   let idAdmin: number;
   let idSecond: number;
+  const one: BigNumber = BigNumber.from(10).pow(18);
 
+  let metaPool: IMetaPool;
+  let bonding: Bonding;
+  let bondingShare: BondingShare;
+  let admin: Signer;
+  let secondAccount: Signer;
+  let thirdAccount: Signer;
+  let adminAddress: string;
+  let secondAddress: string;
+  let thirdAddress: string;
+  let blockCountInAWeek: BigNumber;
+
+  before(async () => {
+    ({
+      admin,
+      secondAccount,
+      thirdAccount,
+      metaPool,
+      bonding,
+      bondingShare,
+      blockCountInAWeek,
+    } = await bondingSetup());
+    adminAddress = await admin.getAddress();
+    secondAddress = await secondAccount.getAddress();
+    thirdAddress = await thirdAccount.getAddress();
+  });
   describe("Bonding and Redeem", () => {
     it("admin should have some uLP tokens", async () => {
       const bal = await metaPool.balanceOf(adminAddress);
@@ -31,8 +56,6 @@ describe("Bonding2", () => {
       const bal = await metaPool.balanceOf(bonding.address);
       expect(bal).to.be.equal(one.mul(100));
     });
-    // uLP = 100
-    // uBOND = 0
 
     it("total uBOND should be 0", async () => {
       const totalUBOND = await bondingShare.totalSupply();
@@ -42,32 +65,25 @@ describe("Bonding2", () => {
     it("admin should be able to bound", async () => {
       const { id, bond } = await deposit(admin, one.mul(100), 1);
       idAdmin = id;
-      // console.log("idAdmin", idAdmin);
-      // log(bond);
-      expect(bond).to.be.gte(one.mul(100));
-      // console.log("total uLP", log(await metaPool.balanceOf(bonding.address)));
+      expect(bond).to.equal(ethers.utils.parseEther("100.099999999999999999"));
     });
-    // uLP = 200
-    // uBOND = 100.1
 
-    it("total uBOND should be 100.1", async () => {
+    it("total uBOND should be 100.01", async () => {
       const totalUBOND: BigNumber = await bondingShare.totalSupply();
-      // log(totalUBOND);
-      expect(totalUBOND).to.be.gte(one.mul(100));
+      expect(totalUBOND).to.equal(
+        ethers.utils.parseEther("100.099999999999999999")
+      );
     });
 
     it("second account should be able to bound", async () => {
       const { id, bond } = await deposit(secondAccount, one.mul(100), 1);
       idSecond = id;
-      // console.log("idSecond", idSecond);
-
-      // log(bond);
-      expect(bond).to.be.gte(one.mul(33));
+      expect(bond).to.equal(ethers.utils.parseEther("100.099999999999999999"));
     });
-    // uLP = 300
-    // uBOND = 133.5
 
-    it("third account should not be able to bound", async () => {
+    it("third account should not be able to bound with no LP token", async () => {
+      const bal = await metaPool.balanceOf(await thirdAccount.getAddress());
+      expect(bal).to.equal(0);
       await expect(
         deposit(thirdAccount, BigNumber.from(1), 1)
       ).to.be.revertedWith("revert SafeERC20: low-level call failed");
@@ -75,84 +91,111 @@ describe("Bonding2", () => {
 
     it("total uLP should be 300", async () => {
       const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
-      // log(totalLP);
       expect(totalLP).to.be.equal(one.mul(300));
     });
 
-    it("total uBOND should be more than 133", async () => {
+    it("total uBOND should be equal to the sum of the share minted", async () => {
       const totalUBOND: BigNumber = await bondingShare.totalSupply();
-      // log(totalUBOND);
-      expect(totalUBOND).to.be.gte(one.mul(133));
+      const balSecond = await bondingShare.balanceOf(
+        await secondAccount.getAddress(),
+        idSecond
+      );
+      const balAdmin = await bondingShare.balanceOf(
+        await admin.getAddress(),
+        idAdmin
+      );
+
+      expect(totalUBOND).to.equal(balSecond.add(balAdmin));
+      expect(totalUBOND).to.be.gt(one.mul(200));
     });
 
     it("admin account should be able to redeem uBOND", async () => {
-      await mineNBlock(45361);
+      await mineNBlock(blockCountInAWeek.toNumber());
 
+      const balBSBefore = await bondingShare.balanceOf(adminAddress, idAdmin);
+      expect(balBSBefore).to.be.equal(
+        ethers.utils.parseEther("100.099999999999999999")
+      );
+      const totalSupplyBSBefore = await bondingShare.totalSupply();
+      const TotalLPInBondingBefore = await metaPool.balanceOf(bonding.address);
+      const balLPBefore = await metaPool.balanceOf(adminAddress);
+      expect(balLPBefore).to.be.equal(
+        ethers.utils.parseEther("18949.481094897152263334")
+      );
       await withdraw(admin, idAdmin);
-      const bal = await bondingShare.balanceOf(adminAddress, idAdmin);
-      expect(bal).to.be.equal(0);
-    });
-    // uLP = 200
-    // uBOND = 33.4
+      const TotalLPInBondingAfter = await metaPool.balanceOf(bonding.address);
+      const totalSupplyBSAfter = await bondingShare.totalSupply();
+      const balLPAfter = await metaPool.balanceOf(adminAddress);
+      const balBSAfter = await bondingShare.balanceOf(adminAddress, idAdmin);
+      const calculatedLPToWithdraw = calcShareInToken(
+        totalSupplyBSBefore.toString(),
+        balBSBefore.toString(),
+        TotalLPInBondingBefore.toString()
+      );
 
-    it("total uLP should be 75 after first redeem", async () => {
-      const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
-      // log(totalLP);
-      expect(totalLP).to.be.gte(one.mul(75));
+      expect(balBSAfter).to.be.equal(0);
+      const lpWithdrawn = balLPAfter.sub(balLPBefore);
+      const isPrecise = isAmountEquivalent(
+        lpWithdrawn.toString(),
+        calculatedLPToWithdraw.toString(),
+        "0.000000000000000001"
+      );
+      expect(isPrecise).to.be.true;
+      expect(TotalLPInBondingBefore).to.equal(
+        TotalLPInBondingAfter.add(lpWithdrawn)
+      );
+      expect(totalSupplyBSAfter).to.equal(totalSupplyBSBefore.sub(balBSBefore));
     });
 
     it("second account should be able to redeem uBOND", async () => {
+      const balBSBefore = await bondingShare.balanceOf(secondAddress, idSecond);
+      const totalSupplyBSBefore = await bondingShare.totalSupply();
+      const TotalLPInBondingBefore = await metaPool.balanceOf(bonding.address);
+      const balLPBefore = await metaPool.balanceOf(secondAddress);
       await withdraw(secondAccount, idSecond);
-      const bal = await bondingShare.balanceOf(secondAddress, idSecond);
-      // log(bal);
-      expect(bal).to.be.equal(0);
+      const TotalLPInBondingAfter = await metaPool.balanceOf(bonding.address);
+      const totalSupplyBSAfter = await bondingShare.totalSupply();
+      const balLPAfter = await metaPool.balanceOf(secondAddress);
+      const balBSAfter = await bondingShare.balanceOf(secondAddress, idSecond);
+      const calculatedLPToWithdraw = calcShareInToken(
+        totalSupplyBSBefore.toString(),
+        balBSBefore.toString(),
+        TotalLPInBondingBefore.toString()
+      );
+      expect(balBSAfter).to.be.equal(0);
+      const lpWithdrawn = balLPAfter.sub(balLPBefore);
+      const isPrecise = isAmountEquivalent(
+        lpWithdrawn.toString(),
+        calculatedLPToWithdraw.toString(),
+        "0.000000000000000001"
+      );
+      expect(isPrecise).to.be.true;
+      expect(TotalLPInBondingBefore).to.equal(
+        TotalLPInBondingAfter.add(lpWithdrawn)
+      );
+      expect(totalSupplyBSAfter).to.equal(totalSupplyBSBefore.sub(balBSBefore));
     });
-    // uLP = 1000
-    // uBOND = 0
 
     it("third account should be able to redeem uBOND", async () => {
+      const balBSBefore = await bondingShare.balanceOf(thirdAddress, idAdmin);
+      expect(balBSBefore).to.equal(0);
+      const balLPBefore = await metaPool.balanceOf(thirdAddress);
       await withdraw(thirdAccount, idAdmin);
       expect(await bondingShare.balanceOf(thirdAddress, idAdmin)).to.be.equal(
         0
       );
+      const balLPAfter = await metaPool.balanceOf(thirdAddress);
+      expect(balLPBefore).to.equal(balLPAfter);
     });
 
     it("total uLP should be 0 after all redeem", async () => {
       const totalLP: BigNumber = await metaPool.balanceOf(bonding.address);
-      // log(totalLP);
-      expect(totalLP).to.be.lt(ten9);
+      expect(totalLP).to.be.lt(BigNumber.from(10).pow(16));
     });
 
     it("total uBOND should be 0 after all redeem", async () => {
       const totalUBOND: BigNumber = await bondingShare.totalSupply();
       expect(totalUBOND).to.be.equal(0);
     });
-  });
-
-  const one: BigNumber = BigNumber.from(10).pow(18);
-  const ten9: BigNumber = BigNumber.from(10).pow(9);
-
-  let metaPool: IMetaPool;
-  let bonding: Bonding;
-  let bondingShare: BondingShare;
-  let admin: Signer;
-  let secondAccount: Signer;
-  let thirdAccount: Signer;
-  let adminAddress: string;
-  let secondAddress: string;
-  let thirdAddress: string;
-
-  before(async () => {
-    ({
-      admin,
-      secondAccount,
-      thirdAccount,
-      metaPool,
-      bonding,
-      bondingShare,
-    } = await bondingSetup());
-    adminAddress = await admin.getAddress();
-    secondAddress = await secondAccount.getAddress();
-    thirdAddress = await thirdAccount.getAddress();
   });
 });
