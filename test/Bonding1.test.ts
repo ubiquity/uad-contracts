@@ -17,14 +17,8 @@ describe("Bonding1", () => {
   let secondAccount: Signer;
   let blockCountInAWeek: BigNumber;
   before(async () => {
-    ({
-      secondAccount,
-      uAD,
-      bonding,
-      bondingShare,
-      sablier,
-      blockCountInAWeek,
-    } = await bondingSetup());
+    ({ secondAccount, uAD, bonding, bondingShare, sablier, blockCountInAWeek } =
+      await bondingSetup());
   });
   describe("initialValues", () => {
     it("initial uAD totalSupply should be more than 30 010 (3 * 10 000 + 10)", async () => {

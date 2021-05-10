@@ -83,19 +83,10 @@ describe("DebtCouponManager", () => {
   const couponLengthBlocks = 100;
   beforeEach(async () => {
     // list of accounts
-    ({
-      curveFactory,
-      curve3CrvBasePool,
-      curve3CrvToken,
-      curveWhaleAddress,
-    } = await getNamedAccounts());
-    [
-      admin,
-      secondAccount,
-      thirdAccount,
-      treasury,
-      lpReward,
-    ] = await ethers.getSigners();
+    ({ curveFactory, curve3CrvBasePool, curve3CrvToken, curveWhaleAddress } =
+      await getNamedAccounts());
+    [admin, secondAccount, thirdAccount, treasury, lpReward] =
+      await ethers.getSigners();
     await resetFork(12150000);
     router = (await ethers.getContractAt(
       "IUniswapV2Router02",
@@ -169,9 +160,10 @@ describe("DebtCouponManager", () => {
     const couponsForDollarsCalculatorFactory = await ethers.getContractFactory(
       "CouponsForDollarsCalculator"
     );
-    couponsForDollarsCalculator = (await couponsForDollarsCalculatorFactory.deploy(
-      manager.address
-    )) as CouponsForDollarsCalculator;
+    couponsForDollarsCalculator =
+      (await couponsForDollarsCalculatorFactory.deploy(
+        manager.address
+      )) as CouponsForDollarsCalculator;
 
     await manager
       .connect(admin)
@@ -772,7 +764,8 @@ describe("DebtCouponManager", () => {
     // no UAD should be left
     expect(excessDistributoUADBalance).to.equal(0);
     //  make sure that calling getDollarsToMint twice doesn't mint all dollars twice
-    const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
+    const mintableUADThisTime =
+      await dollarMintingCalculator.getDollarsToMint();
     const dollarsToMint = mintableUADThisTime.sub(mintableUAD);
     // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
     const beforeSecondRedeemTotalSupply = await uAD.totalSupply();
@@ -1044,7 +1037,8 @@ describe("DebtCouponManager", () => {
     expect(uADPriceAfterSwap).to.be.gt(oneETH);
 
     //  make sure that calling getDollarsToMint twice doesn't mint all dollars twice
-    const mintableUADThisTime = await dollarMintingCalculator.getDollarsToMint();
+    const mintableUADThisTime =
+      await dollarMintingCalculator.getDollarsToMint();
 
     // dollars to mint should be only a fraction of the previously inflation of uAD total Supply
     totalSupply = await uAD.totalSupply();

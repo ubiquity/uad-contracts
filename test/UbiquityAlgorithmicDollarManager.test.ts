@@ -24,12 +24,8 @@ describe("UbiquityAlgorithmicDollarManager", () => {
   let bondingShare: BondingShare;
 
   beforeEach(async () => {
-    ({
-      curveFactory,
-      curve3CrvBasePool,
-      curve3CrvToken,
-      curveWhaleAddress,
-    } = await getNamedAccounts());
+    ({ curveFactory, curve3CrvBasePool, curve3CrvToken, curveWhaleAddress } =
+      await getNamedAccounts());
     [admin] = await ethers.getSigners();
     const UADMgr = await ethers.getContractFactory(
       "UbiquityAlgorithmicDollarManager"

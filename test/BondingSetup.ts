@@ -159,10 +159,9 @@ async function bondingSetup(): Promise<{
   await manager.setFormulasAddress(ubiquityFormulas.address);
 
   // DEPLOY Bonding Contract
-  bonding = (await (await ethers.getContractFactory("Bonding")).deploy(
-    manager.address,
-    sablier
-  )) as Bonding;
+  bonding = (await (
+    await ethers.getContractFactory("Bonding")
+  ).deploy(manager.address, sablier)) as Bonding;
 
   await bonding.setBlockCountInAWeek(420);
   blockCountInAWeek = await bonding.blockCountInAWeek();
@@ -191,9 +190,9 @@ async function bondingSetup(): Promise<{
   await manager.setuADTokenAddress(uAD.address);
 
   // DEPLOY UGOV token Contract
-  uGOV = (await (await ethers.getContractFactory("UbiquityGovernance")).deploy(
-    manager.address
-  )) as UbiquityGovernance;
+  uGOV = (await (
+    await ethers.getContractFactory("UbiquityGovernance")
+  ).deploy(manager.address)) as UbiquityGovernance;
   await manager.setuGOVTokenAddress(uGOV.address);
 
   // GET 3CRV token contract
@@ -256,17 +255,15 @@ async function bondingSetup(): Promise<{
     .transfer(secondAddress, ethers.utils.parseEther("1000"));
 
   // DEPLOY TWAPOracle Contract
-  twapOracle = (await (await ethers.getContractFactory("TWAPOracle")).deploy(
-    metaPoolAddr,
-    uAD.address,
-    curve3CrvToken
-  )) as TWAPOracle;
+  twapOracle = (await (
+    await ethers.getContractFactory("TWAPOracle")
+  ).deploy(metaPoolAddr, uAD.address, curve3CrvToken)) as TWAPOracle;
   await manager.setTwapOracleAddress(twapOracle.address);
 
   // DEPLOY MasterChef
-  masterChef = (await (await ethers.getContractFactory("MasterChef")).deploy(
-    manager.address
-  )) as MasterChef;
+  masterChef = (await (
+    await ethers.getContractFactory("MasterChef")
+  ).deploy(manager.address)) as MasterChef;
   await manager.setMasterChefAddress(masterChef.address);
   await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
 

@@ -17,16 +17,8 @@ describe("Bonding", () => {
   let twapOracle: TWAPOracle;
 
   before(async () => {
-    ({
-      admin,
-      secondAccount,
-      uAD,
-      bonding,
-      twapOracle,
-      sablier,
-      DAI,
-      USDC,
-    } = await bondingSetup());
+    ({ admin, secondAccount, uAD, bonding, twapOracle, sablier, DAI, USDC } =
+      await bondingSetup());
   });
   describe("CollectableDust", () => {
     it("Admin should be able to add protocol token (CollectableDust)", async () => {
