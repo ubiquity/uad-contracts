@@ -691,7 +691,8 @@ describe("DebtCouponManager", () => {
     await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
     await mineNBlock(couponLengthBlocks);
     await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
-    const expiredCouponConvertionRate = await debtCouponMgr.expiredCouponConvertionRate();
+    const expiredCouponConvertionRate =
+      await debtCouponMgr.expiredCouponConvertionRate();
     await expect(
       debtCouponMgr
         .connect(secondAccount)
@@ -766,13 +767,15 @@ describe("DebtCouponManager", () => {
     );
   });
   it("setExpiredCouponConvertionRate should work", async () => {
-    const expiredCouponConvertionRate = await debtCouponMgr.expiredCouponConvertionRate();
+    const expiredCouponConvertionRate =
+      await debtCouponMgr.expiredCouponConvertionRate();
     expect(expiredCouponConvertionRate).to.equal(2);
     await expect(debtCouponMgr.setExpiredCouponConvertionRate(42))
       .to.emit(debtCouponMgr, "ExpiredCouponConvertionRateChanged")
       .withArgs(42, 2);
 
-    const expiredCouponConvertionRateAfter = await debtCouponMgr.expiredCouponConvertionRate();
+    const expiredCouponConvertionRateAfter =
+      await debtCouponMgr.expiredCouponConvertionRate();
     expect(expiredCouponConvertionRateAfter).to.equal(42);
   });
   it("exchangeDollarsForCoupons should fail if uAD price is >= 1", async () => {

@@ -13,11 +13,31 @@ contract UARForDollarsCalculator is IUARForDollarsCalculator {
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;
     UbiquityAlgorithmicDollarManager public manager;
-    bytes16 private immutable _coef = (uint256(1)).fromUInt();
+    uint256 private _coef = 1 ether;
+
+    modifier onlyAdmin() {
+        require(
+            manager.hasRole(manager.INCENTIVE_MANAGER_ROLE(), msg.sender),
+            "UARCalc: not admin"
+        );
+        _;
+    }
 
     /// @param _manager the address of the manager/config contract so we can fetch variables
     constructor(address _manager) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
+    }
+
+    /// @notice get the constant for uAR calculation
+    function getConstant() external view returns (uint256) {
+        return _coef;
+    }
+
+    /// @notice set the constant for uAR calculation
+    /// @param coef new constant for uAR calculation in ETH format
+    /// @dev a coef of 1 ether means 1
+    function setConstant(uint256 coef) external onlyAdmin {
+        _coef = coef;
     }
 
     // dollarsToBurn * (blockheight_debt/blockheight_burn) * _coef
@@ -37,12 +57,24 @@ contract UARForDollarsCalculator is IUARForDollarsCalculator {
                 IERC20(manager.uADTokenAddress()).totalSupply(),
             "uAR4Dollar: DEBT_TOO_HIGH"
         );
+        bytes16 coef = _coef.fromUInt().div((uint256(1 ether)).fromUInt());
         bytes16 curBlock = uint256(block.number).fromUInt();
         bytes16 multiplier = blockHeightDebt.fromUInt().div(curBlock);
-        bytes16 op = multiplier.exp(_coef);
+        console.log(
+            "## getUARAmount multiplier:%s _coef:%s ",
+            multiplier.toUInt(),
+            coef.toUInt()
+        );
+        // x^a = e^(a*lnx(x)) so multiplier^(_coef) = e^(_coef*lnx(multiplier))
+        bytes16 op = (coef.mul(multiplier.ln())).exp();
         uint256 res = dollarsToBurn.fromUInt().mul(op).toUInt();
 
-        console.log("## getUARAmount curBlock:%s res:%s ", curBlock, res);
+        console.log(
+            "## getUARAmount curBlock:%s res:%s op:%s ",
+            uint256(block.number),
+            res,
+            op.toUInt()
+        );
         return res;
     }
 }
