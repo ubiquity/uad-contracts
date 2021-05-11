@@ -25,6 +25,27 @@ export function calcDollarsToMint(
   );
 }
 
+// returns  multiplier * ( 1.05 / (1 + abs( 1 - price ) ) )
+export function calculateUGOVMultiplier(
+  multiplier: string,
+  price: string
+): BigNumber {
+  // should be in wei
+  const onez5 = new Big(ethers.utils.parseEther("1.05").toString());
+  const one = new Big(ethers.utils.parseEther("1").toString());
+
+  const mult = new Big(multiplier);
+  const p = new Big(price);
+  const priceDiff = one.sub(p).abs();
+
+  return BigNumber.from(
+    mult
+      .mul(onez5.div(one.add(priceDiff)))
+      .round(0, RoundingMode.RoundDown)
+      .toString()
+  );
+}
+
 // returns amount +  (1- TWAP_Price)%.
 export function calculateIncentiveAmount(
   amountInWEI: string,
@@ -38,6 +59,41 @@ export function calculateIncentiveAmount(
     one
       .sub(curPriceInWEI)
       .mul(amount.div(one))
+      .round(0, RoundingMode.RoundDown)
+      .toString()
+  );
+}
+
+// returns true if amountA - AmountB < precision. precision is in decimal
+export function isAmountEquivalent(
+  amountA: string,
+  amountB: string,
+  precision?: string
+): boolean {
+  const a = new Big(amountA);
+  const b = new Big(amountB);
+  const delta = new Big(precision || "0.0000000000000000000000000000000001");
+
+  const diff = a.gt(b) ? a.div(b).sub(1) : b.div(a).sub(1);
+  // assert expected presision
+  return diff.lte(delta);
+}
+
+// returns shares / totalShares * totalToken (in wei)
+export function calcShareInToken(
+  totalShares: string,
+  shares: string,
+  totalToken: string
+): BigNumber {
+  // calculate  shares / totalShares * totalToken
+  const totShares = new Big(totalShares);
+  const userShares = new Big(shares);
+  const totToken = new Big(totalToken);
+
+  return BigNumber.from(
+    userShares
+      .div(totShares)
+      .mul(totToken)
       .round(0, RoundingMode.RoundDown)
       .toString()
   );

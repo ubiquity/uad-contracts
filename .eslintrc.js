@@ -23,6 +23,6 @@ module.exports = {
     // we use it for tests
     "import/no-extraneous-dependencies": "off",
     // we use it for tests
-    "no-unused-expressions": "off",
+    "@typescript-eslint/no-unused-expressions": "off",
   },
 };

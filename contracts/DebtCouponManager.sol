@@ -3,7 +3,6 @@ pragma solidity ^0.8.3;
 
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IDebtRedemption.sol";
 import "./interfaces/ICouponsForDollarsCalculator.sol";
 import "./interfaces/IDollarMintingCalculator.sol";

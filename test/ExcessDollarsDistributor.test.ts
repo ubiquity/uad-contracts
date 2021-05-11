@@ -38,19 +38,10 @@ describe("ExcessDollarsDistributor", () => {
 
   beforeEach(async () => {
     // list of accounts
-    ({
-      curveFactory,
-      curve3CrvBasePool,
-      curve3CrvToken,
-      curveWhaleAddress,
-    } = await getNamedAccounts());
-    [
-      admin,
-      secondAccount,
-      thirdAccount,
-      treasury,
-      bondingContract,
-    ] = await ethers.getSigners();
+    ({ curveFactory, curve3CrvBasePool, curve3CrvToken, curveWhaleAddress } =
+      await getNamedAccounts());
+    [admin, secondAccount, thirdAccount, treasury, bondingContract] =
+      await ethers.getSigners();
     await resetFork(12150000);
     router = (await ethers.getContractAt(
       "IUniswapV2Router02",
@@ -94,11 +85,9 @@ describe("ExcessDollarsDistributor", () => {
       await secondAccount.getAddress(),
       await thirdAccount.getAddress(),
       manager.address,
-    ].map(
-      async (signer): Promise<void> => {
-        await uAD.mint(signer, ethers.utils.parseEther("10000"));
-      }
-    );
+    ].map(async (signer): Promise<void> => {
+      await uAD.mint(signer, ethers.utils.parseEther("10000"));
+    });
     await Promise.all(mintings);
 
     await uGOV.mint(

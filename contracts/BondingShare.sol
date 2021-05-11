@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
+import "./ERC1155Ubiquity.sol";
 
-contract BondingShare is ERC20PresetMinterPauser {
+contract BondingShare is ERC1155Ubiquity {
     // solhint-disable-next-line no-empty-blocks
-    constructor() ERC20PresetMinterPauser("uADBondingShare", "uBOND") {}
+    constructor(address _manager) ERC1155Ubiquity(_manager, "URI") {}
 }
