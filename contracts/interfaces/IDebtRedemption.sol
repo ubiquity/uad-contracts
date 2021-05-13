@@ -13,5 +13,5 @@ interface IDebtCouponManager is IERC1155Receiver {
         uint256 amount
     ) external;
 
-    function exchangeDollarsForCoupons(uint256 amount) external;
+    function exchangeDollarsForDebtCoupons(uint256 amount) external;
 }

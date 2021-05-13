@@ -7,4 +7,12 @@ contract UbiquityAutoRedeem is ERC20Ubiquity {
     constructor(address _manager)
         ERC20Ubiquity(_manager, "UbiquityAutoRedeem", "uAR")
     {} // solhint-disable-line no-empty-blocks
+
+    /// @notice raise capital in form of uAR (only redeemable when uAD > 1$)
+    /// @param amount the amount to be minted
+    /// @dev you should be minter to call that function
+    function raiseCapital(uint256 amount) external {
+        address treasuryAddress = manager.treasuryAddress();
+        mint(treasuryAddress, amount);
+    }
 }

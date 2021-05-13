@@ -60,7 +60,7 @@ describe("Bonding1", () => {
   });
 
   describe("withdraw", () => {
-    it("Should revert when users try to redeem more shares than they have", async () => {
+    it("should revert when users try to redeem more shares than they have", async () => {
       await expect(
         bonding
           .connect(secondAccount)
@@ -83,7 +83,7 @@ describe("Bonding1", () => {
       expect(bondAfter).to.be.equal(0);
     });
 
-    it("Should return the current Sablier address", async () => {
+    it("should return the current Sablier address", async () => {
       expect(await bonding.sablier()).to.equal(sablier);
     });
   });

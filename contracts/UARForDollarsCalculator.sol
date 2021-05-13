@@ -28,16 +28,16 @@ contract UARForDollarsCalculator is IUARForDollarsCalculator {
         manager = UbiquityAlgorithmicDollarManager(_manager);
     }
 
-    /// @notice get the constant for uAR calculation
-    function getConstant() external view returns (uint256) {
-        return _coef;
-    }
-
     /// @notice set the constant for uAR calculation
     /// @param coef new constant for uAR calculation in ETH format
     /// @dev a coef of 1 ether means 1
     function setConstant(uint256 coef) external onlyAdmin {
         _coef = coef;
+    }
+
+    /// @notice get the constant for uAR calculation
+    function getConstant() external view returns (uint256) {
+        return _coef;
     }
 
     // dollarsToBurn * (blockheight_debt/blockheight_burn) * _coef
@@ -57,6 +57,7 @@ contract UARForDollarsCalculator is IUARForDollarsCalculator {
                 IERC20(manager.uADTokenAddress()).totalSupply(),
             "uAR4Dollar: DEBT_TOO_HIGH"
         );
+
         bytes16 coef = _coef.fromUInt().div((uint256(1 ether)).fromUInt());
         bytes16 curBlock = uint256(block.number).fromUInt();
         bytes16 multiplier = blockHeightDebt.fromUInt().div(curBlock);

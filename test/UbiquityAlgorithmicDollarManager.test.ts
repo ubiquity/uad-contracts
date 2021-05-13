@@ -127,33 +127,6 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       expect(uAD.address.toLowerCase()).to.equal(uADTokenAddr.toLowerCase());
     });
   });
-  describe("uarForDollarsCalculator", () => {
-    it("Set should work", async () => {
-      await manager
-        .connect(admin)
-        .setUARCalculatorAddress(uarForDollarsCalculator.address);
-
-      const uarForDollarsCalculatorAddr = BigNumber.from(
-        await ethers.provider.getStorageAt(manager.address, 14)
-      ).toHexString();
-
-      expect(uarForDollarsCalculator.address.toLowerCase()).to.equal(
-        uarForDollarsCalculatorAddr.toLowerCase()
-      );
-    });
-  });
-
-  describe("uARTokenAddress", () => {
-    it("Set should work", async () => {
-      await manager.connect(admin).setuARTokenAddress(uAR.address);
-
-      const uARTokenAddr = BigNumber.from(
-        await ethers.provider.getStorageAt(manager.address, 13)
-      ).toHexString();
-
-      expect(uAR.address.toLowerCase()).to.equal(uARTokenAddr.toLowerCase());
-    });
-  });
 
   describe("uGOVTokenAddress", () => {
     it("Set should work", async () => {
@@ -166,6 +139,33 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       expect(uGOV.address.toLowerCase()).to.equal(uGOVTokenAddr.toLowerCase());
     });
   });
+  describe("uARTokenAddress", () => {
+    it("Set should work", async () => {
+      await manager.connect(admin).setuARTokenAddress(uAR.address);
+
+      const uARTokenAddr = BigNumber.from(
+        await ethers.provider.getStorageAt(manager.address, 15)
+      ).toHexString();
+
+      expect(uAR.address.toLowerCase()).to.equal(uARTokenAddr.toLowerCase());
+    });
+  });
+  describe("uarForDollarsCalculator", () => {
+    it("Set should work", async () => {
+      await manager
+        .connect(admin)
+        .setUARCalculatorAddress(uarForDollarsCalculator.address);
+
+      const uarForDollarsCalculatorAddr = BigNumber.from(
+        await ethers.provider.getStorageAt(manager.address, 16)
+      ).toHexString();
+
+      expect(uarForDollarsCalculator.address.toLowerCase()).to.equal(
+        uarForDollarsCalculatorAddr.toLowerCase()
+      );
+    });
+  });
+
   describe("debtCouponAddress", () => {
     it("Set should work", async () => {
       await manager.connect(admin).setDebtCouponAddress(debtCoupon.address);

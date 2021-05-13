@@ -75,6 +75,7 @@ export function isAmountEquivalent(
   const delta = new Big(precision || "0.0000000000000000000000000000000001");
 
   const diff = a.gt(b) ? a.div(b).sub(1) : b.div(a).sub(1);
+  console.log(`diff:${diff.toString()} delta:${delta.toString()}`);
   // assert expected presision
   return diff.lte(delta);
 }
@@ -141,18 +142,21 @@ export function calcUARforDollar(
   const debtHeight = new Big(blockHeightDebt);
   const a = new Big(amount);
   const amounInETH = new Big(ethers.utils.formatEther(amount));
+  // uAR amount = UAD amount *  (blockHeightDebt/currentBlockHeight)^coef
   const res =
     amounInETH.toNumber() *
-    Math.pow(debtHeight.toNumber() / blockNum.toNumber(), coef.toNumber());
+    (debtHeight.toNumber() / blockNum.toNumber()) ** coef.toNumber();
+  let resBig = new Big(res);
+  resBig = resBig.mul(one);
+
   console.log(`
   ----calcUARforDollar----
   a.mul(debtHeight.div(blockNum)):${a.mul(debtHeight.div(blockNum)).toString()}
   coef:${coef.toString()}
   res:${res.toString()}
+  resBig:${resBig.toString()}
   ----calcUARforDollar----
   `);
 
-  // uAR amount = UAD amount *  (blockHeightDebt/currentBlockHeight)^coef
-  const prem = a.mul(debtHeight.div(blockNum)).pow(coef.toNumber());
-  return BigNumber.from(prem.round(0, RoundingMode.RoundDown).toString());
+  return BigNumber.from(resBig.round(0, RoundingMode.RoundDown).toString());
 }

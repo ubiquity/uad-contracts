@@ -57,7 +57,7 @@ describe("MasterChef", () => {
   });
 
   describe("updateUGOVMultiplier", () => {
-    it("Should update UGOVMultiplier, and get multiplied by 1.05 at price 1", async () => {
+    it("should update UGOVMultiplier, and get multiplied by 1.05 at price 1", async () => {
       const m0 = await masterChef.uGOVmultiplier();
       expect(m0).to.equal(ethers.utils.parseEther("1")); // m0 = m1 * 1.05
       // push uAD price down
@@ -99,7 +99,7 @@ describe("MasterChef", () => {
   });
 
   describe("deposit", () => {
-    it("Should be able to deposit", async () => {
+    it("should be able to deposit", async () => {
       const amount = one.mul(100);
       await metaPool.connect(secondAccount).approve(bonding.address, amount);
       await expect(bonding.connect(secondAccount).deposit(amount, 1))
@@ -126,7 +126,7 @@ describe("MasterChef", () => {
       );
     });
 
-    it("Should calculate pendingUGOV after 100 blocks", async () => {
+    it("should calculate pendingUGOV after 100 blocks", async () => {
       await mineNBlock(100);
       const pendingUGOV = await masterChef.pendingUGOV(secondAddress);
       const uGOVmultiplier = await masterChef.uGOVmultiplier();
@@ -172,7 +172,7 @@ describe("MasterChef", () => {
   });
 
   describe("withdraw", () => {
-    it("Should be able to withdraw", async () => {
+    it("should be able to withdraw", async () => {
       // get reward
       const lastBlockB = await ethers.provider.getBlock(
         await ethers.provider.getBlockNumber()
@@ -286,7 +286,7 @@ describe("MasterChef", () => {
       expect(isRewardPrecise).to.be.true;
     });
 
-    it("Should retrieve pendingUGOV", async () => {
+    it("should retrieve pendingUGOV", async () => {
       expect(await masterChef.pendingUGOV(secondAddress)).to.be.equal(0);
     });
   });

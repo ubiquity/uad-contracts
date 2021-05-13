@@ -21,7 +21,7 @@ describe("ADBK", () => {
     expect(max).to.be.lt(ethers.constants.MaxUint256);
     expect(max).to.equal(maxABDK);
   });
-  it(" should revert if overflow", async () => {
+  it("should revert if overflow", async () => {
     const amountOK = BigNumber.from(
       "11150372599265311570767859136324180752990207"
     );

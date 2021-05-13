@@ -1,11 +1,9 @@
-import { BigNumber, Signer } from "ethers";
-import { ethers, getNamedAccounts } from "hardhat";
+import { Signer } from "ethers";
+import { ethers } from "hardhat";
 import { expect } from "chai";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
-import { MockuADToken } from "../artifacts/types/MockuADToken";
 import { UARForDollarsCalculator } from "../artifacts/types/UARForDollarsCalculator";
-import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
-import { calcDollarsToMint, calcUARforDollar } from "./utils/calc";
+import { calcUARforDollar, isAmountEquivalent } from "./utils/calc";
 import { DebtCoupon } from "../artifacts/types/DebtCoupon";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 
@@ -53,17 +51,14 @@ describe("UARForDollarsCalculator", () => {
   });
   it("should have coef equal 1 after deployment", async () => {
     const coef = await uARForDollarCalculator.getConstant();
-    console.log(`coefSC:${coef.toString()}`);
     expect(coef).to.equal(ethers.utils.parseEther("1"));
     await uARForDollarCalculator.setConstant(ethers.utils.parseEther("1"));
     const coef2 = await uARForDollarCalculator.getConstant();
-    console.log(`coef2:${coef2.toString()}`);
     expect(coef).to.equal(coef2);
     await uARForDollarCalculator.setConstant(
       ethers.utils.parseEther("1.00012454654")
     );
     const coef3 = await uARForDollarCalculator.getConstant();
-    console.log(`coef3:${coef3.toString()}`);
     expect(coef3).to.equal(ethers.utils.parseEther("1.00012454654"));
   });
   it("should calculate correctly with coef equal 1 ", async () => {
@@ -81,18 +76,18 @@ describe("UARForDollarsCalculator", () => {
       blockHeight.toString(),
       coef.toString()
     );
-    console.log(`
-    blockHeightDebt:${blockHeightDebt}
-    blockHeight:${blockHeight}
-    uARMinted:${ethers.utils.formatEther(uARMinted)}
-    calculatedUARMinted:${ethers.utils.formatEther(calculatedUARMinted)}`);
-    expect(uARMinted).to.equal(calculatedUARMinted);
+    const isPrecise = isAmountEquivalent(
+      uARMinted.toString(),
+      calculatedUARMinted.toString(),
+      "0.0000000000000001"
+    );
+    expect(isPrecise).to.be.true;
   });
   it("should calculate correctly with coef > 1 ", async () => {
     const blockHeight = await ethers.provider.getBlockNumber();
-    const dollarToBurn = ethers.utils.parseEther("14456");
+    const dollarToBurn = ethers.utils.parseEther("451.45");
     const blockHeightDebt = blockHeight - 24567;
-    const coef = ethers.utils.parseEther("1.0164");
+    const coef = ethers.utils.parseEther("1.015");
     const uARMinted = await uARForDollarCalculator.getUARAmount(
       dollarToBurn,
       blockHeightDebt
@@ -103,11 +98,57 @@ describe("UARForDollarsCalculator", () => {
       blockHeight.toString(),
       coef.toString()
     );
-    console.log(`
-    blockHeightDebt:${blockHeightDebt}
-    blockHeight:${blockHeight}
-    uARMinted:${ethers.utils.formatEther(uARMinted)}
-    calculatedUARMinted:${ethers.utils.formatEther(calculatedUARMinted)}`);
-    expect(uARMinted).to.equal(calculatedUARMinted);
+    const isPrecise = isAmountEquivalent(
+      uARMinted.toString(),
+      calculatedUARMinted.toString(),
+      "0.0001"
+    );
+    expect(isPrecise).to.be.true;
+  });
+  it("should calculate correctly with precise coef  ", async () => {
+    const blockHeight = await ethers.provider.getBlockNumber();
+    const dollarToBurn = ethers.utils.parseEther("451.45");
+    const blockHeightDebt = blockHeight - 24567;
+    const coef = ethers.utils.parseEther("1.01546545115");
+    const uARMinted = await uARForDollarCalculator.getUARAmount(
+      dollarToBurn,
+      blockHeightDebt
+    );
+    const calculatedUARMinted = calcUARforDollar(
+      dollarToBurn.toString(),
+      blockHeightDebt.toString(),
+      blockHeight.toString(),
+      coef.toString()
+    );
+    const isPrecise = isAmountEquivalent(
+      uARMinted.toString(),
+      calculatedUARMinted.toString(),
+      "0.0001"
+    );
+    expect(isPrecise).to.be.true;
+  });
+  it("should calculate correctly with precise coef and large amount  ", async () => {
+    const blockHeight = await ethers.provider.getBlockNumber();
+    const dollarToBurn = ethers.utils.parseEther(
+      "24564458758451.45454564564685145"
+    );
+    const blockHeightDebt = blockHeight - 24567;
+    const coef = ethers.utils.parseEther("1.01546545115");
+    const uARMinted = await uARForDollarCalculator.getUARAmount(
+      dollarToBurn,
+      blockHeightDebt
+    );
+    const calculatedUARMinted = calcUARforDollar(
+      dollarToBurn.toString(),
+      blockHeightDebt.toString(),
+      blockHeight.toString(),
+      coef.toString()
+    );
+    const isPrecise = isAmountEquivalent(
+      uARMinted.toString(),
+      calculatedUARMinted.toString(),
+      "0.0001"
+    );
+    expect(isPrecise).to.be.true;
   });
 });

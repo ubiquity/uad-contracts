@@ -36,12 +36,25 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 previousRate
     );
 
+    event CouponLengthChanged(
+        uint256 newCouponLengthBlocks,
+        uint256 previousCouponLengthBlocks
+    );
+
     modifier onlyCouponManager() {
         require(
             manager.hasRole(manager.COUPON_MANAGER_ROLE(), msg.sender),
             "Caller is not a coupon manager"
         );
         _;
+    }
+
+    /// @param _manager the address of the manager contract so we can fetch variables
+    /// @param _couponLengthBlocks how many blocks coupons last. can't be changed
+    /// once set (unless migrated)
+    constructor(address _manager, uint256 _couponLengthBlocks) {
+        manager = UbiquityAlgorithmicDollarManager(_manager);
+        couponLengthBlocks = _couponLengthBlocks;
     }
 
     function setExpiredCouponConvertionRate(uint256 rate)
@@ -55,44 +68,18 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         expiredCouponConvertionRate = rate;
     }
 
-    /// @dev Lets debt holder burn expired coupons for UGOV. Doesn't make TWAP > 1 check.
-    /// @param id the timestamp of the coupon
-    /// @param amount the amount of coupons to redeem
-    /// @return UGOVamount amount of UGOV tokens minted to debt holder
-    function burnExpiredCouponsForUGOV(uint256 id, uint256 amount)
-        public
-        returns (uint256 UGOVamount)
+    function setCouponLength(uint256 _couponLengthBlocks)
+        external
+        onlyCouponManager
     {
-        // Check whether debt coupon hasn't expired --> Burn debt coupons.
-        DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
-
-        require(id <= block.number, "Coupon has not expired");
-        require(
-            debtCoupon.balanceOf(msg.sender, id) >= amount,
-            "User doesnt have enough coupons"
-        );
-
-        debtCoupon.burnCoupons(msg.sender, amount, id);
-
-        // Mint UGOV tokens to this contract. Transfer UGOV tokens to msg.sender i.e. debt holder
-        IERC20Ubiquity uGOVToken = IERC20Ubiquity(manager.uGOVTokenAddress());
-        UGOVamount = amount / expiredCouponConvertionRate;
-        uGOVToken.mint(msg.sender, UGOVamount);
-    }
-
-    /// @param _manager the address of the manager contract so we can fetch variables
-    /// @param _couponLengthBlocks how many blocks coupons last. can't be changed
-    /// once set (unless migrated)
-    constructor(address _manager, uint256 _couponLengthBlocks) {
-        manager = UbiquityAlgorithmicDollarManager(_manager);
+        emit CouponLengthChanged(_couponLengthBlocks, couponLengthBlocks);
         couponLengthBlocks = _couponLengthBlocks;
-        // TODO ADD address(this) as minter for uAD ????
     }
 
     /// @dev called when a user wants to burn UAD for debt coupon.
     ///      should only be called when oracle is below a dollar
     /// @param amount the amount of dollars to exchange for coupons
-    function exchangeDollarsForCoupons(uint256 amount)
+    function exchangeDollarsForDebtCoupons(uint256 amount)
         external
         returns (uint256)
     {
@@ -104,11 +91,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         debtCoupon.updateTotalDebt();
 
         //we are in a down cycle so reset the cycle counter
-        dollarsMintedThisCycle = 0;
         // and set the blockHeight Debt
         if (!debtCycle) {
             debtCycle = true;
             blockHeightDebt = block.number;
+            dollarsMintedThisCycle = 0;
         }
 
         ICouponsForDollarsCalculator couponCalculator =
@@ -141,11 +128,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         debtCoupon.updateTotalDebt();
 
         //we are in a down cycle so reset the cycle counter
-        dollarsMintedThisCycle = 0;
         // and set the blockHeight Debt
         if (!debtCycle) {
             debtCycle = true;
             blockHeightDebt = block.number;
+            dollarsMintedThisCycle = 0;
         }
 
         IUARForDollarsCalculator uarCalculator =
@@ -226,6 +213,31 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         return "";
     }
 
+    /// @dev let debt holder burn expired coupons for UGOV. Doesn't make TWAP > 1 check.
+    /// @param id the timestamp of the coupon
+    /// @param amount the amount of coupons to redeem
+    /// @return uGovAmount amount of UGOV tokens minted to debt holder
+    function burnExpiredCouponsForUGOV(uint256 id, uint256 amount)
+        public
+        returns (uint256 uGovAmount)
+    {
+        // Check whether debt coupon hasn't expired --> Burn debt coupons.
+        DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
+
+        require(id <= block.number, "Coupon has not expired");
+        require(
+            debtCoupon.balanceOf(msg.sender, id) >= amount,
+            "User doesnt have enough coupons"
+        );
+
+        debtCoupon.burnCoupons(msg.sender, amount, id);
+
+        // Mint UGOV tokens to this contract. Transfer UGOV tokens to msg.sender i.e. debt holder
+        IERC20Ubiquity uGOVToken = IERC20Ubiquity(manager.uGOVTokenAddress());
+        uGovAmount = amount / expiredCouponConvertionRate;
+        uGOVToken.mint(msg.sender, uGovAmount);
+    }
+
     // TODO should we leave it ?
     /// @dev Lets debt holder burn coupons for auto redemption. Doesn't make TWAP > 1 check.
     /// @param id the timestamp of the coupon
@@ -277,16 +289,20 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         UbiquityAlgorithmicDollar uAD =
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         uint256 maxRedeemableUAR = uAD.balanceOf(address(this));
-        require(
-            maxRedeemableUAR > 0,
-            "There aren't any uAD to redeem currently"
-        );
+
+        if (maxRedeemableUAR <= 0) {
+            mintClaimableDollars();
+            maxRedeemableUAR = uAD.balanceOf(address(this));
+            console.log("burnUAR dallars MINTED uadBal:%s", maxRedeemableUAR);
+        }
+
         uint256 uarToRedeem = amount;
+        console.log("burnUAR amount:%s", amount);
         if (amount > maxRedeemableUAR) {
             uarToRedeem = maxRedeemableUAR;
         }
-
-        autoRedeemToken.burn(uarToRedeem);
+        console.log("burnUAR uarToRedeem:%s", uarToRedeem);
+        autoRedeemToken.burnFrom(msg.sender, uarToRedeem);
         uAD.transfer(msg.sender, uarToRedeem);
 
         return amount - uarToRedeem;
@@ -319,6 +335,15 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         UbiquityAutoRedeem autoRedeemToken =
             UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
         // uAR have a priority on uDEBT coupon holder
+        console.log(
+            "### redeemCoupons uAD.balanceOf(address(this)):%s autoRedeemToken.totalSupply():%s ",
+            uAD.balanceOf(address(this)),
+            autoRedeemToken.totalSupply()
+        );
+        require(
+            autoRedeemToken.totalSupply() <= uAD.balanceOf(address(this)),
+            "There aren't enough uAD to redeem currently"
+        );
         uint256 maxRedeemableCoupons =
             uAD.balanceOf(address(this)) - autoRedeemToken.totalSupply();
         uint256 couponsToRedeem = amount;
@@ -326,7 +351,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         if (amount > maxRedeemableCoupons) {
             couponsToRedeem = maxRedeemableCoupons;
         }
-
+        console.log(
+            "### redeemCoupons couponsToRedeem:%s maxRedeemableCoupons:%s ",
+            couponsToRedeem,
+            maxRedeemableCoupons
+        );
         require(
             uAD.balanceOf(address(this)) > 0,
             "There aren't any uAD to redeem currently"
@@ -347,6 +376,10 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 totalMintableDollars =
             IDollarMintingCalculator(manager.dollarCalculatorAddress())
                 .getDollarsToMint();
+        console.log(
+            "## mintClaimableDollars dollarsMintedThisCycle:%s  ",
+            dollarsMintedThisCycle
+        );
         uint256 dollarsToMint = totalMintableDollars - (dollarsMintedThisCycle);
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
@@ -355,6 +388,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         // uAD  dollars should  be minted to address(this)
         uAD.mint(address(this), dollarsToMint);
+        console.log(
+            "## mintClaimableDollars totalMintableDollars:%s dollarsToMint:%s",
+            totalMintableDollars,
+            dollarsToMint
+        );
         UbiquityAutoRedeem autoRedeemToken =
             UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
 
@@ -380,8 +418,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         }
     }
 
-    function _getTwapPrice() internal view returns (uint256) {
-        TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        return oracle.consult(manager.uADTokenAddress());
+    function _getTwapPrice() internal returns (uint256) {
+        TWAPOracle(manager.twapOracleAddress()).update();
+        return
+            TWAPOracle(manager.twapOracleAddress()).consult(
+                manager.uADTokenAddress()
+            );
     }
 }

@@ -25,19 +25,19 @@ describe("Bonding", () => {
       await bonding.connect(admin).addProtocolToken(USDC);
     });
 
-    it("Should revert when another account tries to add protocol token (CollectableDust)", async () => {
+    it("should revert when another account tries to add protocol token (CollectableDust)", async () => {
       await expect(
         bonding.connect(secondAccount).addProtocolToken(USDC)
       ).to.be.revertedWith("Caller is not a bonding manager");
     });
 
-    it("Should revert when trying to add an already existing protocol token (CollectableDust)", async () => {
+    it("should revert when trying to add an already existing protocol token (CollectableDust)", async () => {
       await expect(
         bonding.connect(admin).addProtocolToken(USDC)
       ).to.be.revertedWith("collectable-dust::token-is-part-of-the-protocol");
     });
 
-    it("Should revert when another account tries to remove a protocol token (CollectableDust)", async () => {
+    it("should revert when another account tries to remove a protocol token (CollectableDust)", async () => {
       await expect(
         bonding.connect(secondAccount).removeProtocolToken(USDC)
       ).to.be.revertedWith("Caller is not a bonding manager");
@@ -47,7 +47,7 @@ describe("Bonding", () => {
       await bonding.connect(admin).removeProtocolToken(USDC);
     });
 
-    it("Should revert when trying to remove token that is not a part of the protocol (CollectableDust)", async () => {
+    it("should revert when trying to remove token that is not a part of the protocol (CollectableDust)", async () => {
       await expect(
         bonding.connect(admin).removeProtocolToken(USDC)
       ).to.be.revertedWith("collectable-dust::token-not-part-of-the-protocol");
@@ -70,7 +70,7 @@ describe("Bonding", () => {
         );
     });
 
-    it("Should emit DustSent event (CollectableDust)", async () => {
+    it("should emit DustSent event (CollectableDust)", async () => {
       await expect(
         bonding
           .connect(admin)
@@ -87,7 +87,7 @@ describe("Bonding", () => {
           ethers.utils.parseUnits("50", "gwei")
         );
     });
-    it("Should revert when another account tries to remove dust from the contract (CollectableDust)", async () => {
+    it("should revert when another account tries to remove dust from the contract (CollectableDust)", async () => {
       await expect(
         bonding
           .connect(secondAccount)
@@ -99,13 +99,13 @@ describe("Bonding", () => {
       ).to.be.revertedWith("Caller is not a bonding manager");
     });
 
-    it("Should emit ProtocolTokenAdded event (CollectableDust)", async () => {
+    it("should emit ProtocolTokenAdded event (CollectableDust)", async () => {
       await expect(bonding.connect(admin).addProtocolToken(DAI))
         .to.emit(bonding, "ProtocolTokenAdded")
         .withArgs(DAI);
     });
 
-    it("Should emit ProtocolTokenRemoved event (CollectableDust)", async () => {
+    it("should emit ProtocolTokenRemoved event (CollectableDust)", async () => {
       await expect(bonding.connect(admin).removeProtocolToken(DAI))
         .to.emit(bonding, "ProtocolTokenRemoved")
         .withArgs(DAI);
@@ -122,7 +122,7 @@ describe("Bonding", () => {
       );
     });
 
-    it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
+    it("should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
       await expect(
         bonding
           .connect(secondAccount)
@@ -130,7 +130,7 @@ describe("Bonding", () => {
       ).to.be.revertedWith("Caller is not a bonding manager");
     });
 
-    it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
+    it("should emit the BondingDiscountMultiplierUpdated event", async () => {
       await expect(
         bonding.connect(admin).setBlockCountInAWeek(ethers.BigNumber.from(2))
       )
@@ -149,7 +149,7 @@ describe("Bonding", () => {
       );
     });
 
-    it("Should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
+    it("should revert when unauthorized accounts try to update the bondingDiscountMultiplier", async () => {
       await expect(
         bonding
           .connect(secondAccount)
@@ -157,7 +157,7 @@ describe("Bonding", () => {
       ).to.be.revertedWith("Caller is not a bonding manager");
     });
 
-    it("Should emit the BondingDiscountMultiplierUpdated event", async () => {
+    it("should emit the BondingDiscountMultiplierUpdated event", async () => {
       await expect(
         bonding
           .connect(admin)
@@ -179,7 +179,7 @@ describe("Bonding", () => {
       );
     });
 
-    it("Should revert when unauthorized accounts try to update the redeemStreamTime", async () => {
+    it("should revert when unauthorized accounts try to update the redeemStreamTime", async () => {
       await expect(
         bonding
           .connect(secondAccount)
@@ -187,7 +187,7 @@ describe("Bonding", () => {
       ).to.be.revertedWith("Caller is not a bonding manager");
     });
 
-    it("Should emit the RedeemStreamTimeUpdated event", async () => {
+    it("should emit the RedeemStreamTimeUpdated event", async () => {
       await expect(
         bonding
           .connect(admin)
@@ -207,7 +207,7 @@ describe("Bonding", () => {
   });
 
   describe("Sablier configuration", () => {
-    it("Should return the current Sablier address", async () => {
+    it("should return the current Sablier address", async () => {
       expect(await bonding.sablier()).to.equal(sablier);
     });
 
@@ -216,13 +216,13 @@ describe("Bonding", () => {
       expect(await bonding.sablier()).to.equal(ethers.constants.AddressZero);
     });
 
-    it("Should emit the SablierUpdated event", async () => {
+    it("should emit the SablierUpdated event", async () => {
       await expect(bonding.connect(admin).setSablier(DAI))
         .to.emit(bonding, "SablierUpdated")
         .withArgs(DAI);
     });
 
-    it("Should revert when another account tries to update the Sablier address", async () => {
+    it("should revert when another account tries to update the Sablier address", async () => {
       await expect(
         bonding.connect(secondAccount).setSablier(ethers.constants.AddressZero)
       ).to.be.revertedWith("Caller is not a bonding manager");
