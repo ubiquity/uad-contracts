@@ -126,3 +126,26 @@ export function calcPremium(
   );
   return BigNumber.from(prem.round(0, RoundingMode.RoundDown).toString());
 }
+
+// returns amount *  (blockHeightDebt/currentBlockHeight)^coef
+export function calcUARforDollar(
+  amount: string,
+  blockHeightDebt: string,
+  currentBlockHeight: string,
+  coefficient: string
+): BigNumber {
+  const one = new Big(ethers.utils.parseEther("1").toString());
+  const tmpCoef = new Big(coefficient);
+  const coef = tmpCoef.div(one);
+  const blockNum = new Big(currentBlockHeight);
+  const debtHeight = new Big(blockHeightDebt);
+  const a = new Big(amount);
+  const amounInETH = new Big(ethers.utils.formatEther(amount));
+  // uAR amount = UAD amount *  (blockHeightDebt/currentBlockHeight)^coef
+  const res =
+    amounInETH.toNumber() *
+    (debtHeight.toNumber() / blockNum.toNumber()) ** coef.toNumber();
+  let resBig = new Big(res);
+  resBig = resBig.mul(one);
+  return BigNumber.from(resBig.round(0, RoundingMode.RoundDown).toString());
+}

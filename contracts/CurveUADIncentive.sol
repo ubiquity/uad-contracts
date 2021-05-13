@@ -163,12 +163,13 @@ contract CurveUADIncentive is IIncentive {
     }
 
     function _updateOracle() internal {
-        TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        oracle.update();
+        TWAPOracle(manager.twapOracleAddress()).update();
     }
 
     function _getTWAPPrice() internal view returns (uint256) {
-        TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        return oracle.consult(manager.uADTokenAddress());
+        return
+            TWAPOracle(manager.twapOracleAddress()).consult(
+                manager.uADTokenAddress()
+            );
     }
 }

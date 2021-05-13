@@ -153,6 +153,7 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
                 0,
                 manager.bondingContractAddress()
             );
+        // update TWAP price
         return res;
     }
 }

@@ -21,6 +21,7 @@ contract DollarMintingCalculator is IDollarMintingCalculator {
         manager = UbiquityAlgorithmicDollarManager(_manager);
     }
 
+    /// @notice returns (TWAP_PRICE  -1) * UAD_Total_Supply
     function getDollarsToMint() external view override returns (uint256) {
         TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
         uint256 twapPrice = oracle.consult(manager.uADTokenAddress());

@@ -4,6 +4,8 @@ import { expect } from "chai";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { ERC20 } from "../artifacts/types/ERC20";
+import { UbiquityAutoRedeem } from "../artifacts/types/UbiquityAutoRedeem";
+import { UARForDollarsCalculator } from "../artifacts/types/UARForDollarsCalculator";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { DebtCoupon } from "../artifacts/types/DebtCoupon";
@@ -15,6 +17,8 @@ describe("UbiquityAlgorithmicDollarManager", () => {
   let manager: UbiquityAlgorithmicDollarManager;
   let admin: Signer;
   let uAD: UbiquityAlgorithmicDollar;
+  let uAR: UbiquityAutoRedeem;
+  let uarForDollarsCalculator: UARForDollarsCalculator;
   let uGOV: UbiquityGovernance;
   let curveFactory: string;
   let curve3CrvBasePool: string;
@@ -36,6 +40,16 @@ describe("UbiquityAlgorithmicDollarManager", () => {
 
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
+
+    const UAR = await ethers.getContractFactory("UbiquityAutoRedeem");
+    uAR = (await UAR.deploy(manager.address)) as UbiquityAutoRedeem;
+
+    const uarForDollarsCalculatorFactory = await ethers.getContractFactory(
+      "UARForDollarsCalculator"
+    );
+    uarForDollarsCalculator = (await uarForDollarsCalculatorFactory.deploy(
+      manager.address
+    )) as UARForDollarsCalculator;
 
     const UGOV = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await UGOV.deploy(manager.address)) as UbiquityGovernance;
@@ -94,7 +108,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
         .setSushiSwapPoolAddress(sushiSwapPool.address);
 
       const sushiSwapPoolAddr = BigNumber.from(
-        await ethers.provider.getStorageAt(manager.address, 13)
+        await ethers.provider.getStorageAt(manager.address, 12)
       ).toHexString();
 
       expect(sushiSwapPool.address.toLowerCase()).to.equal(
@@ -113,17 +127,45 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       expect(uAD.address.toLowerCase()).to.equal(uADTokenAddr.toLowerCase());
     });
   });
+
   describe("uGOVTokenAddress", () => {
     it("Set should work", async () => {
       await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
 
       const uGOVTokenAddr = BigNumber.from(
-        await ethers.provider.getStorageAt(manager.address, 12)
+        await ethers.provider.getStorageAt(manager.address, 11)
       ).toHexString();
 
       expect(uGOV.address.toLowerCase()).to.equal(uGOVTokenAddr.toLowerCase());
     });
   });
+  describe("uARTokenAddress", () => {
+    it("Set should work", async () => {
+      await manager.connect(admin).setuARTokenAddress(uAR.address);
+
+      const uARTokenAddr = BigNumber.from(
+        await ethers.provider.getStorageAt(manager.address, 15)
+      ).toHexString();
+
+      expect(uAR.address.toLowerCase()).to.equal(uARTokenAddr.toLowerCase());
+    });
+  });
+  describe("uarForDollarsCalculator", () => {
+    it("Set should work", async () => {
+      await manager
+        .connect(admin)
+        .setUARCalculatorAddress(uarForDollarsCalculator.address);
+
+      const uarForDollarsCalculatorAddr = BigNumber.from(
+        await ethers.provider.getStorageAt(manager.address, 16)
+      ).toHexString();
+
+      expect(uarForDollarsCalculator.address.toLowerCase()).to.equal(
+        uarForDollarsCalculatorAddr.toLowerCase()
+      );
+    });
+  });
+
   describe("debtCouponAddress", () => {
     it("Set should work", async () => {
       await manager.connect(admin).setDebtCouponAddress(debtCoupon.address);

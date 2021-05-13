@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
+import "./interfaces/IERC20Ubiquity.sol";
 
 /// @title ERC20 Ubiquity preset
 /// @author Ubiquity Algorithmic Dollar
@@ -12,7 +13,7 @@ import "./UbiquityAlgorithmicDollarManager.sol";
 /// - ERC20 minter, burner and pauser
 /// - draft-ERC20 permit
 /// - Ubiquity Manager access control
-contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
+contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     UbiquityAlgorithmicDollarManager public manager;
 
     // solhint-disable-next-line var-name-mixedcase
@@ -95,7 +96,7 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external override {
         // solhint-disable-next-line not-rely-on-time
         require(deadline >= block.timestamp, "uAD: EXPIRED");
         bytes32 digest =
@@ -125,8 +126,13 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
 
     /// @notice burn UAD tokens from caller
     /// @param amount the amount to burn
-    function burn(uint256 amount) public override(ERC20Burnable) whenNotPaused {
+    function burn(uint256 amount)
+        public
+        override(ERC20Burnable, IERC20Ubiquity)
+        whenNotPaused
+    {
         super.burn(amount);
+        emit Burning(msg.sender, amount);
     }
 
     /// @notice burn uAD tokens from specified account
@@ -134,16 +140,23 @@ contract ERC20Ubiquity is ERC20, ERC20Burnable, ERC20Pausable {
     /// @param amount the amount to burn
     function burnFrom(address account, uint256 amount)
         public
-        override(ERC20Burnable)
+        override(ERC20Burnable, IERC20Ubiquity)
         onlyBurner
         whenNotPaused // to suppress ? if BURNER_ROLE should do it even paused ?
     {
         _burn(account, amount);
+        emit Burning(account, amount);
     }
 
     // @dev Creates `amount` new tokens for `to`.
-    function mint(address to, uint256 amount) public onlyMinter whenNotPaused {
+    function mint(address to, uint256 amount)
+        public
+        override
+        onlyMinter
+        whenNotPaused
+    {
         _mint(to, amount);
+        emit Minting(to, msg.sender, amount);
     }
 
     // @dev Pauses all token transfers.

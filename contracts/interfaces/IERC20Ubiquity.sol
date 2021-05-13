@@ -13,11 +13,7 @@ interface IERC20Ubiquity is IERC20 {
         uint256 _amount
     );
 
-    event Burning(
-        address indexed _to,
-        address indexed _burner,
-        uint256 _amount
-    );
+    event Burning(address indexed _burned, uint256 _amount);
 
     // ----------- State changing api -----------
     function burn(uint256 amount) external;

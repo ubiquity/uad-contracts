@@ -4,12 +4,14 @@ pragma solidity ^0.8.3;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./interfaces/IDebtRedemption.sol";
+import "./interfaces/IUARForDollarsCalculator.sol";
 import "./interfaces/ICouponsForDollarsCalculator.sol";
 import "./interfaces/IDollarMintingCalculator.sol";
 import "./interfaces/IExcessDollarsDistributor.sol";
 import "./TWAPOracle.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./UbiquityAlgorithmicDollar.sol";
-import "./mocks/MockAutoRedeemToken.sol";
+import "./UbiquityAutoRedeem.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./DebtCoupon.sol";
 
@@ -19,12 +21,33 @@ import "./DebtCoupon.sol";
 /// @notice Allows users to redeem individual debt coupons or batch redeem
 /// coupons on a first-come first-serve basis
 contract DebtCouponManager is ERC165, IERC1155Receiver {
+    using SafeERC20 for IERC20Ubiquity;
     UbiquityAlgorithmicDollarManager public manager;
 
     //the amount of dollars we minted this cycle, so we can calculate delta.
     // should be reset to 0 when cycle ends
     uint256 public dollarsMintedThisCycle;
+    bool public debtCycle;
+    uint256 public blockHeightDebt;
     uint256 public couponLengthBlocks;
+    uint256 public expiredCouponConvertionRate = 2;
+    event ExpiredCouponConvertionRateChanged(
+        uint256 newRate,
+        uint256 previousRate
+    );
+
+    event CouponLengthChanged(
+        uint256 newCouponLengthBlocks,
+        uint256 previousCouponLengthBlocks
+    );
+
+    modifier onlyCouponManager() {
+        require(
+            manager.hasRole(manager.COUPON_MANAGER_ROLE(), msg.sender),
+            "Caller is not a coupon manager"
+        );
+        _;
+    }
 
     /// @param _manager the address of the manager contract so we can fetch variables
     /// @param _couponLengthBlocks how many blocks coupons last. can't be changed
@@ -32,12 +55,31 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
     constructor(address _manager, uint256 _couponLengthBlocks) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         couponLengthBlocks = _couponLengthBlocks;
-        // TODO ADD address(this) as minter for uAD ????
     }
 
-    /// @dev called when a user wants to redeem. should only be called when oracle is below a dollar
+    function setExpiredCouponConvertionRate(uint256 rate)
+        external
+        onlyCouponManager
+    {
+        emit ExpiredCouponConvertionRateChanged(
+            rate,
+            expiredCouponConvertionRate
+        );
+        expiredCouponConvertionRate = rate;
+    }
+
+    function setCouponLength(uint256 _couponLengthBlocks)
+        external
+        onlyCouponManager
+    {
+        emit CouponLengthChanged(_couponLengthBlocks, couponLengthBlocks);
+        couponLengthBlocks = _couponLengthBlocks;
+    }
+
+    /// @dev called when a user wants to burn UAD for debt coupon.
+    ///      should only be called when oracle is below a dollar
     /// @param amount the amount of dollars to exchange for coupons
-    function exchangeDollarsForCoupons(uint256 amount)
+    function exchangeDollarsForDebtCoupons(uint256 amount)
         external
         returns (uint256)
     {
@@ -49,7 +91,12 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         debtCoupon.updateTotalDebt();
 
         //we are in a down cycle so reset the cycle counter
-        dollarsMintedThisCycle = 0;
+        // and set the blockHeight Debt
+        if (!debtCycle) {
+            debtCycle = true;
+            blockHeightDebt = block.number;
+            dollarsMintedThisCycle = 0;
+        }
 
         ICouponsForDollarsCalculator couponCalculator =
             ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
@@ -68,6 +115,44 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         return expiryBlockNumber;
     }
 
+    /// @dev called when a user wants to burn UAD for uAR.
+    ///      should only be called when oracle is below a dollar
+    /// @param amount the amount of dollars to exchange for uAR
+    /// @return amount of auto redeem tokens minted
+    function exchangeDollarsForUAR(uint256 amount) external returns (uint256) {
+        uint256 twapPrice = _getTwapPrice();
+
+        require(twapPrice < 1 ether, "Price must be below 1 to mint uAR");
+
+        DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
+        debtCoupon.updateTotalDebt();
+
+        //we are in a down cycle so reset the cycle counter
+        // and set the blockHeight Debt
+        if (!debtCycle) {
+            debtCycle = true;
+            blockHeightDebt = block.number;
+            dollarsMintedThisCycle = 0;
+        }
+
+        IUARForDollarsCalculator uarCalculator =
+            IUARForDollarsCalculator(manager.uarCalculatorAddress());
+        uint256 uarToMint = uarCalculator.getUARAmount(amount, blockHeightDebt);
+
+        // we burn user's dollars.
+        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+            msg.sender,
+            amount
+        );
+        // mint uAR
+        UbiquityAutoRedeem autoRedeemToken =
+            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
+        autoRedeemToken.mint(msg.sender, uarToMint);
+
+        //give minted uAR amount
+        return uarToMint;
+    }
+
     /// @dev uses the current coupons for dollars calculation to get coupons for dollars
     /// @param amount the amount of dollars to exchange for coupons
     function getCouponsReturnedForDollars(uint256 amount)
@@ -78,6 +163,18 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         ICouponsForDollarsCalculator couponCalculator =
             ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
         return couponCalculator.getCouponAmount(amount);
+    }
+
+    /// @dev uses the current uAR for dollars calculation to get uAR for dollars
+    /// @param amount the amount of dollars to exchange for uAR
+    function getUARReturnedForDollars(uint256 amount)
+        external
+        view
+        returns (uint256)
+    {
+        IUARForDollarsCalculator uarCalculator =
+            IUARForDollarsCalculator(manager.uarCalculatorAddress());
+        return uarCalculator.getUARAmount(amount, blockHeightDebt);
     }
 
     /// @dev should be called by this contract only when getting coupons to be burnt
@@ -115,6 +212,32 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         return "";
     }
 
+    /// @dev let debt holder burn expired coupons for UGOV. Doesn't make TWAP > 1 check.
+    /// @param id the timestamp of the coupon
+    /// @param amount the amount of coupons to redeem
+    /// @return uGovAmount amount of UGOV tokens minted to debt holder
+    function burnExpiredCouponsForUGOV(uint256 id, uint256 amount)
+        public
+        returns (uint256 uGovAmount)
+    {
+        // Check whether debt coupon hasn't expired --> Burn debt coupons.
+        DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
+
+        require(id <= block.number, "Coupon has not expired");
+        require(
+            debtCoupon.balanceOf(msg.sender, id) >= amount,
+            "User doesnt have enough coupons"
+        );
+
+        debtCoupon.burnCoupons(msg.sender, amount, id);
+
+        // Mint UGOV tokens to this contract. Transfer UGOV tokens to msg.sender i.e. debt holder
+        IERC20Ubiquity uGOVToken = IERC20Ubiquity(manager.uGOVTokenAddress());
+        uGovAmount = amount / expiredCouponConvertionRate;
+        uGOVToken.mint(msg.sender, uGovAmount);
+    }
+
+    // TODO should we leave it ?
     /// @dev Lets debt holder burn coupons for auto redemption. Doesn't make TWAP > 1 check.
     /// @param id the timestamp of the coupon
     /// @param amount the amount of coupons to redeem
@@ -132,28 +255,31 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             "User doesnt have enough coupons"
         );
 
-        debtCoupon.safeTransferFrom(msg.sender, address(this), id, amount, "");
-
-        debtCoupon.burnCoupons(address(this), amount, id);
+        debtCoupon.burnCoupons(msg.sender, amount, id);
 
         // Mint LP tokens to this contract. Transfer LP tokens to msg.sender i.e. debt holder
-        MockAutoRedeemToken autoRedeemToken =
-            MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
+        UbiquityAutoRedeem autoRedeemToken =
+            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
         autoRedeemToken.mint(address(this), amount);
         autoRedeemToken.transfer(msg.sender, amount);
 
         return autoRedeemToken.balanceOf(msg.sender);
     }
 
-    /// @dev Exchange auto redeem pool tokens (i.e. LP tokens) for uAD tokens.
-    /// @param amount Amount of LP tokens to burn in exchange for uAD tokens.
-    /// @return msg.sender's remaining balance of LP tokens.
+    /// @dev Exchange auto redeem pool tokenfor uAD tokens.
+    /// @param amount Amount of uAR tokens to burn in exchange for uAD tokens.
+    /// @return amount of unredeemed uAR
     function burnAutoRedeemTokensForDollars(uint256 amount)
         public
         returns (uint256)
     {
-        MockAutoRedeemToken autoRedeemToken =
-            MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
+        uint256 twapPrice = _getTwapPrice();
+        require(twapPrice > 1 ether, "Price must be above 1 to auto redeem");
+        if (debtCycle) {
+            debtCycle = false;
+        }
+        UbiquityAutoRedeem autoRedeemToken =
+            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
         require(
             autoRedeemToken.balanceOf(msg.sender) >= amount,
             "User doesn't have enough auto redeem pool tokens."
@@ -161,31 +287,21 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
         UbiquityAlgorithmicDollar uAD =
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
-        require(
-            uAD.balanceOf(address(this)) > 0,
-            "There aren't any uAD to redeem currently"
-        );
+        uint256 maxRedeemableUAR = uAD.balanceOf(address(this));
 
-        // Elementary LP shares calculation. Can be updated for more complex / tailored math.
-        uint256 totalBalanceOfPool = uAD.balanceOf(address(this));
-        uint256 amountToRedeem =
-            totalBalanceOfPool * (amount / (autoRedeemToken.totalSupply()));
+        if (maxRedeemableUAR <= 0) {
+            mintClaimableDollars();
+            maxRedeemableUAR = uAD.balanceOf(address(this));
+        }
 
-        autoRedeemToken.burn(msg.sender, amount);
-        uAD.transfer(msg.sender, amountToRedeem);
+        uint256 uarToRedeem = amount;
+        if (amount > maxRedeemableUAR) {
+            uarToRedeem = maxRedeemableUAR;
+        }
+        autoRedeemToken.burnFrom(msg.sender, uarToRedeem);
+        uAD.transfer(msg.sender, uarToRedeem);
 
-        return (autoRedeemToken.balanceOf(msg.sender));
-    }
-
-    /// @dev Mint tokens to auto redeem pool.
-    function autoRedeemCoupons() public {
-        // Check whether TWAP > 1.
-        uint256 twapPrice = _getTwapPrice();
-        require(twapPrice > 1 ether, "Price must be above 1 to redeem coupons");
-
-        mintClaimableDollars();
-
-        // TODO: reward msg.sender for calling this function. Determine reward logic.
+        return amount - uarToRedeem;
     }
 
     /// @param id the block number of the coupon
@@ -198,7 +314,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 twapPrice = _getTwapPrice();
 
         require(twapPrice > 1 ether, "Price must be above 1 to redeem coupons");
-
+        if (debtCycle) {
+            debtCycle = false;
+        }
         DebtCoupon debtCoupon = DebtCoupon(manager.debtCouponAddress());
 
         require(id > block.number, "Coupon has expired");
@@ -210,21 +328,27 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         mintClaimableDollars();
         UbiquityAlgorithmicDollar uAD =
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
-        uint256 maxRedeemableCoupons = uAD.balanceOf(address(this));
+        UbiquityAutoRedeem autoRedeemToken =
+            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
+        // uAR have a priority on uDEBT coupon holder
+        require(
+            autoRedeemToken.totalSupply() <= uAD.balanceOf(address(this)),
+            "There aren't enough uAD to redeem currently"
+        );
+        uint256 maxRedeemableCoupons =
+            uAD.balanceOf(address(this)) - autoRedeemToken.totalSupply();
         uint256 couponsToRedeem = amount;
 
         if (amount > maxRedeemableCoupons) {
             couponsToRedeem = maxRedeemableCoupons;
         }
-
         require(
             uAD.balanceOf(address(this)) > 0,
             "There aren't any uAD to redeem currently"
         );
 
-        // debtCouponManager must be an operator to tranfer on behalf of msg.sender
+        // debtCouponManager must be an operator to transfer on behalf of msg.sender
         debtCoupon.burnCoupons(msg.sender, couponsToRedeem, id);
-
         uAD.transfer(msg.sender, couponsToRedeem);
 
         return amount - (couponsToRedeem);
@@ -246,8 +370,8 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         // uAD  dollars should  be minted to address(this)
         uAD.mint(address(this), dollarsToMint);
-        MockAutoRedeemToken autoRedeemToken =
-            MockAutoRedeemToken(manager.autoRedeemPoolTokenAddress());
+        UbiquityAutoRedeem autoRedeemToken =
+            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
 
         uint256 currentRedeemableBalance = uAD.balanceOf(address(this));
         uint256 totalOutstandingDebt =
@@ -271,8 +395,11 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         }
     }
 
-    function _getTwapPrice() internal view returns (uint256) {
-        TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        return oracle.consult(manager.uADTokenAddress());
+    function _getTwapPrice() internal returns (uint256) {
+        TWAPOracle(manager.twapOracleAddress()).update();
+        return
+            TWAPOracle(manager.twapOracleAddress()).consult(
+                manager.uADTokenAddress()
+            );
     }
 }
