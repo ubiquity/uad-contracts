@@ -172,7 +172,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         view
         returns (uint256)
     {
-        console.log("## getUARReturnedForDollars amount:%s ", amount);
         IUARForDollarsCalculator uarCalculator =
             IUARForDollarsCalculator(manager.uarCalculatorAddress());
         return uarCalculator.getUARAmount(amount, blockHeightDebt);
@@ -293,15 +292,12 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         if (maxRedeemableUAR <= 0) {
             mintClaimableDollars();
             maxRedeemableUAR = uAD.balanceOf(address(this));
-            console.log("burnUAR dallars MINTED uadBal:%s", maxRedeemableUAR);
         }
 
         uint256 uarToRedeem = amount;
-        console.log("burnUAR amount:%s", amount);
         if (amount > maxRedeemableUAR) {
             uarToRedeem = maxRedeemableUAR;
         }
-        console.log("burnUAR uarToRedeem:%s", uarToRedeem);
         autoRedeemToken.burnFrom(msg.sender, uarToRedeem);
         uAD.transfer(msg.sender, uarToRedeem);
 
@@ -335,11 +331,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         UbiquityAutoRedeem autoRedeemToken =
             UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
         // uAR have a priority on uDEBT coupon holder
-        console.log(
-            "### redeemCoupons uAD.balanceOf(address(this)):%s autoRedeemToken.totalSupply():%s ",
-            uAD.balanceOf(address(this)),
-            autoRedeemToken.totalSupply()
-        );
         require(
             autoRedeemToken.totalSupply() <= uAD.balanceOf(address(this)),
             "There aren't enough uAD to redeem currently"
@@ -351,11 +342,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         if (amount > maxRedeemableCoupons) {
             couponsToRedeem = maxRedeemableCoupons;
         }
-        console.log(
-            "### redeemCoupons couponsToRedeem:%s maxRedeemableCoupons:%s ",
-            couponsToRedeem,
-            maxRedeemableCoupons
-        );
         require(
             uAD.balanceOf(address(this)) > 0,
             "There aren't any uAD to redeem currently"
@@ -376,10 +362,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 totalMintableDollars =
             IDollarMintingCalculator(manager.dollarCalculatorAddress())
                 .getDollarsToMint();
-        console.log(
-            "## mintClaimableDollars dollarsMintedThisCycle:%s  ",
-            dollarsMintedThisCycle
-        );
         uint256 dollarsToMint = totalMintableDollars - (dollarsMintedThisCycle);
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
@@ -388,11 +370,6 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             UbiquityAlgorithmicDollar(manager.uADTokenAddress());
         // uAD  dollars should  be minted to address(this)
         uAD.mint(address(this), dollarsToMint);
-        console.log(
-            "## mintClaimableDollars totalMintableDollars:%s dollarsToMint:%s",
-            totalMintableDollars,
-            dollarsToMint
-        );
         UbiquityAutoRedeem autoRedeemToken =
             UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
 

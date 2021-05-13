@@ -47,35 +47,17 @@ contract UARForDollarsCalculator is IUARForDollarsCalculator {
         override
         returns (uint256)
     {
-        console.log(
-            "## getUARAmount dollarsToBurn:%s blockHeightDebt:%s",
-            dollarsToBurn,
-            blockHeightDebt
-        );
         require(
             DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt() <
                 IERC20(manager.uADTokenAddress()).totalSupply(),
             "uAR4Dollar: DEBT_TOO_HIGH"
         );
-
         bytes16 coef = _coef.fromUInt().div((uint256(1 ether)).fromUInt());
         bytes16 curBlock = uint256(block.number).fromUInt();
         bytes16 multiplier = blockHeightDebt.fromUInt().div(curBlock);
-        console.log(
-            "## getUARAmount multiplier:%s _coef:%s ",
-            multiplier.toUInt(),
-            coef.toUInt()
-        );
         // x^a = e^(a*lnx(x)) so multiplier^(_coef) = e^(_coef*lnx(multiplier))
         bytes16 op = (coef.mul(multiplier.ln())).exp();
         uint256 res = dollarsToBurn.fromUInt().mul(op).toUInt();
-
-        console.log(
-            "## getUARAmount curBlock:%s res:%s op:%s ",
-            uint256(block.number),
-            res,
-            op.toUInt()
-        );
         return res;
     }
 }

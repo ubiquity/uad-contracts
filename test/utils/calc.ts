@@ -75,7 +75,6 @@ export function isAmountEquivalent(
   const delta = new Big(precision || "0.0000000000000000000000000000000001");
 
   const diff = a.gt(b) ? a.div(b).sub(1) : b.div(a).sub(1);
-  console.log(`diff:${diff.toString()} delta:${delta.toString()}`);
   // assert expected presision
   return diff.lte(delta);
 }
@@ -148,15 +147,5 @@ export function calcUARforDollar(
     (debtHeight.toNumber() / blockNum.toNumber()) ** coef.toNumber();
   let resBig = new Big(res);
   resBig = resBig.mul(one);
-
-  console.log(`
-  ----calcUARforDollar----
-  a.mul(debtHeight.div(blockNum)):${a.mul(debtHeight.div(blockNum)).toString()}
-  coef:${coef.toString()}
-  res:${res.toString()}
-  resBig:${resBig.toString()}
-  ----calcUARforDollar----
-  `);
-
   return BigNumber.from(resBig.round(0, RoundingMode.RoundDown).toString());
 }
