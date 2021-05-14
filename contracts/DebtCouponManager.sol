@@ -360,7 +360,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
 
         // uint256 twapPrice = _getTwapPrice(); //unused variable. Why here?
         uint256 totalMintableDollars =
-            IDollarMintingCalculator(manager.dollarCalculatorAddress())
+            IDollarMintingCalculator(manager.dollarMintingCalculatorAddress())
                 .getDollarsToMint();
         uint256 dollarsToMint = totalMintableDollars - (dollarsMintedThisCycle);
         //update the dollars for this cycle

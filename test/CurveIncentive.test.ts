@@ -143,7 +143,9 @@ describe("CurveIncentive", () => {
     dollarMintingCalculator = (await dollarMintingCalculatorFactory.deploy(
       manager.address
     )) as DollarMintingCalculator;
-    await manager.setDollarCalculatorAddress(dollarMintingCalculator.address);
+    await manager.setDollarMintingCalculatorAddress(
+      dollarMintingCalculator.address
+    );
 
     // set debt coupon token
     const dcManagerFactory = await ethers.getContractFactory(

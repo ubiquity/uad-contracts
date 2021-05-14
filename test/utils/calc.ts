@@ -139,7 +139,6 @@ export function calcUARforDollar(
   const coef = tmpCoef.div(one);
   const blockNum = new Big(currentBlockHeight);
   const debtHeight = new Big(blockHeightDebt);
-  const a = new Big(amount);
   const amounInETH = new Big(ethers.utils.formatEther(amount));
   // uAR amount = UAD amount *  (blockHeightDebt/currentBlockHeight)^coef
   const res =
