@@ -62,7 +62,9 @@ describe("DollarMintingCalculator", () => {
     dollarMintingCalculator = (await dollarMintingCalculatorFactory.deploy(
       manager.address
     )) as DollarMintingCalculator;
-    await manager.setDollarCalculatorAddress(dollarMintingCalculator.address);
+    await manager.setDollarMintingCalculatorAddress(
+      dollarMintingCalculator.address
+    );
   });
   it("getDollarsToMint should revert with price less than 1$", async () => {
     const totSupply = ethers.utils.parseEther("10000");

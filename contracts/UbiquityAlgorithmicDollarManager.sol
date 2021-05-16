@@ -36,7 +36,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public debtCouponAddress;
     address public uADTokenAddress;
     address public couponCalculatorAddress;
-    address public dollarCalculatorAddress;
+    address public dollarMintingCalculatorAddress;
     address public bondingShareAddress;
     address public bondingContractAddress;
     address public stableSwapMetaPoolAddress;
@@ -132,11 +132,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         couponCalculatorAddress = _couponCalculatorAddress;
     }
 
-    function setDollarCalculatorAddress(address _dollarCalculatorAddress)
-        external
-        onlyAdmin
-    {
-        dollarCalculatorAddress = _dollarCalculatorAddress;
+    function setDollarMintingCalculatorAddress(
+        address _dollarMintingCalculatorAddress
+    ) external onlyAdmin {
+        dollarMintingCalculatorAddress = _dollarMintingCalculatorAddress;
     }
 
     function setExcessDollarsDistributor(
@@ -157,6 +156,42 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
 
     function setFormulasAddress(address _formulasAddress) external onlyAdmin {
         formulasAddress = _formulasAddress;
+    }
+
+    function setBondingShareAddress(address _bondingShareAddress)
+        external
+        onlyAdmin
+    {
+        bondingShareAddress = _bondingShareAddress;
+    }
+
+    function setStableSwapMetaPoolAddress(address _stableSwapMetaPoolAddress)
+        external
+        onlyAdmin
+    {
+        stableSwapMetaPoolAddress = _stableSwapMetaPoolAddress;
+    }
+
+    /**
+    @notice set the bonding bontract smart contract address
+    @dev bonding contract participants deposit  curve LP token
+         for a certain duration to earn uGOV and more curve LP token
+    @param _bondingContractAddress bonding contract address
+     */
+    function setBondingContractAddress(address _bondingContractAddress)
+        external
+        onlyAdmin
+    {
+        bondingContractAddress = _bondingContractAddress;
+    }
+
+    /**
+    @notice set the treasury address
+    @dev the treasury fund is used to maintain the protocol
+    @param _treasuryAddress treasury fund address
+     */
+    function setTreasuryAddress(address _treasuryAddress) external onlyAdmin {
+        treasuryAddress = _treasuryAddress;
     }
 
     /**
@@ -221,42 +256,6 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         // set curve 3Pool address
         curve3PoolTokenAddress = _crv3PoolTokenAddress;
         IMetaPool(metaPool).add_liquidity(amounts, 0, msg.sender);
-    }
-
-    function setBondingShareAddress(address _bondingShareAddress)
-        external
-        onlyAdmin
-    {
-        bondingShareAddress = _bondingShareAddress;
-    }
-
-    function setStableSwapMetaPoolAddress(address _stableSwapMetaPoolAddress)
-        external
-        onlyAdmin
-    {
-        stableSwapMetaPoolAddress = _stableSwapMetaPoolAddress;
-    }
-
-    /**
-    @notice set the bonding bontract smart contract address
-    @dev bonding contract participants deposit  curve LP token
-         for a certain duration to earn uGOV and more curve LP token
-    @param _bondingContractAddress bonding contract address
-     */
-    function setBondingContractAddress(address _bondingContractAddress)
-        external
-        onlyAdmin
-    {
-        bondingContractAddress = _bondingContractAddress;
-    }
-
-    /**
-    @notice set the treasury address
-    @dev the treasury fund is used to maintain the protocol
-    @param _treasuryAddress treasury fund address
-     */
-    function setTreasuryAddress(address _treasuryAddress) external onlyAdmin {
-        treasuryAddress = _treasuryAddress;
     }
 
     function getExcessDollarsDistributor(address _debtCouponManagerAddress)

@@ -192,7 +192,7 @@ describe("DebtCouponManager", () => {
     )) as DollarMintingCalculator;
     await manager
       .connect(admin)
-      .setDollarCalculatorAddress(dollarMintingCalculator.address);
+      .setDollarMintingCalculatorAddress(dollarMintingCalculator.address);
 
     // set debt coupon token
     const dcManagerFactory = await ethers.getContractFactory(
@@ -237,7 +237,6 @@ describe("DebtCouponManager", () => {
     await manager.setuARTokenAddress(uAR.address);
 
     // when the debtManager mint uAD it there is too much it distribute the excess to
-    // ????TODO
     const excessDollarsDistributorFactory = await ethers.getContractFactory(
       "ExcessDollarsDistributor"
     );
