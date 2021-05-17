@@ -6,3 +6,4 @@ import "./get-code";
 import "./blockNumber";
 import "./chainId";
 import "./tx";
+import "./gasnow"

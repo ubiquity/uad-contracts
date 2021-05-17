@@ -98,10 +98,19 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     currency: "USD",
-    gasPrice: 150,
+    gasPrice: gweiNow() || 100,
     onlyCalledMethods: true,
     coinmarketcap: `${process.env.COINMARKETCAP_API_KEY || ""}`,
   },
 };
 
 export default config;
+
+function gweiNow() {
+  let envGwei = process.env.GWEI;
+  if (envGwei) {
+    return parseInt(envGwei);
+  } else {
+    return false;
+  }
+}

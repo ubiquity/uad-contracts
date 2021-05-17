@@ -1,107 +1,110 @@
 {
-  "name": "uad-contracts",
-  "version": "1.0.0",
-  "description": "Bonding system for the Universal Digital Dollar",
-  "main": "index.js",
-  "scripts": {
-    "compile": "hardhat compile",
-    "test": "npx hardhat test",
-    "test:coverage": "npx hardhat coverage",
-    "lint:sol": "npx solhint 'contracts/**/*.sol' --fix ",
-    "lint:eslint": "npx eslint . --ext .js,.ts --fix",
-    "lint:prettier": "npx prettier --write .",
-    "lint": "yarn compile && yarn lint:prettier && yarn lint:eslint && yarn run lint:sol"
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
-      "pre-commit": "lint-staged"
+    "name": "uad-contracts",
+    "version": "1.0.0",
+    "description": "Ubiquity Algorithmic Dollar",
+    "main": "index.js",
+    "scripts": {
+        "compile": "yarn hardhat compile",
+        "pretest": "yarn hardhat gasnow",
+        "test": "yarn hardhat test",
+        "test:coverage": "yarn hardhat coverage",
+        "lint:sol": "yarn solhint 'contracts/**/*.sol' --fix ",
+        "lint:eslint": "yarn eslint . --ext .js,.ts --fix",
+        "lint:prettier": "yarn prettier --write .",
+        "lint": "yarn compile && yarn lint:prettier && yarn lint:eslint && yarn run lint:sol"
+    },
+    "husky": {
+        "hooks": {
+            "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
+            "pre-commit": "lint-staged"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ubiquity/uad-contracts.git"
+    },
+    "keywords": [
+        "stablecoin",
+        "erc20",
+        "ethereum",
+        "defi",
+        "ubiquity",
+        "dao",
+        "dollar",
+        "decentralization",
+        "token",
+        "algorithmic"
+    ],
+    "author": "Ubiquity DAO",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/ubiquity/uad-contracts/issues"
+    },
+    "homepage": "https://github.com/ubiquity/uad-contracts#readme",
+    "devDependencies": {
+        "@commitlint/cli": "^11.0.0",
+        "@commitlint/config-conventional": "^11.0.0",
+        "@eth-optimism/smock": "^0.2.1-alpha.0",
+        "@ethereum-waffle/chai": "^3.3.1",
+        "@ethereum-waffle/mock-contract": "^3.2.2",
+        "@ethereum-waffle/provider": "^3.3.2",
+        "@lavamoat/allow-scripts": "^1.0.5",
+        "@nomiclabs/hardhat-ethers": "^2.0.2",
+        "@nomiclabs/hardhat-waffle": "^2.0.1",
+        "@typechain/ethers-v5": "^6.0.5",
+        "@types/big.js": "^6.0.2",
+        "@types/dotenv": "^8.2.0",
+        "@types/mocha": "^8.2.0",
+        "@typescript-eslint/eslint-plugin": "^4.22.0",
+        "@typescript-eslint/parser": "^4.22.0",
+        "abi-to-sol": "^0.2.1",
+        "babel-eslint": "^10.1.0",
+        "big.js": "^6.1.0",
+        "chai": "^4.2.0",
+        "dotenv": "^8.2.0",
+        "eslint": "^7.25.0",
+        "eslint-config-airbnb-typescript": "^12.0.0",
+        "eslint-config-prettier": "^7.2.0",
+        "eslint-plugin-import": "^2.22.1",
+        "eslint-plugin-prettier": "^3.4.0",
+        "ethereum-waffle": "^3.2.2",
+        "ethers": "^5.1.2",
+        "hardhat": "^2.2.1",
+        "hardhat-deploy": "^0.7.5",
+        "hardhat-deploy-ethers": "^0.3.0-beta.7",
+        "hardhat-gas-reporter": "^1.0.4",
+        "hardhat-typechain": "^0.3.5",
+        "husky": "^4.3.8",
+        "lint-staged": "^10.5.4",
+        "nodemon": "^2.0.7",
+        "prettier": "^2.2.1",
+        "prettier-plugin-solidity": "^1.0.0-beta.10",
+        "solhint": "^3.3.3",
+        "solhint-plugin-prettier": "^0.0.5",
+        "solidity-coverage": "^0.7.16",
+        "ts-generator": "^0.1.1",
+        "ts-node": "^9.1.1",
+        "node-fetch": "^2.6.1",
+        "typechain": "^4.0.3",
+        "typescript": "^4.2.4"
+    },
+    "dependencies": {
+        "@openzeppelin/contracts": "4.1.0",
+        "@uniswap/lib": "^4.0.1-alpha",
+        "@uniswap/v2-periphery": "^1.1.0-beta.0",
+        "solidity-linked-list": "^5.0.0"
+    },
+    "lavamoat": {
+        "allowScripts": {
+            "core-js": false,
+            "keccak": false,
+            "secp256k1": false,
+            "web3": false,
+            "bufferutil": false,
+            "utf-8-validate": false,
+            "core-js-pure": false,
+            "postinstall-postinstall": false,
+            "husky": false
+        }
     }
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ubiquity/uad-contracts.git"
-  },
-  "keywords": [
-    "stablecoin",
-    "erc20",
-    "ethereum",
-    "defi",
-    "ubiquity",
-    "dao",
-    "dollar",
-    "decentralization",
-    "token",
-    "algorithmic"
-  ],
-  "author": "Ubiquity DAO",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/ubiquity/uad-contracts/issues"
-  },
-  "homepage": "https://github.com/ubiquity/uad-contracts#readme",
-  "devDependencies": {
-    "@commitlint/cli": "^11.0.0",
-    "@commitlint/config-conventional": "^11.0.0",
-    "@eth-optimism/smock": "^0.2.1-alpha.0",
-    "@ethereum-waffle/chai": "^3.3.1",
-    "@ethereum-waffle/mock-contract": "^3.2.2",
-    "@ethereum-waffle/provider": "^3.3.2",
-    "@lavamoat/allow-scripts": "^1.0.5",
-    "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "@typechain/ethers-v5": "^6.0.5",
-    "@types/big.js": "^6.0.2",
-    "@types/dotenv": "^8.2.0",
-    "@types/mocha": "^8.2.0",
-    "@typescript-eslint/eslint-plugin": "^4.22.0",
-    "@typescript-eslint/parser": "^4.22.0",
-    "abi-to-sol": "^0.2.1",
-    "babel-eslint": "^10.1.0",
-    "big.js": "^6.1.0",
-    "chai": "^4.2.0",
-    "dotenv": "^8.2.0",
-    "eslint": "^7.25.0",
-    "eslint-config-airbnb-typescript": "^12.0.0",
-    "eslint-config-prettier": "^7.2.0",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-prettier": "^3.4.0",
-    "ethereum-waffle": "^3.2.2",
-    "ethers": "^5.1.2",
-    "hardhat": "^2.2.1",
-    "hardhat-deploy": "^0.7.5",
-    "hardhat-deploy-ethers": "^0.3.0-beta.7",
-    "hardhat-gas-reporter": "^1.0.4",
-    "hardhat-typechain": "^0.3.5",
-    "husky": "^4.3.8",
-    "lint-staged": "^10.5.4",
-    "prettier": "^2.2.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.10",
-    "solhint": "^3.3.3",
-    "solhint-plugin-prettier": "^0.0.5",
-    "solidity-coverage": "^0.7.16",
-    "ts-generator": "^0.1.1",
-    "ts-node": "^9.1.1",
-    "typechain": "^4.0.3",
-    "typescript": "^4.2.4"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "4.1.0",
-    "@uniswap/lib": "^4.0.1-alpha",
-    "@uniswap/v2-periphery": "^1.1.0-beta.0",
-    "solidity-linked-list": "^5.0.0"
-  },
-  "lavamoat": {
-    "allowScripts": {
-      "core-js": false,
-      "keccak": false,
-      "secp256k1": false,
-      "web3": false,
-      "bufferutil": false,
-      "utf-8-validate": false,
-      "core-js-pure": false,
-      "postinstall-postinstall": false,
-      "husky": false
-    }
-  }
 }
