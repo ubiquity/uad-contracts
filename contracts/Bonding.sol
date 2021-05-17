@@ -4,9 +4,9 @@ pragma solidity ^0.8.3;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC1155Ubiquity.sol";
-
+import "./interfaces/IMetaPool.sol";
 import "./interfaces/IUbiquityFormulas.sol";
-
+import "./UbiquityAlgorithmicDollar.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ISablier.sol";
 import "./interfaces/IMasterChef.sol";
@@ -53,6 +53,29 @@ contract Bonding is CollectableDust {
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
+
+    /// @dev priceReset remove uAD unilateraly from the curve LP share sitting inside
+    ///      the bonding contract and burn the uAD received
+    /// @param amount of LP token to be removed for uAD
+    /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
+    function priceReset(uint256 amount) external onlyBondingManager {
+        IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
+        // safe approve
+        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
+            address(this),
+            amount
+        );
+        // remove one coin
+        uint256 expected =
+            (metaPool.calc_withdraw_one_coin(amount, 0) * 99) / 100;
+        // update twap
+        metaPool.remove_liquidity_one_coin(amount, 0, expected);
+        ITWAPOracle(manager.twapOracleAddress()).update();
+        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+            address(this),
+            IERC20(manager.uADTokenAddress()).balanceOf(address(this))
+        );
+    }
 
     /// Collectable Dust
     function addProtocolToken(address _token)
@@ -124,9 +147,10 @@ contract Bonding is CollectableDust {
         emit UGOVPerBlockUpdated(_uGOVPerBlock);
     }
 
-    /*
-        Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
-     */
+    /// @dev deposit uAD-3CRV LP tokens for a duration to receive bonding shares
+    /// @param _lpsAmount of LP token to send
+    /// @param _weeks during lp token will be held
+    /// @notice weeks act as a multiplier for the amount of bonding shares to be received
     function deposit(uint256 _lpsAmount, uint256 _weeks)
         public
         returns (uint256 _id)
@@ -164,6 +188,10 @@ contract Bonding is CollectableDust {
         );
     }
 
+    /// @dev withdraw an amount of uAD-3CRV LP tokens
+    /// @param _sharesAmount of bonding shares of type _id to be withdrawn
+    /// @param _id bonding shares id
+    /// @notice bonding shares are ERC1155 (aka NFT) because they have an expiration date
     function withdraw(uint256 _sharesAmount, uint256 _id) public {
         require(
             block.number > _id,

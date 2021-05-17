@@ -8,7 +8,7 @@ import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { ERC20 } from "../artifacts/types/ERC20";
-// import { ICurveFactory } from "../artifacts/types/ICurveFactory";
+import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { MasterChef } from "../artifacts/types/MasterChef";
@@ -24,7 +24,7 @@ let uGOV: UbiquityGovernance;
 let sablier: string;
 let DAI: string;
 let USDC: string;
-// let curvePoolFactory: ICurveFactory;
+let curvePoolFactory: ICurveFactory;
 let curveFactory: string;
 let curve3CrvBasePool: string;
 let curve3CrvToken: string;
@@ -112,6 +112,7 @@ async function bondingSetup(): Promise<{
   admin: Signer;
   secondAccount: Signer;
   thirdAccount: Signer;
+  curvePoolFactory: ICurveFactory;
   uAD: UbiquityAlgorithmicDollar;
   uGOV: UbiquityGovernance;
   metaPool: IMetaPool;
@@ -269,6 +270,12 @@ async function bondingSetup(): Promise<{
 
   const managerMasterChefAddress = await manager.masterChefAddress();
   expect(masterChef.address).to.be.equal(managerMasterChefAddress);
+
+  curvePoolFactory = (await ethers.getContractAt(
+    "ICurveFactory",
+    curveFactory
+  )) as ICurveFactory;
+
   return {
     curveWhale,
     masterChef,
@@ -276,6 +283,7 @@ async function bondingSetup(): Promise<{
     crvToken,
     secondAccount,
     thirdAccount,
+    curvePoolFactory,
     uAD,
     uGOV,
     metaPool,

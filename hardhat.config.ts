@@ -91,6 +91,13 @@ const config: HardhatUserConfig = {
       }`,
       accounts,
     },
+    ropsten: {
+      gasPrice: 100000000000,
+      url: `https://eth-ropsten.alchemyapi.io/v2/${
+        process.env.ALCHEMY_API_KEY || ""
+      }`,
+      accounts,
+    },
   },
   typechain: {
     outDir: "artifacts/types",
@@ -98,7 +105,7 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     currency: "USD",
-    gasPrice: 150,
+    gasPrice: 100,
     onlyCalledMethods: true,
     coinmarketcap: `${process.env.COINMARKETCAP_API_KEY || ""}`,
   },
