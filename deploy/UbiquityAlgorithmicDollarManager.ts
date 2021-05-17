@@ -64,44 +64,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log("UbiquityGovernance deployed at:", uGov.address);
   // set twap Oracle Address
 
-  /** TO BE REMOVED FOR MAINNET */
-  // we should transfer 3CRV manually to the manager contract
-  // kindly ask a whale to give us some 3CRV
   const crvToken = (await ethers.getContractAt(
     "ERC20",
     curve3CrvToken
   )) as ERC20;
   deployments.log("crvToken deployed at:", crvToken.address);
-  await network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [curveWhaleAddress],
-  });
-  const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
-  await crvToken
-    .connect(curveWhale)
-    .transfer(manager.address, ethers.utils.parseEther("10000"));
-  /** TO BE REMOVED FOR MAINNET */
 
-  await uAD.mint(manager.address, ethers.utils.parseEther("10000"));
-
-  // deploy the stableswap pool we need 3CRV and uAD
-  await manager.deployStableSwapPool(
-    curveFactory,
-    curve3CrvBasePool,
-    crvToken.address,
-    10,
-    4000000
-  );
-  // setup the oracle
-  const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
-  deployments.log("metaPoolAddr deployed at:", metaPoolAddr);
-  // Twap
-  const twapOracle = await deployments.deploy("TWAPOracle", {
-    args: [metaPoolAddr, uAD.address, curve3CrvToken],
-    ...opts,
-  });
-  deployments.log("twapOracle deployed at:", twapOracle.address);
-  await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
   // set uAR for dollar Calculator
   const uARCalc = await deployments.deploy("UARForDollarsCalculator", {
     args: [manager.address],
@@ -250,23 +218,62 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     "curveIncentive BUY penalty activate:",
     await curveIncentive.isBuyIncentiveOn()
   );
-  // set the incentive contract to act upon transfer from and to the curve pool
-  await manager.setIncentiveToUAD(metaPoolAddr, curveIncentive.address);
+
   // curveIncentive should have the UBQ_BURNER_ROLE to burn uAD during incentive
   await manager.grantRole(UBQ_BURNER_ROLE, curveIncentive.address);
   deployments.log("curveIncentive has been granted UBQ_BURNER_ROLE");
   // curveIncentive should have the UBQ_MINTER_ROLE to mint uGOV during incentive
   await manager.grantRole(UBQ_MINTER_ROLE, curveIncentive.address);
   deployments.log("curveIncentive has been granted UBQ_MINTER_ROLE");
-  // DEPLOY MasterChef
-  const masterChef = await deployments.deploy("MasterChef", {
-    args: [manager.address],
-    ...opts,
-  });
-  await manager.setMasterChefAddress(masterChef.address);
-  deployments.log("masterChef deployed at:", masterChef.address);
-  await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
-  deployments.log("masterChef has been granted UBQ_MINTER_ROLE");
+
+  const net = await ethers.provider.getNetwork();
+  deployments.log(`Current chain ID: ${net.chainId}`);
+  /** TO BE REMOVED FOR MAINNET */
+  // we should transfer 3CRV manually to the manager contract
+  // kindly ask a whale to give us some 3CRV
+  if (net.chainId === 31337) {
+    // hardhat local
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [curveWhaleAddress],
+    });
+    const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
+    await crvToken
+      .connect(curveWhale)
+      .transfer(manager.address, ethers.utils.parseEther("10000"));
+
+    await uAD.mint(manager.address, ethers.utils.parseEther("10000"));
+
+    // deploy the stableswap pool we need 3CRV and uAD
+    await manager.deployStableSwapPool(
+      curveFactory,
+      curve3CrvBasePool,
+      crvToken.address,
+      10,
+      4000000
+    );
+    // setup the oracle
+    const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
+    deployments.log("metaPoolAddr deployed at:", metaPoolAddr);
+    // Twap
+    const twapOracle = await deployments.deploy("TWAPOracle", {
+      args: [metaPoolAddr, uAD.address, curve3CrvToken],
+      ...opts,
+    });
+    deployments.log("twapOracle deployed at:", twapOracle.address);
+    await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
+    // set the incentive contract to act upon transfer from and to the curve pool
+    await manager.setIncentiveToUAD(metaPoolAddr, curveIncentive.address);
+    // DEPLOY MasterChef
+    const masterChef = await deployments.deploy("MasterChef", {
+      args: [manager.address],
+      ...opts,
+    });
+    await manager.setMasterChefAddress(masterChef.address);
+    deployments.log("masterChef deployed at:", masterChef.address);
+    await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
+    deployments.log("masterChef has been granted UBQ_MINTER_ROLE");
+  }
 
   // setSushiSwapPoolAddress
   // await deployUADUGOVSushiPool(thirdAccount);
