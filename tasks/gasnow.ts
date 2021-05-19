@@ -11,7 +11,8 @@ task("gasnow", "fetching current gas prices").setAction(
     const int = data?.rapid || data?.fast || data?.standard || data?.slow;
     const gwei = ethers.utils.formatUnits(int, "gwei");
     console.log(`${gwei} gwei`);
-    process.env.GWEI = gwei.toString();
+    process.env.CURRENT_GWEI = gwei;
+    return gwei;
   }
 );
 

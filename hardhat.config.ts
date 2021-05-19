@@ -98,19 +98,33 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     currency: "USD",
-    gasPrice: gweiNow() || 100,
+    gasPrice: gweiNow(),
     onlyCalledMethods: true,
-    coinmarketcap: `${process.env.COINMARKETCAP_API_KEY || ""}`,
+    coinmarketcap: process.env.COINMARKETCAP_API_KEY || "",
   },
 };
+
+if (!process.env?.COINMARKETCAP_API_KEY?.length) {
+  console.warn(
+    `usd cost information for the deployment will not be available. no COINMARKETCAP_API_KEY environment variable found!`
+  );
+}
 
 export default config;
 
 function gweiNow() {
-  let envGwei = process.env.GWEI;
+  /**
+   * This process.env.CURRENT_GWEI environment variable is automatically set when the pretest npm script executes.
+   * Also known as the "gasnow" task for hardhat.
+   * `yarn hardhat gasnow`
+   * (contracts/tasks/gasnow.ts)
+   */
+  const envGwei = process.env.CURRENT_GWEI;
   if (envGwei) {
     return parseInt(envGwei);
   } else {
-    return false;
+    console.warn(`realtime mainnet deployment pricing not available. no CURRENT_GWEI environment variable found!`)
+    console.warn(`defaulting to 1 gwei.`)
+    return 1;
   }
 }
