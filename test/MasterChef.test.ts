@@ -21,6 +21,7 @@ describe("MasterChef", () => {
 
   let secondAccount: Signer;
   let curveWhale: Signer;
+  let treasury: Signer;
   let secondAddress: string;
   let metaPool: IMetaPool;
   let twapOracle: TWAPOracle;
@@ -38,6 +39,7 @@ describe("MasterChef", () => {
       bondingShare,
       uGOV,
       curveWhale,
+      treasury,
       crvToken,
       secondAccount,
       metaPool,
@@ -195,8 +197,13 @@ describe("MasterChef", () => {
           ethers.constants.AddressZero,
           masterChef.address,
           calculatedUGOVRewardToBeMinted
-        ); // minting uGOV
-
+        ) // minting uGOV
+        .and.to.emit(uGOV, "Transfer")
+        .withArgs(
+          ethers.constants.AddressZero,
+          await treasury.getAddress(),
+          calculatedUGOVRewardToBeMinted.div(5)
+        ); // minting for treasury
       const uGovBalanceAfter = await uGOV.balanceOf(secondAddress);
 
       // as there is only one LP provider he gets pretty much all the rewards
