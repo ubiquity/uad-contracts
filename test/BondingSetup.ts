@@ -35,6 +35,7 @@ let admin: Signer;
 let curveWhale: Signer;
 let secondAccount: Signer;
 let thirdAccount: Signer;
+let treasury: Signer;
 let adminAddress: string;
 let secondAddress: string;
 let ubiquityFormulas: UbiquityFormulas;
@@ -112,6 +113,7 @@ async function bondingSetup(): Promise<{
   admin: Signer;
   secondAccount: Signer;
   thirdAccount: Signer;
+  treasury: Signer;
   curvePoolFactory: ICurveFactory;
   uAD: UbiquityAlgorithmicDollar;
   uGOV: UbiquityGovernance;
@@ -139,7 +141,7 @@ async function bondingSetup(): Promise<{
   } = await getNamedAccounts());
 
   // GET first EOA account as admin Signer
-  [admin, secondAccount, thirdAccount] = await ethers.getSigners();
+  [admin, secondAccount, thirdAccount, treasury] = await ethers.getSigners();
   adminAddress = await admin.getAddress();
   secondAddress = await secondAccount.getAddress();
   const UBQ_MINTER_ROLE = ethers.utils.keccak256(
@@ -189,7 +191,8 @@ async function bondingSetup(): Promise<{
     await ethers.getContractFactory("UbiquityAlgorithmicDollar")
   ).deploy(manager.address)) as UbiquityAlgorithmicDollar;
   await manager.setuADTokenAddress(uAD.address);
-
+  // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
+  await manager.connect(admin).setTreasuryAddress(await treasury.getAddress());
   // DEPLOY UGOV token Contract
   uGOV = (await (
     await ethers.getContractFactory("UbiquityGovernance")
@@ -283,6 +286,7 @@ async function bondingSetup(): Promise<{
     crvToken,
     secondAccount,
     thirdAccount,
+    treasury,
     curvePoolFactory,
     uAD,
     uGOV,

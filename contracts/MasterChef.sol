@@ -199,6 +199,11 @@ contract MasterChef {
             address(this),
             uGOVReward
         );
+        // mint another 20% for the treasury
+        IERC20Ubiquity(manager.uGOVTokenAddress()).mint(
+            manager.treasuryAddress(),
+            uGOVReward / 5
+        );
         pool.accuGOVPerShare =
             pool.accuGOVPerShare +
             ((uGOVReward * 1e12) / lpSupply);
