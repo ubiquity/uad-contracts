@@ -6,6 +6,7 @@ import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmi
 import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
+import { IMetaPool } from "../artifacts/types/IMetaPool";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts, ethers, network } = hre;
@@ -18,7 +19,13 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   let ubq = "";
   ({ curve3CrvToken, curveWhaleAddress, curveFactory, curve3CrvBasePool, ubq } =
     await getNamedAccounts());
-  deployments.log("admin address :", admin.address);
+  deployments.log(
+    `*****
+  admin address :`,
+    admin.address,
+    `
+  `
+  );
   const opts = {
     from: admin.address,
     log: true,
@@ -37,7 +44,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   ) as UbiquityAlgorithmicDollarManager;
 
   deployments.log(
-    "UbiquityAlgorithmicDollarManager deployed at:",
+    `UbiquityAlgorithmicDollarManager deployed at:`,
     manager.address
   );
   // uAD
@@ -252,6 +259,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       10,
       4000000
     );
+
     // setup the oracle
     const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
     deployments.log("metaPoolAddr deployed at:", metaPoolAddr);
@@ -273,6 +281,36 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     deployments.log("masterChef deployed at:", masterChef.address);
     await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
     deployments.log("masterChef has been granted UBQ_MINTER_ROLE");
+
+    // get some token for the faucet to the admin
+    await uAD.mint(admin.address, ethers.utils.parseEther("20000"));
+    await crvToken
+      .connect(curveWhale)
+      .transfer(admin.address, ethers.utils.parseEther("20000"));
+    const metaPool = (await ethers.getContractAt(
+      "IMetaPool",
+      metaPoolAddr
+    )) as IMetaPool;
+    await uAD.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+    await crvToken.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+    await metaPool["add_liquidity(uint256[2],uint256)"](
+      [ethers.utils.parseEther("10000"), ethers.utils.parseEther("10000")],
+      0
+    );
+    const uADBal = await uAD.balanceOf(admin.address);
+    const crvBal = await crvToken.balanceOf(admin.address);
+    const lpBal = await metaPool.balanceOf(admin.address);
+    deployments.log(`
+    ****
+    Faucet charged
+    uAD:${ethers.utils.formatEther(uADBal)}
+    3crv:${ethers.utils.formatEther(crvBal)}
+    uAD-3CRV LP:${ethers.utils.formatEther(lpBal)}
+    UbiquityAlgorithmicDollarManager deployed at:${manager.address}
+    uAD deployed at:${uAD.address}
+    uAD-3CRV metapool deployed at:${metaPoolAddr}
+    3crv deployed at:${crvToken.address}
+    `);
   }
 
   // setSushiSwapPoolAddress

@@ -67,6 +67,10 @@ const config: HardhatUserConfig = {
     artifacts: "./artifacts",
   }, */
   networks: {
+    localhost: {
+      url: `http://127.0.0.1:8545`,
+      accounts,
+    },
     hardhat: {
       forking: {
         url: `https://eth-mainnet.alchemyapi.io/v2/${
@@ -74,6 +78,7 @@ const config: HardhatUserConfig = {
         }`,
         blockNumber: 12150000,
       },
+      accounts,
       /*  accounts: [
         {
           privateKey: process.env.TREASURY_PRIV_KEY ?? "",
