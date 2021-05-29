@@ -266,7 +266,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         return autoRedeemToken.balanceOf(msg.sender);
     }
 
-    /// @dev Exchange auto redeem pool tokenfor uAD tokens.
+    /// @dev Exchange auto redeem pool token for uAD tokens.
     /// @param amount Amount of uAR tokens to burn in exchange for uAD tokens.
     /// @return amount of unredeemed uAR
     function burnAutoRedeemTokensForDollars(uint256 amount)

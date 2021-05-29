@@ -201,6 +201,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     bondingDeploy.address
   ) as Bonding;
 
+ // bonding should have the UBQ_MINTER_ROLE to mint bonding shares
+ await manager.grantRole(UBQ_MINTER_ROLE, bonding.address);
+ // bonding should have the UBQ_BURNER_ROLE to burn bonding shares
+ await manager.grantRole(UBQ_BURNER_ROLE, bonding.address);
+
+
   await bonding.setBlockCountInAWeek(420);
   await manager.setBondingContractAddress(bonding.address);
   deployments.log("bonding deployed at:", bonding.address);
