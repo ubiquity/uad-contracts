@@ -190,6 +190,13 @@ describe("ExcessDollarsDistributor", () => {
       "IUniswapV2Pair",
       await sushiUGOVPool.pair()
     )) as IUniswapV2Pair;
+
+    let uGOVId = 1;
+    let uADId = 0;
+    if ((await UGOVPair.token0()) !== uAD.address) {
+      uADId = 1;
+      uGOVId = 0;
+    }
     const uGOVLPTotalSupplyBeforeDistribution = await UGOVPair.totalSupply();
     const zeroAdrBalBeforeBurnLiquidity = await UGOVPair.balanceOf(
       ethers.constants.AddressZero
@@ -206,11 +213,13 @@ describe("ExcessDollarsDistributor", () => {
     // we should have 5 more uAD because of the swap and ~5 more because of
     // the liquidity provided. It is not exactly 5 because the price moved because of
     // the swap
-    expect(reservesAfterBurn[0]).to.equal(
-      reservesBeforeBurn[0].add(amount.mul(10).div(100)).sub(remainingUAD)
+    expect(reservesAfterBurn[uADId]).to.equal(
+      (reservesBeforeBurn[uADId] as BigNumber)
+        .add(amount.mul(10).div(100))
+        .sub(remainingUAD)
     );
     // we should have 0 more uGOV
-    expect(reservesAfterBurn[1]).to.equal(reservesBeforeBurn[1]);
+    expect(reservesAfterBurn[uGOVId]).to.equal(reservesBeforeBurn[uGOVId]);
 
     const uGOVLPTotalSupplyAfterDistribution = await UGOVPair.totalSupply();
     const zeroAdrBalAfterBurnLiquidity = await UGOVPair.balanceOf(

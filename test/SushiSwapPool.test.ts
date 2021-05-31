@@ -190,8 +190,14 @@ describe("SushiSwapPool", () => {
         );
 
       [reserve0, reserve1] = await poolContract.getReserves();
-      expect(reserve1).to.equal(ethers.utils.parseEther("10000"));
-      expect(reserve0).to.equal(ethers.utils.parseEther("1000"));
+      if ((await poolContract.token0()) === uAD.address) {
+        expect(reserve0).to.equal(ethers.utils.parseEther("10000"));
+        expect(reserve1).to.equal(ethers.utils.parseEther("1000"));
+      } else {
+        expect(reserve1).to.equal(ethers.utils.parseEther("10000"));
+        expect(reserve0).to.equal(ethers.utils.parseEther("1000"));
+      }
+
       const balance = await poolContract.balanceOf(
         await secondAccount.getAddress()
       );
