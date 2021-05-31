@@ -13,6 +13,13 @@ export async function mineBlock(timestamp: number): Promise<void> {
     params: [timestamp],
   });
 }
+export async function latestBlockNumber(): Promise<{
+  number: number;
+  timestamp: number;
+}> {
+  const block = await ethers.provider.getBlock("latest");
+  return { number: block.number, timestamp: block.timestamp };
+}
 
 export async function mineTsBlock(ts: number): Promise<void> {
   const blockBefore = await ethers.provider.getBlock("latest");

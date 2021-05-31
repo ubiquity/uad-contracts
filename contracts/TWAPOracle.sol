@@ -47,6 +47,7 @@ contract TWAPOracle {
     function update() external {
         (uint256[2] memory priceCumulative, uint256 blockTimestamp) =
             _currentCumulativePrices();
+
         if (blockTimestamp - pricesBlockTimestampLast > 0) {
             // get the balances between now and the last price cumulative snapshot
             uint256[2] memory twapBalances =
@@ -55,8 +56,6 @@ contract TWAPOracle {
                     priceCumulative,
                     blockTimestamp - pricesBlockTimestampLast
                 );
-            // TODO ENSURE that there is sufficient time between the two snapshot balance
-            // meaning require blockTimestamp - pricesBlockTimestampLast > 3600*24 ??
 
             // price to exchange amounIn uAD to 3CRV based on TWAP
             price0Average = IMetaPool(pool).get_dy(0, 1, 1 ether, twapBalances);

@@ -95,3 +95,15 @@ export async function swapUADtoDAI(
     );
   return dyuADtoDAI;
 }
+
+// swap back and forth small amount to trigger an oracle update
+export async function swapToUpdateOracle(
+  curveMetaPool: IMetaPool,
+  crvToken: ERC20,
+  uAD: UbiquityAlgorithmicDollar,
+  signer: Signer
+): Promise<void> {
+  await swapUADto3CRV(curveMetaPool, uAD, BigNumber.from("10"), signer);
+  const amount = await crvToken.balanceOf(await signer.getAddress());
+  await swap3CRVtoUAD(curveMetaPool, crvToken, amount, signer);
+}

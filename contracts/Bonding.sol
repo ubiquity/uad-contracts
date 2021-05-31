@@ -54,11 +54,12 @@ contract Bonding is CollectableDust {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    /// @dev priceReset remove uAD unilateraly from the curve LP share sitting inside
-    ///      the bonding contract and burn the uAD received
+    /// @dev uADPriceReset remove uAD unilateraly from the curve LP share sitting inside
+    ///      the bonding contract and send the uAD received to the treasury.
+    ///      This will have the immediate effect of pushing the uAD price HIGHER
     /// @param amount of LP token to be removed for uAD
     /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
-    function priceReset(uint256 amount) external onlyBondingManager {
+    function uADPriceReset(uint256 amount) external onlyBondingManager {
         IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
         // safe approve
         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
@@ -71,9 +72,33 @@ contract Bonding is CollectableDust {
         // update twap
         metaPool.remove_liquidity_one_coin(amount, 0, expected);
         ITWAPOracle(manager.twapOracleAddress()).update();
-        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
-            address(this),
+        IERC20(manager.uADTokenAddress()).safeTransfer(
+            manager.treasuryAddress(),
             IERC20(manager.uADTokenAddress()).balanceOf(address(this))
+        );
+    }
+
+    /// @dev crvPriceReset remove 3CRV unilateraly from the curve LP share sitting inside
+    ///      the bonding contract and send the 3CRV received to the treasury
+    ///      This will have the immediate effect of pushing the uAD price LOWER
+    /// @param amount of LP token to be removed for 3CRV tokens
+    /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
+    function crvPriceReset(uint256 amount) external onlyBondingManager {
+        IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
+        // safe approve
+        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
+            address(this),
+            amount
+        );
+        // remove one coin
+        uint256 expected =
+            (metaPool.calc_withdraw_one_coin(amount, 1) * 99) / 100;
+        // update twap
+        metaPool.remove_liquidity_one_coin(amount, 1, expected);
+        ITWAPOracle(manager.twapOracleAddress()).update();
+        IERC20(manager.curve3PoolTokenAddress()).safeTransfer(
+            manager.treasuryAddress(),
+            IERC20(manager.curve3PoolTokenAddress()).balanceOf(address(this))
         );
     }
 
