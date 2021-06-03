@@ -95,6 +95,7 @@ const config: HardhatUserConfig = {
         process.env.ALCHEMY_API_KEY || ""
       }`,
       accounts,
+      gasPrice: 30,
     },
     ropsten: {
       gasPrice: 100000000000,
@@ -110,7 +111,7 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     currency: "USD",
-    gasPrice: 100,
+    gasPrice: 35,
     onlyCalledMethods: true,
     coinmarketcap: `${process.env.COINMARKETCAP_API_KEY || ""}`,
   },

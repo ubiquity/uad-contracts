@@ -66,6 +66,8 @@ describe("Bonding2", () => {
       const { id, bond } = await deposit(admin, one.mul(100), 1);
       idAdmin = id;
       expect(bond).to.equal(ethers.utils.parseEther("100.099999999999999999"));
+      const bondIds = await bondingShare.holderTokens(await admin.getAddress());
+      expect(id).to.equal(bondIds[0]);
     });
 
     it("total uBOND should be 100.01", async () => {
@@ -79,6 +81,10 @@ describe("Bonding2", () => {
       const { id, bond } = await deposit(secondAccount, one.mul(100), 1);
       idSecond = id;
       expect(bond).to.equal(ethers.utils.parseEther("100.099999999999999999"));
+      const bondIds = await bondingShare.holderTokens(
+        await secondAccount.getAddress()
+      );
+      expect(id).to.equal(bondIds[0]);
     });
 
     it("third account should not be able to bound with no LP token", async () => {
