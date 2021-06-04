@@ -8,10 +8,28 @@ import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { UbiquityAutoRedeem } from "../artifacts/types/UbiquityAutoRedeem";
+import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
+import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
+import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
+import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts, ethers, network } = hre;
+
+  const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
+
+  /* const admin = ethers.provider.getSigner(ubqAdmin);
+  const adminAdr = await admin.getAddress(); */
+
   const [admin] = await ethers.getSigners();
+  const adminAdr = admin.address;
+
+  // hardhat local
+  await network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [ubqAdmin],
+  });
+
   const couponLengthBlocks = 1110857;
   let curve3CrvToken = "";
 
@@ -23,25 +41,26 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log(
     `*****
   admin address :`,
-    admin.address,
+    adminAdr,
     `
   `
   );
+
   const opts = {
-    from: admin.address,
+    from: adminAdr,
     log: true,
   };
-  const mgr = await deployments.deploy("UbiquityAlgorithmicDollarManager", {
+  /*  const mgr = await deployments.deploy("UbiquityAlgorithmicDollarManager", {
     args: [admin.address],
     ...opts,
-  });
+  }); */
 
   const mgrFactory = await ethers.getContractFactory(
     "UbiquityAlgorithmicDollarManager"
   );
-
+  const mgrAdr = "0xf1df21D46921Ca23906c2689b9DA25e63e686934";
   const manager: UbiquityAlgorithmicDollarManager = mgrFactory.attach(
-    mgr.address
+    mgrAdr // mgr.address
   ) as UbiquityAlgorithmicDollarManager;
 
   deployments.log(
@@ -49,27 +68,27 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     manager.address
   );
   // uAD
-  const uADdeploy = await deployments.deploy("UbiquityAlgorithmicDollar", {
+  /* const uADdeploy = await deployments.deploy("UbiquityAlgorithmicDollar", {
     args: [manager.address],
     ...opts,
-  });
+  }); */
   const uadFactory = await ethers.getContractFactory(
     "UbiquityAlgorithmicDollar"
   );
-
+  const uADdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
   const uAD: UbiquityAlgorithmicDollar = uadFactory.attach(
-    uADdeploy.address
+    uADdeployAddress
   ) as UbiquityAlgorithmicDollar;
-  await manager.setuADTokenAddress(uAD.address);
+  // await manager.setuADTokenAddress(uAD.address);
 
   deployments.log("UbiquityAlgorithmicDollar deployed at:", uAD.address);
   // uGov
-  const uGov = await deployments.deploy("UbiquityGovernance", {
+  /*  const uGov = await deployments.deploy("UbiquityGovernance", {
     args: [manager.address],
     ...opts,
-  });
-  await manager.setuGOVTokenAddress(uGov.address);
-  deployments.log("UbiquityGovernance deployed at:", uGov.address);
+  }); */
+  // await manager.setuGOVTokenAddress(uGov.address);
+  // deployments.log("UbiquityGovernance deployed at:", uGov.address);
   // set twap Oracle Address
 
   const crvToken = (await ethers.getContractAt(
@@ -79,15 +98,15 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log("crvToken deployed at:", crvToken.address);
 
   // set uAR for dollar Calculator
-  const uARCalc = await deployments.deploy("UARForDollarsCalculator", {
+  /* const uARCalc = await deployments.deploy("UARForDollarsCalculator", {
     args: [manager.address],
     ...opts,
   });
-  await manager.setUARCalculatorAddress(uARCalc.address);
-  deployments.log("uAR for dollar Calculator deployed at:", uARCalc.address);
+  await manager.setUARCalculatorAddress(uARCalc.address); */
+  // deployments.log("uAR for dollar Calculator deployed at:", uARCalc.address);
 
   // set coupon for dollar Calculator
-  const couponsForDollarsCalculator = await deployments.deploy(
+  /* const couponsForDollarsCalculator = await deployments.deploy(
     "CouponsForDollarsCalculator",
     {
       args: [manager.address],
@@ -98,21 +117,23 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log(
     "coupons for dollar Calculator deployed at:",
     couponsForDollarsCalculator.address
-  );
+  ); */
   // set Dollar Minting Calculator
-  const dollarMintingCalculator = await deployments.deploy(
+  /*  const dollarMintingCalculator = await deployments.deploy(
     "DollarMintingCalculator",
     {
       args: [manager.address],
       ...opts,
     }
-  );
-  await manager.setDollarMintingCalculatorAddress(
-    dollarMintingCalculator.address
-  );
+  ); */
+  const dollarMintingCalculatorAddress =
+    "0x552b513d1aAed6a1CF37eA6bAe3ffCaDBc8D5ca5";
+  await manager
+    .connect(admin)
+    .setDollarMintingCalculatorAddress(dollarMintingCalculatorAddress);
   deployments.log(
     "dollar minting Calculator deployed at:",
-    dollarMintingCalculator.address
+    dollarMintingCalculatorAddress
   );
   // set debt coupon token
 
@@ -120,7 +141,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     args: [manager.address],
     ...opts,
   });
-  await manager.setDebtCouponAddress(debtCoupon.address);
+  await manager.connect(admin).setDebtCouponAddress(debtCoupon.address);
   deployments.log("debt coupon deployed at:", debtCoupon.address);
   const debtCouponMgr = await deployments.deploy("DebtCouponManager", {
     args: [manager.address, couponLengthBlocks],
@@ -139,11 +160,17 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const UBQ_BURNER_ROLE = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
   );
-  await manager.grantRole(COUPON_MANAGER_ROLE, debtCouponMgr.address);
+  await manager
+    .connect(admin)
+    .grantRole(COUPON_MANAGER_ROLE, debtCouponMgr.address);
   deployments.log("debt coupon manager has been granted COUPON_MANAGER_ROLE");
-  await manager.grantRole(UBQ_MINTER_ROLE, debtCouponMgr.address);
+  await manager
+    .connect(admin)
+    .grantRole(UBQ_MINTER_ROLE, debtCouponMgr.address);
   deployments.log("debt coupon manager has been granted UBQ_MINTER_ROLE");
-  await manager.grantRole(UBQ_BURNER_ROLE, debtCouponMgr.address);
+  await manager
+    .connect(admin)
+    .grantRole(UBQ_BURNER_ROLE, debtCouponMgr.address);
   deployments.log("debt coupon manager has been granted UBQ_BURNER_ROLE");
   // to calculate the totalOutstanding debt we need to take into account autoRedeemToken.totalSupply
   const uAR = await deployments.deploy("UbiquityAutoRedeem", {
@@ -151,23 +178,23 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     ...opts,
   });
 
-  await manager.setuARTokenAddress(uAR.address);
+  await manager.connect(admin).setuARTokenAddress(uAR.address);
 
-  await manager.setTreasuryAddress(admin.address);
-  deployments.log("treasury is equal to admin was  set at:", admin.address);
+  await manager.connect(admin).setTreasuryAddress(adminAdr);
+  deployments.log("treasury is equal to admin was  set at:", adminAdr);
 
   const uarFactory = await ethers.getContractFactory("UbiquityAutoRedeem");
 
   const myUAR: UbiquityAutoRedeem = uarFactory.attach(
     uAR.address
   ) as UbiquityAutoRedeem;
-  await myUAR.raiseCapital(ethers.utils.parseEther("250000"));
-  const adminUARBal = await myUAR.balanceOf(admin.address);
+  await myUAR.connect(admin).raiseCapital(ethers.utils.parseEther("250000"));
+  const adminUARBal = await myUAR.connect(admin).balanceOf(adminAdr);
   deployments.log(
     `
-    *** capital raised for admin:${
-      admin.address
-    }  at:${ethers.utils.formatEther(adminUARBal)}`
+    *** capital raised for admin:${adminAdr}  at:${ethers.utils.formatEther(
+      adminUARBal
+    )}`
   );
   deployments.log("ubiquity auto redeem deployed at:", uAR.address);
   // when the debtManager mint uAD it there is too much it distribute the excess to
@@ -202,11 +229,11 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     bondingShareDeploy.address
   ) as BondingShare;
 
-  await manager.setBondingShareAddress(bondingShare.address);
+  await manager.connect(admin).setBondingShareAddress(bondingShare.address);
   deployments.log("bondingShare deployed at:", bondingShare.address);
   // DEPLOY Ubiquity library
   const ubiquityFormulas = await deployments.deploy("UbiquityFormulas", opts);
-  await manager.setFormulasAddress(ubiquityFormulas.address);
+  await manager.connect(admin).setFormulasAddress(ubiquityFormulas.address);
   deployments.log("ubiquity formulas deployed at:", bondingShare.address);
   // bonding
   const bondingDeploy = await deployments.deploy("Bonding", {
@@ -219,12 +246,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   ) as Bonding;
 
   // bonding should have the UBQ_MINTER_ROLE to mint bonding shares
-  await manager.grantRole(UBQ_MINTER_ROLE, bonding.address);
+  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, bonding.address);
   // bonding should have the UBQ_BURNER_ROLE to burn bonding shares
-  await manager.grantRole(UBQ_BURNER_ROLE, bonding.address);
+  await manager.connect(admin).grantRole(UBQ_BURNER_ROLE, bonding.address);
 
-  await bonding.setBlockCountInAWeek(420);
-  await manager.setBondingContractAddress(bonding.address);
+  await bonding.connect(admin).setBlockCountInAWeek(420);
+  await manager.connect(admin).setBondingContractAddress(bonding.address);
   deployments.log("bonding deployed at:", bonding.address);
   // incentive
   const curveIncentiveDeploy = await deployments.deploy("CurveUADIncentive", {
@@ -238,21 +265,25 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   ) as CurveUADIncentive;
   deployments.log("curveIncentive deployed at:", curveIncentive.address);
   // turn off Sell Penalty
-  await curveIncentive.switchSellPenalty();
+  await curveIncentive.connect(admin).switchSellPenalty();
   deployments.log(
     "curveIncentive SELL penalty activate:",
-    await curveIncentive.isSellPenaltyOn()
+    await curveIncentive.connect(admin).isSellPenaltyOn()
   );
   deployments.log(
     "curveIncentive BUY penalty activate:",
-    await curveIncentive.isBuyIncentiveOn()
+    await curveIncentive.connect(admin).isBuyIncentiveOn()
   );
 
   // curveIncentive should have the UBQ_BURNER_ROLE to burn uAD during incentive
-  await manager.grantRole(UBQ_BURNER_ROLE, curveIncentive.address);
+  await manager
+    .connect(admin)
+    .grantRole(UBQ_BURNER_ROLE, curveIncentive.address);
   deployments.log("curveIncentive has been granted UBQ_BURNER_ROLE");
   // curveIncentive should have the UBQ_MINTER_ROLE to mint uGOV during incentive
-  await manager.grantRole(UBQ_MINTER_ROLE, curveIncentive.address);
+  await manager
+    .connect(admin)
+    .grantRole(UBQ_MINTER_ROLE, curveIncentive.address);
   deployments.log("curveIncentive has been granted UBQ_MINTER_ROLE");
 
   const net = await ethers.provider.getNetwork();
@@ -271,20 +302,22 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
       .connect(curveWhale)
       .transfer(manager.address, ethers.utils.parseEther("10000")); */
 
-  await uAD.mint(manager.address, ethers.utils.parseEther("10"));
+  await uAD.connect(admin).mint(manager.address, ethers.utils.parseEther("10"));
   deployments.log(`10 uAD were minted for the manager`);
 
   // deploy the stableswap pool we need 3CRV and uAD
-  await manager.deployStableSwapPool(
-    curveFactory,
-    curve3CrvBasePool,
-    crvToken.address,
-    10,
-    4000000
-  );
+  await manager
+    .connect(admin)
+    .deployStableSwapPool(
+      curveFactory,
+      curve3CrvBasePool,
+      crvToken.address,
+      10,
+      4000000
+    );
 
   // setup the oracle
-  const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
+  const metaPoolAddr = await manager.connect(admin).stableSwapMetaPoolAddress();
   deployments.log("metaPoolAddr deployed at:", metaPoolAddr);
   // Twap
   const twapOracle = await deployments.deploy("TWAPOracle", {
@@ -294,25 +327,27 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log("twapOracle deployed at:", twapOracle.address);
   await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
   // set the incentive contract to act upon transfer from and to the curve pool
-  await manager.setIncentiveToUAD(metaPoolAddr, curveIncentive.address);
+  await manager
+    .connect(admin)
+    .setIncentiveToUAD(metaPoolAddr, curveIncentive.address);
   // DEPLOY MasterChef
   const masterChef = await deployments.deploy("MasterChef", {
     args: [manager.address],
     ...opts,
   });
-  await manager.setMasterChefAddress(masterChef.address);
+  await manager.connect(admin).setMasterChefAddress(masterChef.address);
   deployments.log("masterChef deployed at:", masterChef.address);
-  await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
+  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, masterChef.address);
   deployments.log("masterChef has been granted UBQ_MINTER_ROLE");
 
   // get some token for the faucet to the admin
-  await uAD.mint(admin.address, ethers.utils.parseEther("10000"));
+  await uAD.connect(admin).mint(adminAdr, ethers.utils.parseEther("20000"));
   /* await crvToken
     .connect(curveWhale)
     .transfer(admin.address, ethers.utils.parseEther("20000")); */
   deployments.log(`
   ***
-  10000 uAD were minted for the treasury aka admin ${admin.address}
+  10000 uAD were minted for the treasury aka admin ${adminAdr}
   don't forget to add liquidity to metapool:${metaPoolAddr} with these uAD
   first you need to call approve on uAD:${uAD.address} and crvToken:${crvToken.address}
   then call metaPool["add_liquidity(uint256[2],uint256)"] or go through crv.finance
@@ -322,8 +357,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     "IMetaPool",
     metaPoolAddr
   )) as IMetaPool;
-  await uAD.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
-  await crvToken.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+  await uAD
+    .connect(admin)
+    .approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+  await crvToken
+    .connect(admin)
+    .approve(metaPoolAddr, ethers.utils.parseEther("10000"));
   deployments.log(`
   ***
   approve was called for admin on uAD:${uAD.address} and crvToken:${crvToken.address}
@@ -336,9 +375,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     [ethers.utils.parseEther("10000"), ethers.utils.parseEther("10000")],
     0
   ); */
-  const uADBal = await uAD.balanceOf(admin.address);
-  const crvBal = await crvToken.balanceOf(admin.address);
-  const lpBal = await metaPool.balanceOf(admin.address);
+  const uADBal = await uAD.balanceOf(adminAdr);
+  const crvBal = await crvToken.balanceOf(adminAdr);
+  const lpBal = await metaPool.balanceOf(adminAdr);
   deployments.log(`
     ****
     Faucet charged
@@ -358,6 +397,75 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   // setSushiSwapPoolAddress
   // await deployUADUGOVSushiPool(thirdAccount);
+  // need some uGOV to provide liquidity
+  const routerAdr = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // SushiV2Router02
+  const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
+  const uGOV: UbiquityGovernance = uGOVFactory.attach(
+    "0x8b2403Ec6470194c789736571E2AA1C91B5B568F"
+  ) as UbiquityGovernance;
+
+  await uGOV.connect(admin).mint(adminAdr, ethers.utils.parseEther("1000"));
+
+  await uAD.connect(admin).approve(routerAdr, ethers.utils.parseEther("10000"));
+  await uGOV.connect(admin).approve(routerAdr, ethers.utils.parseEther("1000"));
+  const admUgovBal = await uGOV.balanceOf(adminAdr);
+  const admUADBal = await uAD.balanceOf(adminAdr);
+  deployments.log(`
+    ****
+   admin get ${ethers.utils.formatEther(
+     admUgovBal
+   )} uGOV and ${ethers.utils.formatEther(
+    admUADBal
+  )} uad before deploying the UAD UGOV SushiPool
+    `);
+  const router = (await ethers.getContractAt(
+    "IUniswapV2Router02",
+    routerAdr
+  )) as IUniswapV2Router02;
+
+  await router
+    .connect(admin)
+    .addLiquidity(
+      uAD.address,
+      uGOV.address,
+      ethers.utils.parseEther("10000"),
+      ethers.utils.parseEther("1000"),
+      ethers.utils.parseEther("9900"),
+      ethers.utils.parseEther("990"),
+      adminAdr,
+      1625414021
+    );
+
+  const sushiFactory = await ethers.getContractFactory("SushiSwapPool");
+  const sushiUGOVPool = (await sushiFactory.deploy(mgrAdr)) as SushiSwapPool;
+  await manager.connect(admin).setSushiSwapPoolAddress(sushiUGOVPool.address);
+  deployments.log(`
+  ****
+  manager setSushiSwapPoolAddress to  ${sushiUGOVPool.address}
+
+  `);
+
+  const pairAdr = await sushiUGOVPool.pair();
+  deployments.log(`
+  ****
+  manager setSushiSwapPoolAddress Pair:${pairAdr}
+
+  `);
+  const ugovUadPair = (await ethers.getContractAt(
+    "IUniswapV2Pair",
+    pairAdr
+  )) as IUniswapV2Pair;
+
+  const admLPBal = await ugovUadPair.balanceOf(adminAdr);
+
+  deployments.log(`
+    ****
+    manager sushi uGOVuAD LP token   ${ethers.utils.formatEther(admLPBal)}
+    `);
+
+  deployments.log(`
+    That's all folks !
+    `);
 };
 export default func;
 func.tags = ["UbiquityAlgorithmicDollarManager"];
