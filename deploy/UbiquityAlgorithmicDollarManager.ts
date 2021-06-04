@@ -18,17 +18,16 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 
-  /* const admin = ethers.provider.getSigner(ubqAdmin);
-  const adminAdr = await admin.getAddress(); */
-
-  const [admin] = await ethers.getSigners();
-  const adminAdr = admin.address;
-
+  /*   const admin = ethers.provider.getSigner(ubqAdmin);
+  const adminAdr = await admin.getAddress();
   // hardhat local
   await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [ubqAdmin],
-  });
+  }); */
+
+  const [admin] = await ethers.getSigners();
+  const adminAdr = admin.address;
 
   const couponLengthBlocks = 1110857;
   let curve3CrvToken = "";
@@ -461,6 +460,52 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log(`
     ****
     manager sushi uGOVuAD LP token   ${ethers.utils.formatEther(admLPBal)}
+    `);
+  const mgrtwapOracleAddress = await manager.twapOracleAddress();
+  const mgrdebtCouponAddress = await manager.debtCouponAddress();
+  const mgruADTokenAddress = await manager.uADTokenAddress();
+  const mgrcouponCalculatorAddress = await manager.couponCalculatorAddress();
+  const mgrdollarMintingCalculatorAddress =
+    await manager.dollarMintingCalculatorAddress();
+  const mgrbondingShareAddress = await manager.bondingShareAddress();
+  const mgrbondingContractAddress = await manager.bondingContractAddress();
+  const mgrstableSwapMetaPoolAddress =
+    await manager.stableSwapMetaPoolAddress();
+  const mgrcurve3PoolTokenAddress = await manager.curve3PoolTokenAddress(); // 3CRV
+  const mgrtreasuryAddress = await manager.treasuryAddress();
+  const mgruGOVTokenAddress = await manager.uGOVTokenAddress();
+  const mgrsushiSwapPoolAddress = await manager.sushiSwapPoolAddress(); // sushi pool uAD-uGOV
+  const mgrmasterChefAddress = await manager.masterChefAddress();
+  const mgrformulasAddress = await manager.formulasAddress();
+  const mgrautoRedeemTokenAddress = await manager.autoRedeemTokenAddress(); // uAR
+  const mgruarCalculatorAddress = await manager.uarCalculatorAddress(); // uAR calculator
+
+  const mgrExcessDollarsDistributor = await manager.getExcessDollarsDistributor(
+    debtCouponMgr.address
+  );
+
+  deployments.log(`
+    ****
+    debtCouponMgr:${debtCouponMgr.address}
+
+    manager ALL VARS:
+    mgrtwapOracleAddress:${mgrtwapOracleAddress}
+    debtCouponAddress:${mgrdebtCouponAddress}
+    uADTokenAddress:${mgruADTokenAddress}
+    couponCalculatorAddress:${mgrcouponCalculatorAddress}
+    dollarMintingCalculatorAddress:${mgrdollarMintingCalculatorAddress}
+    bondingShareAddress:${mgrbondingShareAddress}
+    bondingContractAddress:${mgrbondingContractAddress}
+    stableSwapMetaPoolAddress:${mgrstableSwapMetaPoolAddress}
+    curve3PoolTokenAddress:${mgrcurve3PoolTokenAddress}
+    treasuryAddress:${mgrtreasuryAddress}
+    uGOVTokenAddress:${mgruGOVTokenAddress}
+    sushiSwapPoolAddress:${mgrsushiSwapPoolAddress}
+    masterChefAddress:${mgrmasterChefAddress}
+    formulasAddress:${mgrformulasAddress}
+    autoRedeemTokenAddress:${mgrautoRedeemTokenAddress}
+    uarCalculatorAddress:${mgruarCalculatorAddress}
+    ExcessDollarsDistributor:${mgrExcessDollarsDistributor}
     `);
 
   deployments.log(`
