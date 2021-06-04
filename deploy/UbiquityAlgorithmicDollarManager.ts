@@ -18,16 +18,16 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 
-  /*   const admin = ethers.provider.getSigner(ubqAdmin);
+  const admin = ethers.provider.getSigner(ubqAdmin);
   const adminAdr = await admin.getAddress();
   // hardhat local
   await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [ubqAdmin],
-  }); */
+  });
 
-  const [admin] = await ethers.getSigners();
-  const adminAdr = admin.address;
+  /*   const [admin] = await ethers.getSigners();
+  const adminAdr = admin.address; */
 
   const couponLengthBlocks = 1110857;
   let curve3CrvToken = "";
