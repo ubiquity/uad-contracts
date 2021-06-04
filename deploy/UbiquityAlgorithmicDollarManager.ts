@@ -7,6 +7,7 @@ import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
+import { UbiquityAutoRedeem } from "../artifacts/types/UbiquityAutoRedeem";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts, ethers, network } = hre;
@@ -151,6 +152,23 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   });
 
   await manager.setuARTokenAddress(uAR.address);
+
+  await manager.setTreasuryAddress(admin.address);
+  deployments.log("treasury is equal to admin was  set at:", admin.address);
+
+  const uarFactory = await ethers.getContractFactory("UbiquityAutoRedeem");
+
+  const myUAR: UbiquityAutoRedeem = uarFactory.attach(
+    uAR.address
+  ) as UbiquityAutoRedeem;
+  await myUAR.raiseCapital(ethers.utils.parseEther("250000"));
+  const adminUARBal = await myUAR.balanceOf(admin.address);
+  deployments.log(
+    `
+    *** capital raised for admin:${
+      admin.address
+    }  at:${ethers.utils.formatEther(adminUARBal)}`
+  );
   deployments.log("ubiquity auto redeem deployed at:", uAR.address);
   // when the debtManager mint uAD it there is too much it distribute the excess to
   const excessDollarsDistributor = await deployments.deploy(
@@ -173,8 +191,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     excessDollarsDistributor.address
   );
   // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
-  await manager.setTreasuryAddress(admin.address);
-  deployments.log("treasury is equal to admin was  set at:", admin.address);
+
   // DEPLOY BondingShare Contract
   const bondingShareDeploy = await deployments.deploy("BondingShare", {
     args: [manager.address],
