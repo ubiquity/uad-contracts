@@ -4,7 +4,6 @@ pragma solidity ^0.8.3;
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
-import "hardhat/console.sol";
 
 contract SushiSwapPool {
     IUniswapV2Factory public factory =

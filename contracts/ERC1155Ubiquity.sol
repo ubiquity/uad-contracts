@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./utils/SafeAddArray.sol";
 
-import "hardhat/console.sol";
-
 /// @title ERC1155 Ubiquity preset
 /// @author Ubiquity Algorithmic Dollar
 /// @notice ERC1155 with :

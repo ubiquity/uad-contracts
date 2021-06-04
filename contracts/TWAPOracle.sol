@@ -2,7 +2,6 @@
 pragma solidity ^0.8.3;
 
 import "./interfaces/IMetaPool.sol";
-import "hardhat/console.sol";
 
 contract TWAPOracle {
     address public immutable pool;

@@ -14,8 +14,6 @@ import "./interfaces/ITWAPOracle.sol";
 import "./interfaces/IERC1155Ubiquity.sol";
 import "./utils/CollectableDust.sol";
 
-import "hardhat/console.sol";
-
 contract Bonding is CollectableDust {
     using SafeERC20 for IERC20;
 

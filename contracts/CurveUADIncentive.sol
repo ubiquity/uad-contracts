@@ -7,7 +7,6 @@ import "./interfaces/IIncentive.sol";
 import "./TWAPOracle.sol";
 import "./UbiquityAlgorithmicDollar.sol";
 import "./libs/ABDKMathQuad.sol";
-import "hardhat/console.sol";
 
 /// @title Uniswap trading incentive contract
 /// @author uAD Protocol
