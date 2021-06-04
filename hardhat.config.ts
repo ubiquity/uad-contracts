@@ -7,6 +7,7 @@ import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "./tasks/index";
+import "@nomiclabs/hardhat-etherscan";
 
 dotenv.config();
 const mnemonic = `${
@@ -91,9 +92,7 @@ const config: HardhatUserConfig = {
       ], */
     },
     mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/v2/${
-        process.env.ALCHEMY_API_KEY || ""
-      }`,
+      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY || ""}`,
       accounts,
       gasPrice: 30,
     },
@@ -114,6 +113,11 @@ const config: HardhatUserConfig = {
     gasPrice: 35,
     onlyCalledMethods: true,
     coinmarketcap: `${process.env.COINMARKETCAP_API_KEY || ""}`,
+  },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: `${process.env.ETHERSCAN_API_KEY || ""}`,
   },
 };
 

@@ -107,8 +107,8 @@ dist
 # Hardhat files
 cache
 artifacts
-deployments
-
+deployments/localhost
+deployments/ropsten
 # MacOS files
 .DS_Store
 
