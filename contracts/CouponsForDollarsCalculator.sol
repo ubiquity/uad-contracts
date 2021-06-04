@@ -29,8 +29,8 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
     {
         require(
             DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt() <
-                IERC20(manager.uADTokenAddress()).totalSupply(),
-            "coupon4Dollar: DEBT_TOO_HIGH"
+                IERC20(manager.dollarTokenAddress()).totalSupply(),
+            "Coupon to dollar: DEBT_TOO_HIGH"
         );
         bytes16 one = uint256(1).fromUInt();
         bytes16 totalDebt =
@@ -39,7 +39,7 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
                 .fromUInt();
         bytes16 r =
             totalDebt.div(
-                IERC20(manager.uADTokenAddress()).totalSupply().fromUInt()
+                IERC20(manager.dollarTokenAddress()).totalSupply().fromUInt()
             );
 
         bytes16 oneMinusRAllSquared = (one.sub(r)).mul(one.sub(r));

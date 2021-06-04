@@ -102,7 +102,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         );
     }
 
-    function setuADTokenAddress(address _uADTokenAddress) external onlyAdmin {
+    function setDollarTokenAddress(address _uADTokenAddress) external onlyAdmin {
         uADTokenAddress = _uADTokenAddress;
     }
 

@@ -32,7 +32,7 @@ describe("UAR", () => {
     uAD = (await uADFactory.deploy(
       manager.address
     )) as UbiquityAlgorithmicDollar;
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
     await uAD.mint(await admin.getAddress(), ethers.utils.parseEther("10000"));
     // set treasury
     await manager
@@ -54,7 +54,7 @@ describe("UAR", () => {
   });
   it("should revert if you call raise capital when not being a minter", async () => {
     await expect(uAR.connect(secondAcc).raiseCapital(100)).to.be.revertedWith(
-      "UBQ token: not minter"
+      "Governance token: not minter"
     );
   });
   it("raise capital should mint UAR for the treasury", async () => {

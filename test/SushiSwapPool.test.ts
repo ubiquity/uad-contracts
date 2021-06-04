@@ -79,7 +79,7 @@ describe("SushiSwapPool", () => {
 
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
-    await manager.setuADTokenAddress(uAD.address);
+    await manager.setDollarTokenAddress(uAD.address);
 
     const UGOV = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await UGOV.deploy(manager.address)) as UbiquityGovernance;

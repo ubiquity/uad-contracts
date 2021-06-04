@@ -27,7 +27,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     args: [manager.address],
     ...opts,
   });
-  await manager.setuADTokenAddress(uAD.address);
+  await manager.setDollarTokenAddress(uAD.address);
   // uGov
   const uGov = await deployments.deploy("UbiquityGovernance", {
     args: [manager.address],

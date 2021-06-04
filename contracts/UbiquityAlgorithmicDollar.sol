@@ -26,7 +26,7 @@ contract UbiquityAlgorithmicDollar is ERC20Ubiquity {
                 ERC20Ubiquity.manager.UBQ_TOKEN_MANAGER_ROLE(),
                 msg.sender
             ),
-            "uAD: must have admin role"
+            "Dollar: must have admin role"
         );
 
         incentiveContract[account] = incentive;

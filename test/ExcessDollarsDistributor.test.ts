@@ -62,7 +62,7 @@ describe("ExcessDollarsDistributor", () => {
     uAD = (await uADFactory.deploy(
       manager.address
     )) as UbiquityAlgorithmicDollar;
-    await manager.setuADTokenAddress(uAD.address);
+    await manager.setDollarTokenAddress(uAD.address);
     const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await uGOVFactory.deploy(manager.address)) as UbiquityGovernance;
     await manager.setuGOVTokenAddress(uGOV.address);

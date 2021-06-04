@@ -70,9 +70,9 @@ contract Bonding is CollectableDust {
         // update twap
         metaPool.remove_liquidity_one_coin(amount, 0, expected);
         ITWAPOracle(manager.twapOracleAddress()).update();
-        IERC20(manager.uADTokenAddress()).safeTransfer(
+        IERC20(manager.dollarTokenAddress()).safeTransfer(
             manager.treasuryAddress(),
-            IERC20(manager.uADTokenAddress()).balanceOf(address(this))
+            IERC20(manager.dollarTokenAddress()).balanceOf(address(this))
         );
     }
 
@@ -226,7 +226,7 @@ contract Bonding is CollectableDust {
                 msg.sender,
                 _id
             ) >= _sharesAmount,
-            "Bonding: Caller does not have enough shares"
+            "Bonding: caller does not have enough shares"
         );
 
         _updateOracle();
@@ -275,7 +275,7 @@ contract Bonding is CollectableDust {
     function currentTokenPrice() public view returns (uint256) {
         return
             ITWAPOracle(manager.twapOracleAddress()).consult(
-                manager.uADTokenAddress()
+                manager.dollarTokenAddress()
             );
     }
 
@@ -283,7 +283,7 @@ contract Bonding is CollectableDust {
         uint256 _currentShareValue = currentShareValue();
         require(
             _currentShareValue != 0,
-            "Bonding: Share Value should not be nul"
+            "Bonding: share value should not be null"
         );
 
         IERC1155Ubiquity(manager.bondingShareAddress()).mint(

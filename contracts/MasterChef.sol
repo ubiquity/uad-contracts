@@ -195,12 +195,12 @@ contract MasterChef {
         }
         uint256 multiplier = _getMultiplier();
         uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
-        IERC20Ubiquity(manager.uGOVTokenAddress()).mint(
+        IERC20Ubiquity(manager.governanceTokenAddress()).mint(
             address(this),
             uGOVReward
         );
         // mint another 20% for the treasury
-        IERC20Ubiquity(manager.uGOVTokenAddress()).mint(
+        IERC20Ubiquity(manager.governanceTokenAddress()).mint(
             manager.treasuryAddress(),
             uGOVReward / 5
         );
@@ -213,7 +213,7 @@ contract MasterChef {
     // Safe uGOV transfer function, just in case if rounding
     // error causes pool to not have enough uGOVs.
     function _safeUGOVTransfer(address _to, uint256 _amount) internal {
-        IERC20Ubiquity uGOV = IERC20Ubiquity(manager.uGOVTokenAddress());
+        IERC20Ubiquity uGOV = IERC20Ubiquity(manager.governanceTokenAddress());
         uint256 uGOVBal = uGOV.balanceOf(address(this));
         if (_amount > uGOVBal) {
             uGOV.safeTransfer(_to, uGOVBal);
@@ -229,7 +229,7 @@ contract MasterChef {
     function _getTwapPrice() internal view returns (uint256) {
         return
             ITWAPOracle(manager.twapOracleAddress()).consult(
-                manager.uADTokenAddress()
+                manager.dollarTokenAddress()
             );
     }
 }

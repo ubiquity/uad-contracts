@@ -23,7 +23,7 @@ describe("CouponForDollarCalculator", () => {
     // set uAD Mock
     const UAD = await ethers.getContractFactory("MockuADToken");
     uAD = (await UAD.deploy(uADTotalSupply)) as MockuADToken;
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
     // set debt coupon Mock
     const debtCouponFactory = await ethers.getContractFactory("MockDebtCoupon");
     debtCoupon = (await debtCouponFactory.deploy(totalDebt)) as MockDebtCoupon;

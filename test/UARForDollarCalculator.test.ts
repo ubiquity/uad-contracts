@@ -31,7 +31,7 @@ describe("UARForDollarsCalculator", () => {
     uAD = (await uADFactory.deploy(
       manager.address
     )) as UbiquityAlgorithmicDollar;
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
     await uAD.mint(await admin.getAddress(), ethers.utils.parseEther("10000"));
     // set debt coupon token
     const debtCouponFactory = await ethers.getContractFactory("DebtCoupon");

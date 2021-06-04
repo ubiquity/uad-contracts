@@ -23,7 +23,7 @@ contract DollarMintingCalculator is IDollarMintingCalculator {
     /// @notice returns (TWAP_PRICE  -1) * UAD_Total_Supply
     function getDollarsToMint() external view override returns (uint256) {
         TWAPOracle oracle = TWAPOracle(manager.twapOracleAddress());
-        uint256 twapPrice = oracle.consult(manager.uADTokenAddress());
+        uint256 twapPrice = oracle.consult(manager.dollarTokenAddress());
         require(twapPrice > 1, "DollarMintingCalculator: not > 1");
         return
             twapPrice
@@ -31,7 +31,7 @@ contract DollarMintingCalculator is IDollarMintingCalculator {
                 .sub(_one)
                 .mul(
                 (
-                    IERC20(manager.uADTokenAddress())
+                    IERC20(manager.dollarTokenAddress())
                         .totalSupply()
                         .fromUInt()
                         .div(_one)

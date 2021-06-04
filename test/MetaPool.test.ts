@@ -65,7 +65,7 @@ describe("MetaPool", () => {
     );
     await Promise.all(mintings);
 
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
 
     crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
     daiToken = (await ethers.getContractAt("ERC20", DAI)) as ERC20;

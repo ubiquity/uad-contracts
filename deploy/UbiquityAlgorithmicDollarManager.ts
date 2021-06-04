@@ -78,7 +78,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const uAD: UbiquityAlgorithmicDollar = uadFactory.attach(
     uADdeployAddress
   ) as UbiquityAlgorithmicDollar;
-  // await manager.setuADTokenAddress(uAD.address);
+  // await manager.setDollarTokenAddress(uAD.address);
 
   deployments.log("UbiquityAlgorithmicDollar deployed at:", uAD.address);
   // uGov
@@ -463,7 +463,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     `);
   const mgrtwapOracleAddress = await manager.twapOracleAddress();
   const mgrdebtCouponAddress = await manager.debtCouponAddress();
-  const mgruADTokenAddress = await manager.uADTokenAddress();
+  const mgrDollarTokenAddress = await manager.dollarTokenAddress();
   const mgrcouponCalculatorAddress = await manager.couponCalculatorAddress();
   const mgrdollarMintingCalculatorAddress =
     await manager.dollarMintingCalculatorAddress();
@@ -473,7 +473,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     await manager.stableSwapMetaPoolAddress();
   const mgrcurve3PoolTokenAddress = await manager.curve3PoolTokenAddress(); // 3CRV
   const mgrtreasuryAddress = await manager.treasuryAddress();
-  const mgruGOVTokenAddress = await manager.uGOVTokenAddress();
+  const mgruGOVTokenAddress = await manager.governanceTokenAddress();
   const mgrsushiSwapPoolAddress = await manager.sushiSwapPoolAddress(); // sushi pool uAD-uGOV
   const mgrmasterChefAddress = await manager.masterChefAddress();
   const mgrformulasAddress = await manager.formulasAddress();
@@ -491,7 +491,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     manager ALL VARS:
     mgrtwapOracleAddress:${mgrtwapOracleAddress}
     debtCouponAddress:${mgrdebtCouponAddress}
-    uADTokenAddress:${mgruADTokenAddress}
+    uADTokenAddress:${mgrDollarTokenAddress}
     couponCalculatorAddress:${mgrcouponCalculatorAddress}
     dollarMintingCalculatorAddress:${mgrdollarMintingCalculatorAddress}
     bondingShareAddress:${mgrbondingShareAddress}

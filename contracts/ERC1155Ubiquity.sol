@@ -24,7 +24,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyMinter() {
         require(
             manager.hasRole(manager.UBQ_MINTER_ROLE(), msg.sender),
-            "UBQ token: not minter"
+            "Governance token: not minter"
         );
         _;
     }
@@ -32,7 +32,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyBurner() {
         require(
             manager.hasRole(manager.UBQ_BURNER_ROLE(), msg.sender),
-            "UBQ token: not burner"
+            "Governance token: not burner"
         );
         _;
     }
@@ -40,7 +40,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyPauser() {
         require(
             manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
-            "UBQ token: not pauser"
+            "Governance token: not pauser"
         );
         _;
     }

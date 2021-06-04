@@ -68,7 +68,7 @@ describe("CurveIncentive", () => {
 
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
-    await manager.setuADTokenAddress(uAD.address);
+    await manager.setDollarTokenAddress(uAD.address);
 
     // set extra token
     crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;

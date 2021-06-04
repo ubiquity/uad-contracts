@@ -75,7 +75,7 @@ describe("UbiquityGovernance", () => {
         uGOV
           .connect(secondAccount)
           .mint(thirdAdr, ethers.utils.parseEther("10000"))
-      ).to.revertedWith("UBQ token: not minter");
+      ).to.revertedWith("Governance token: not minter");
     });
   });
   describe("Burn", () => {
@@ -105,7 +105,7 @@ describe("UbiquityGovernance", () => {
       );
       await expect(
         uGOV.connect(admin).burnFrom(sndAdr, ethers.utils.parseEther("10000"))
-      ).to.revertedWith("UBQ token: not burner");
+      ).to.revertedWith("Governance token: not burner");
     });
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();

@@ -28,7 +28,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     modifier onlyMinter() {
         require(
             manager.hasRole(manager.UBQ_MINTER_ROLE(), msg.sender),
-            "UBQ token: not minter"
+            "Governance token: not minter"
         );
         _;
     }
@@ -36,7 +36,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     modifier onlyBurner() {
         require(
             manager.hasRole(manager.UBQ_BURNER_ROLE(), msg.sender),
-            "UBQ token: not burner"
+            "Governance token: not burner"
         );
         _;
     }
@@ -44,7 +44,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     modifier onlyPauser() {
         require(
             manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
-            "UBQ token: not pauser"
+            "Governance token: not pauser"
         );
         _;
     }
@@ -98,7 +98,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         bytes32 s
     ) external override {
         // solhint-disable-next-line not-rely-on-time
-        require(deadline >= block.timestamp, "uAD: EXPIRED");
+        require(deadline >= block.timestamp, "Dollar: EXPIRED");
         bytes32 digest =
             keccak256(
                 abi.encodePacked(
@@ -119,7 +119,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(
             recoveredAddress != address(0) && recoveredAddress == owner,
-            "uAD: INVALID_SIGNATURE"
+            "Dollar: INVALID_SIGNATURE"
         );
         _approve(owner, spender, value);
     }

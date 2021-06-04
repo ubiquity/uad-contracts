@@ -81,10 +81,10 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       );
       await expect(
         sushiSwapPoolFactory.deploy(manager.address)
-      ).to.be.revertedWith("uAD Address not set");
+      ).to.be.revertedWith("Dollar Address not set");
     });
     it("Set should revert if uGOV is not set", async () => {
-      await manager.connect(admin).setuADTokenAddress(uAD.address);
+      await manager.connect(admin).setDollarTokenAddress(uAD.address);
       const sushiSwapPoolFactory = await ethers.getContractFactory(
         "SushiSwapPool"
       );
@@ -94,7 +94,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
     });
     it("Set should work", async () => {
       await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
-      await manager.connect(admin).setuADTokenAddress(uAD.address);
+      await manager.connect(admin).setDollarTokenAddress(uAD.address);
 
       const sushiSwapPoolFactory = await ethers.getContractFactory(
         "SushiSwapPool"
@@ -118,7 +118,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
   });
   describe("uADTokenAddress", () => {
     it("Set should work", async () => {
-      await manager.connect(admin).setuADTokenAddress(uAD.address);
+      await manager.connect(admin).setDollarTokenAddress(uAD.address);
 
       const uADTokenAddr = BigNumber.from(
         await ethers.provider.getStorageAt(manager.address, 3)
@@ -193,8 +193,8 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       await crvToken
         .connect(curveWhale)
         .transfer(manager.address, ethers.utils.parseEther("10000"));
-      // setuADTokenAddress needed for the stable pool
-      await manager.connect(admin).setuADTokenAddress(uAD.address);
+      // setDollarTokenAddress needed for the stable pool
+      await manager.connect(admin).setDollarTokenAddress(uAD.address);
       // the uADManager needs some uAD to provide liquidity
       await uAD
         .connect(admin)

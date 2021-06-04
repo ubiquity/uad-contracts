@@ -190,7 +190,7 @@ async function bondingSetup(): Promise<{
   uAD = (await (
     await ethers.getContractFactory("UbiquityAlgorithmicDollar")
   ).deploy(manager.address)) as UbiquityAlgorithmicDollar;
-  await manager.setuADTokenAddress(uAD.address);
+  await manager.setDollarTokenAddress(uAD.address);
   // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
   await manager.connect(admin).setTreasuryAddress(await treasury.getAddress());
   // DEPLOY UGOV token Contract
