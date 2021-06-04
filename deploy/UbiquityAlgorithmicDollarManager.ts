@@ -13,11 +13,11 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const [admin] = await ethers.getSigners();
   const couponLengthBlocks = 1110857;
   let curve3CrvToken = "";
-  let curveWhaleAddress = "";
+
   let curveFactory = "";
   let curve3CrvBasePool = "";
-  let ubq = "";
-  ({ curve3CrvToken, curveWhaleAddress, curveFactory, curve3CrvBasePool, ubq } =
+  // let ubq = "ubq.eth";
+  ({ curve3CrvToken, curveFactory, curve3CrvBasePool } =
     await getNamedAccounts());
   deployments.log(
     `*****
@@ -173,8 +173,8 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     excessDollarsDistributor.address
   );
   // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
-  await manager.setTreasuryAddress(ubq);
-  deployments.log("treasury set at:", ubq);
+  await manager.setTreasuryAddress(admin.address);
+  deployments.log("treasury is equal to admin was  set at:", admin.address);
   // DEPLOY BondingShare Contract
   const bondingShareDeploy = await deployments.deploy("BondingShare", {
     args: [manager.address],
@@ -243,69 +243,86 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   /** TO BE REMOVED FOR MAINNET */
   // we should transfer 3CRV manually to the manager contract
   // kindly ask a whale to give us some 3CRV
-  if (net.chainId === 31337) {
-    // hardhat local
-    await network.provider.request({
+  // if (net.chainId === 31337) {
+  // hardhat local
+  /* await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [curveWhaleAddress],
     });
     const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
     await crvToken
       .connect(curveWhale)
-      .transfer(manager.address, ethers.utils.parseEther("10000"));
+      .transfer(manager.address, ethers.utils.parseEther("10000")); */
 
-    await uAD.mint(manager.address, ethers.utils.parseEther("10000"));
+  await uAD.mint(manager.address, ethers.utils.parseEther("10"));
+  deployments.log(`10 uAD were minted for the manager`);
 
-    // deploy the stableswap pool we need 3CRV and uAD
-    await manager.deployStableSwapPool(
-      curveFactory,
-      curve3CrvBasePool,
-      crvToken.address,
-      10,
-      4000000
-    );
+  // deploy the stableswap pool we need 3CRV and uAD
+  await manager.deployStableSwapPool(
+    curveFactory,
+    curve3CrvBasePool,
+    crvToken.address,
+    10,
+    4000000
+  );
 
-    // setup the oracle
-    const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
-    deployments.log("metaPoolAddr deployed at:", metaPoolAddr);
-    // Twap
-    const twapOracle = await deployments.deploy("TWAPOracle", {
-      args: [metaPoolAddr, uAD.address, curve3CrvToken],
-      ...opts,
-    });
-    deployments.log("twapOracle deployed at:", twapOracle.address);
-    await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
-    // set the incentive contract to act upon transfer from and to the curve pool
-    await manager.setIncentiveToUAD(metaPoolAddr, curveIncentive.address);
-    // DEPLOY MasterChef
-    const masterChef = await deployments.deploy("MasterChef", {
-      args: [manager.address],
-      ...opts,
-    });
-    await manager.setMasterChefAddress(masterChef.address);
-    deployments.log("masterChef deployed at:", masterChef.address);
-    await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
-    deployments.log("masterChef has been granted UBQ_MINTER_ROLE");
+  // setup the oracle
+  const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
+  deployments.log("metaPoolAddr deployed at:", metaPoolAddr);
+  // Twap
+  const twapOracle = await deployments.deploy("TWAPOracle", {
+    args: [metaPoolAddr, uAD.address, curve3CrvToken],
+    ...opts,
+  });
+  deployments.log("twapOracle deployed at:", twapOracle.address);
+  await manager.connect(admin).setTwapOracleAddress(twapOracle.address);
+  // set the incentive contract to act upon transfer from and to the curve pool
+  await manager.setIncentiveToUAD(metaPoolAddr, curveIncentive.address);
+  // DEPLOY MasterChef
+  const masterChef = await deployments.deploy("MasterChef", {
+    args: [manager.address],
+    ...opts,
+  });
+  await manager.setMasterChefAddress(masterChef.address);
+  deployments.log("masterChef deployed at:", masterChef.address);
+  await manager.grantRole(UBQ_MINTER_ROLE, masterChef.address);
+  deployments.log("masterChef has been granted UBQ_MINTER_ROLE");
 
-    // get some token for the faucet to the admin
-    await uAD.mint(admin.address, ethers.utils.parseEther("20000"));
-    await crvToken
-      .connect(curveWhale)
-      .transfer(admin.address, ethers.utils.parseEther("20000"));
-    const metaPool = (await ethers.getContractAt(
-      "IMetaPool",
-      metaPoolAddr
-    )) as IMetaPool;
-    await uAD.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
-    await crvToken.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
-    await metaPool["add_liquidity(uint256[2],uint256)"](
-      [ethers.utils.parseEther("10000"), ethers.utils.parseEther("10000")],
-      0
-    );
-    const uADBal = await uAD.balanceOf(admin.address);
-    const crvBal = await crvToken.balanceOf(admin.address);
-    const lpBal = await metaPool.balanceOf(admin.address);
-    deployments.log(`
+  // get some token for the faucet to the admin
+  await uAD.mint(admin.address, ethers.utils.parseEther("10000"));
+  /* await crvToken
+    .connect(curveWhale)
+    .transfer(admin.address, ethers.utils.parseEther("20000")); */
+  deployments.log(`
+  ***
+  10000 uAD were minted for the treasury aka admin ${admin.address}
+  don't forget to add liquidity to metapool:${metaPoolAddr} with these uAD
+  first you need to call approve on uAD:${uAD.address} and crvToken:${crvToken.address}
+  then call metaPool["add_liquidity(uint256[2],uint256)"] or go through crv.finance
+  ***
+  `);
+  const metaPool = (await ethers.getContractAt(
+    "IMetaPool",
+    metaPoolAddr
+  )) as IMetaPool;
+  await uAD.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+  await crvToken.approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+  deployments.log(`
+  ***
+  approve was called for admin on uAD:${uAD.address} and crvToken:${crvToken.address}
+  for 10k uad and 10k 3crv
+  don't forget to add liquidity to metapool:${metaPoolAddr} with these uAD and 3CRV
+  either call metaPool["add_liquidity(uint256[2],uint256)"] or go through crv.finance
+  ***
+  `);
+  /*   await metaPool["add_liquidity(uint256[2],uint256)"](
+    [ethers.utils.parseEther("10000"), ethers.utils.parseEther("10000")],
+    0
+  ); */
+  const uADBal = await uAD.balanceOf(admin.address);
+  const crvBal = await crvToken.balanceOf(admin.address);
+  const lpBal = await metaPool.balanceOf(admin.address);
+  deployments.log(`
     ****
     Faucet charged
     uAD:${ethers.utils.formatEther(uADBal)}
@@ -316,7 +333,11 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     uAD-3CRV metapool deployed at:${metaPoolAddr}
     3crv deployed at:${crvToken.address}
     `);
-  }
+  deployments.log(`
+    ****
+   We know need to deploy the UAD UGOV SushiPool
+    `);
+  //  }
 
   // setSushiSwapPoolAddress
   // await deployUADUGOVSushiPool(thirdAccount);
