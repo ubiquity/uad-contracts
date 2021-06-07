@@ -197,7 +197,7 @@ async function bondingSetup(): Promise<{
   uGOV = (await (
     await ethers.getContractFactory("UbiquityGovernance")
   ).deploy(manager.address)) as UbiquityGovernance;
-  await manager.setuGOVTokenAddress(uGOV.address);
+  await manager.setGovernanceTokenAddress(uGOV.address);
 
   // GET 3CRV token contract
   crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;

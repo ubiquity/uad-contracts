@@ -83,7 +83,7 @@ describe("SushiSwapPool", () => {
 
     const UGOV = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await UGOV.deploy(manager.address)) as UbiquityGovernance;
-    await manager.setuGOVTokenAddress(uGOV.address);
+    await manager.setGovernanceTokenAddress(uGOV.address);
     sushiFactory = await ethers.getContractFactory("SushiSwapPool");
     sushiUGOVPool = (await sushiFactory.deploy(
       manager.address

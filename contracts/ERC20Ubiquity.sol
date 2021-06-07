@@ -23,6 +23,8 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     bytes32 public constant PERMIT_TYPEHASH =
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint256) public nonces;
+    string private _token_name;
+    string private _symbol;
 
     // ----------- Modifiers -----------
     modifier onlyMinter() {
@@ -49,18 +51,28 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         _;
     }
 
+    modifier onlyAdmin() {
+        require(
+            manager.hasRole(manager.DEFAULT_ADMIN_ROLE(), msg.sender),
+            "ERC20: deployer must be manager admin"
+        );
+        _;
+    }
+
     constructor(
         address _manager,
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {
+        _token_name = name_;
+        _symbol = symbol_;
         manager = UbiquityAlgorithmicDollarManager(_manager);
         // sender must be UbiquityAlgorithmicDollarManager roleAdmin
         // because he will get the admin, minter and pauser role on uAD and we want to
         // manage all permissions through the manager
         require(
             manager.hasRole(manager.DEFAULT_ADMIN_ROLE(), msg.sender),
-            "UAD: deployer must be manager admin"
+            "ERC20: deployer must be manager admin"
         );
         uint256 chainId;
         // solhint-disable-next-line no-inline-assembly
@@ -80,6 +92,33 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
                 address(this)
             )
         );
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() public view override(ERC20) returns (string memory) {
+        return _token_name;
+    }
+
+    /// @notice setName update token name
+    /// @param newName new token name
+    function setName(string memory newName) external onlyAdmin {
+        _token_name = newName;
+    }
+
+    /**
+     * @dev Returns the symbol of the token, usually a shorter version of the
+     * name.
+     */
+    function symbol() public view override(ERC20) returns (string memory) {
+        return _symbol;
+    }
+
+    /// @notice setSymbol update token symbol
+    /// @param newSymbol new token symbol
+    function setSymbol(string memory newSymbol) external onlyAdmin {
+        _symbol = newSymbol;
     }
 
     /// @notice permit spending of uAD. owner has signed a message allowing

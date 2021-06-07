@@ -86,7 +86,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     args: [manager.address],
     ...opts,
   }); */
-  // await manager.setuGOVTokenAddress(uGov.address);
+  // await manager.setGovernanceTokenAddress(uGov.address);
   // deployments.log("UbiquityGovernance deployed at:", uGov.address);
   // set twap Oracle Address
 

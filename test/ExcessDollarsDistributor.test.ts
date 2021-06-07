@@ -65,7 +65,7 @@ describe("ExcessDollarsDistributor", () => {
     await manager.setDollarTokenAddress(uAD.address);
     const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await uGOVFactory.deploy(manager.address)) as UbiquityGovernance;
-    await manager.setuGOVTokenAddress(uGOV.address);
+    await manager.setGovernanceTokenAddress(uGOV.address);
     // set twap Oracle Address
     crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
 

@@ -208,7 +208,7 @@ describe("MetaPool", () => {
     it("should return correct name", async () => {
       const name = await metaPool.name();
       expect(name).to.equal(
-        "Curve.fi Factory USD Metapool: UbiquityAlgorithmicDollar"
+        "Curve.fi Factory USD Metapool: Ubiquity Algorithmic Dollar"
       );
       const symbol = await metaPool.symbol();
       expect(symbol).to.equal("uAD3CRV-f");

@@ -26,6 +26,32 @@ describe("UbiquityAlgorithmicDollar", () => {
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
   });
+  describe("SetName", () => {
+    const newName = "Super Moon UBQ";
+    it("should work", async () => {
+      await uAD.connect(admin).setName(newName);
+      const name = await uAD.name();
+      expect(name).to.equal(newName);
+    });
+    it("should fail if not admin", async () => {
+      await expect(uAD.connect(secondAccount).setName(newName)).to.revertedWith(
+        "ERC20: deployer must be manager admin"
+      );
+    });
+  });
+  describe("SetSymbol", () => {
+    const newSymbol = "UBMOON";
+    it("should work", async () => {
+      await uAD.connect(admin).setSymbol(newSymbol);
+      const symbol = await uAD.symbol();
+      expect(symbol).to.equal(newSymbol);
+    });
+    it("should fail if not admin", async () => {
+      await expect(
+        uAD.connect(secondAccount).setSymbol(newSymbol)
+      ).to.revertedWith("ERC20: deployer must be manager admin");
+    });
+  });
   describe("Transfer", () => {
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();

@@ -81,7 +81,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       );
       await expect(
         sushiSwapPoolFactory.deploy(manager.address)
-      ).to.be.revertedWith("Dollar Address not set");
+      ).to.be.revertedWith("Dollar address not set");
     });
     it("Set should revert if uGOV is not set", async () => {
       await manager.connect(admin).setDollarTokenAddress(uAD.address);
@@ -93,7 +93,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
       ).to.be.revertedWith("uGOV Address not set");
     });
     it("Set should work", async () => {
-      await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
+      await manager.connect(admin).setGovernanceTokenAddress(uGOV.address);
       await manager.connect(admin).setDollarTokenAddress(uAD.address);
 
       const sushiSwapPoolFactory = await ethers.getContractFactory(
@@ -130,7 +130,7 @@ describe("UbiquityAlgorithmicDollarManager", () => {
 
   describe("uGOVTokenAddress", () => {
     it("Set should work", async () => {
-      await manager.connect(admin).setuGOVTokenAddress(uGOV.address);
+      await manager.connect(admin).setGovernanceTokenAddress(uGOV.address);
 
       const uGOVTokenAddr = BigNumber.from(
         await ethers.provider.getStorageAt(manager.address, 11)

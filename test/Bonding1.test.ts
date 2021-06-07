@@ -65,7 +65,7 @@ describe("Bonding1", () => {
         bonding
           .connect(secondAccount)
           .withdraw(ethers.utils.parseEther("10000"), idBlock)
-      ).to.be.revertedWith("Bonding: Caller does not have enough shares");
+      ).to.be.revertedWith("Bonding: caller does not have enough shares");
     });
 
     it("Users should be able to redeem all their shares", async () => {

@@ -122,7 +122,7 @@ describe("CurveIncentive", () => {
     const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await uGOVFactory.deploy(manager.address)) as UbiquityGovernance;
 
-    await manager.setuGOVTokenAddress(uGOV.address);
+    await manager.setGovernanceTokenAddress(uGOV.address);
 
     // set coupon for dollar Calculator
     const couponsForDollarsCalculatorFactory = await ethers.getContractFactory(

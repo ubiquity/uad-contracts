@@ -33,7 +33,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         keccak256("UBQ_TOKEN_MANAGER_ROLE");
     address public twapOracleAddress;
     address public debtCouponAddress;
-    address public uADTokenAddress;
+    address public dollarTokenAddress; // uAD
     address public couponCalculatorAddress;
     address public dollarMintingCalculatorAddress;
     address public bondingShareAddress;
@@ -41,7 +41,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
     address public stableSwapMetaPoolAddress;
     address public curve3PoolTokenAddress; // 3CRV
     address public treasuryAddress;
-    address public uGOVTokenAddress;
+    address public governanceTokenAddress; // uGOV
     address public sushiSwapPoolAddress; // sushi pool uAD-uGOV
     address public masterChefAddress;
     address public formulasAddress;
@@ -96,18 +96,24 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         external
         onlyAdmin
     {
-        IUbiquityAlgorithmicDollar(uADTokenAddress).setIncentiveContract(
+        IUbiquityAlgorithmicDollar(dollarTokenAddress).setIncentiveContract(
             _account,
             _incentiveAddress
         );
     }
 
-    function setDollarTokenAddress(address _uADTokenAddress) external onlyAdmin {
-        uADTokenAddress = _uADTokenAddress;
+    function setDollarTokenAddress(address _dollarTokenAddress)
+        external
+        onlyAdmin
+    {
+        dollarTokenAddress = _dollarTokenAddress;
     }
 
-    function setuGOVTokenAddress(address _uGOVTokenAddress) external onlyAdmin {
-        uGOVTokenAddress = _uGOVTokenAddress;
+    function setGovernanceTokenAddress(address _governanceTokenAddress)
+        external
+        onlyAdmin
+    {
+        governanceTokenAddress = _governanceTokenAddress;
     }
 
     function setSushiSwapPoolAddress(address _sushiSwapPoolAddress)
@@ -215,9 +221,9 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         address metaPool =
             ICurveFactory(_curveFactory).deploy_metapool(
                 _crvBasePool,
-                ERC20(uADTokenAddress).name(),
-                ERC20(uADTokenAddress).symbol(),
-                uADTokenAddress,
+                ERC20(dollarTokenAddress).name(),
+                ERC20(dollarTokenAddress).symbol(),
+                dollarTokenAddress,
                 _amplificationCoefficient,
                 _fee
             );
@@ -227,7 +233,7 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         uint256 crv3PoolTokenAmount =
             IERC20(_crv3PoolTokenAddress).balanceOf(address(this));
         uint256 uADTokenAmount =
-            IERC20(uADTokenAddress).balanceOf(address(this));
+            IERC20(dollarTokenAddress).balanceOf(address(this));
 
         // safe approve revert if approve from non-zero to non-zero allowance
         IERC20(_crv3PoolTokenAddress).safeApprove(metaPool, 0);
@@ -236,19 +242,19 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
             crv3PoolTokenAmount
         );
 
-        IERC20(uADTokenAddress).safeApprove(metaPool, 0);
-        IERC20(uADTokenAddress).safeApprove(metaPool, uADTokenAmount);
+        IERC20(dollarTokenAddress).safeApprove(metaPool, 0);
+        IERC20(dollarTokenAddress).safeApprove(metaPool, uADTokenAmount);
 
         // coin at index 0 is uAD and index 1 is 3CRV
         require(
-            IMetaPool(metaPool).coins(0) == uADTokenAddress &&
+            IMetaPool(metaPool).coins(0) == dollarTokenAddress &&
                 IMetaPool(metaPool).coins(1) == _crv3PoolTokenAddress,
             "uADMGR: COIN_ORDER_MISMATCH"
         );
         // Add the initial liquidity to the StableSwap meta pool
         uint256[2] memory amounts =
             [
-                IERC20(uADTokenAddress).balanceOf(address(this)),
+                IERC20(dollarTokenAddress).balanceOf(address(this)),
                 IERC20(_crv3PoolTokenAddress).balanceOf(address(this))
             ];
 

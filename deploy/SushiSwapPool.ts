@@ -33,7 +33,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     args: [manager.address],
     ...opts,
   });
-  await manager.setuGOVTokenAddress(uGov.address);
+  await manager.setGovernanceTokenAddress(uGov.address);
   const sushiPool = await deployments.deploy("SushiSwapPool", {
     args: [manager.address],
     ...opts,

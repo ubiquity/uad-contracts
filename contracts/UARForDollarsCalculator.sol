@@ -49,7 +49,7 @@ contract UARForDollarsCalculator is IUARForDollarsCalculator {
         require(
             DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt() <
                 IERC20(manager.dollarTokenAddress()).totalSupply(),
-            "uAR4Dollar: DEBT_TOO_HIGH"
+            "uAR to Dollar: DEBT_TOO_HIGH"
         );
         bytes16 coef = _coef.fromUInt().div((uint256(1 ether)).fromUInt());
         bytes16 curBlock = uint256(block.number).fromUInt();

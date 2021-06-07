@@ -146,6 +146,6 @@ describe("CouponForDollarCalculator", () => {
     expect(totalOutstandingDebt).to.equal(totalDebt);
     await expect(
       couponsForDollarsCalculator.getCouponAmount(1)
-    ).to.revertedWith("coupon4Dollar: DEBT_TOO_HIGH");
+    ).to.revertedWith("Coupon to dollar: DEBT_TOO_HIGH");
   });
 });
