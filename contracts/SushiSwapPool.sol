@@ -14,7 +14,10 @@ contract SushiSwapPool {
 
     constructor(address _manager) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
-        require(manager.dollarTokenAddress() != address(0), "Dollar address not set");
+        require(
+            manager.dollarTokenAddress() != address(0),
+            "Dollar address not set"
+        );
         require(
             manager.governanceTokenAddress() != address(0),
             "uGOV Address not set"

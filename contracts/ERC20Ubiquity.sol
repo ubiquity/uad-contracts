@@ -23,7 +23,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     bytes32 public constant PERMIT_TYPEHASH =
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint256) public nonces;
-    string private _token_name;
+    string private _tokenName;
     string private _symbol;
 
     // ----------- Modifiers -----------
@@ -64,7 +64,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {
-        _token_name = name_;
+        _tokenName = name_;
         _symbol = symbol_;
         manager = UbiquityAlgorithmicDollarManager(_manager);
         // sender must be UbiquityAlgorithmicDollarManager roleAdmin
@@ -94,31 +94,16 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         );
     }
 
-    /**
-     * @dev Returns the name of the token.
-     */
-    function name() public view override(ERC20) returns (string memory) {
-        return _token_name;
+    /// @notice setSymbol update token symbol
+    /// @param newSymbol new token symbol
+    function setSymbol(string memory newSymbol) external onlyAdmin {
+        _symbol = newSymbol;
     }
 
     /// @notice setName update token name
     /// @param newName new token name
     function setName(string memory newName) external onlyAdmin {
-        _token_name = newName;
-    }
-
-    /**
-     * @dev Returns the symbol of the token, usually a shorter version of the
-     * name.
-     */
-    function symbol() public view override(ERC20) returns (string memory) {
-        return _symbol;
-    }
-
-    /// @notice setSymbol update token symbol
-    /// @param newSymbol new token symbol
-    function setSymbol(string memory newSymbol) external onlyAdmin {
-        _symbol = newSymbol;
+        _tokenName = newName;
     }
 
     /// @notice permit spending of uAD. owner has signed a message allowing
@@ -206,6 +191,21 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     // @dev Unpauses all token transfers.
     function unpause() public onlyPauser {
         _unpause();
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() public view override(ERC20) returns (string memory) {
+        return _tokenName;
+    }
+
+    /**
+     * @dev Returns the symbol of the token, usually a shorter version of the
+     * name.
+     */
+    function symbol() public view override(ERC20) returns (string memory) {
+        return _symbol;
     }
 
     function _beforeTokenTransfer(

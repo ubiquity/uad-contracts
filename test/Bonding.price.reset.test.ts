@@ -62,20 +62,15 @@ describe("Bonding.Price.Reset", () => {
       .mul(one)
       .div(bondingShareTotalSupply);
     expect(shareValueBefore).to.equal(calculatedShareValue);
+    const amountToTreasury = ethers.utils.parseEther("199.709062633936701658");
 
     await expect(bonding.uADPriceReset(bondingSCBalance))
       .to.emit(uAD, "Transfer")
-      .withArgs(
-        bonding.address,
-        treasuryAdr,
-        ethers.utils.parseEther("199.732180231372855561")
-      );
+      .withArgs(bonding.address, treasuryAdr, amountToTreasury);
 
     const treasuryUADBalanceAfterReset = await uAD.balanceOf(treasuryAdr);
     expect(treasuryUADBalanceAfterReset).to.equal(
-      treasuryUADBalanceBeforeReset.add(
-        ethers.utils.parseEther("199.732180231372855561")
-      )
+      treasuryUADBalanceBeforeReset.add(amountToTreasury)
     );
 
     const bondAfter = await bondingShare.balanceOf(secondAddress, idSecond);
@@ -102,7 +97,7 @@ describe("Bonding.Price.Reset", () => {
     expect(bondingUADBalanceBefore).to.equal(0);
     expect(bondingUADBalanceAfter).to.equal(0);
     expect(pool0bal).to.equal(
-      ethers.utils.parseEther("9800.247726144657311584")
+      ethers.utils.parseEther("9800.270823277548456538")
     );
     expect(pool1bal).to.equal(ethers.utils.parseEther("10000"));
     await swapToUpdateOracle(metaPool, crvToken, uAD, admin);
@@ -129,7 +124,6 @@ describe("Bonding.Price.Reset", () => {
     const idSecond = (await deposit(secondAccount, one.mul(100), 1)).id;
     const bondBefore = await bondingShare.balanceOf(secondAddress, idSecond);
     const bondingSCBalance = await metaPool.balanceOf(bonding.address);
-
     // value in LP of a bonding share
     const shareValueBefore = await bonding.currentShareValue();
     const bondingShareTotalSupply = await bondingShare.totalSupply();
@@ -143,22 +137,14 @@ describe("Bonding.Price.Reset", () => {
       .mul(one)
       .div(bondingShareTotalSupply);
     expect(shareValueBefore).to.equal(calculatedShareValue);
-
+    const amountToTreasury = ethers.utils.parseEther("196.586734740380915533");
     await expect(bonding.crvPriceReset(bondingSCBalance))
       .to.emit(crvToken, "Transfer")
-      .withArgs(
-        bonding.address,
-        treasuryAdr,
-        ethers.utils.parseEther("197.058283249715539778")
-      );
-
+      .withArgs(bonding.address, treasuryAdr, amountToTreasury);
     const treasury3CRVBalanceAfterReset = await crvToken.balanceOf(treasuryAdr);
     expect(treasury3CRVBalanceAfterReset).to.equal(
-      treasury3CRVBalanceBeforeReset.add(
-        ethers.utils.parseEther("197.058283249715539778")
-      )
+      treasury3CRVBalanceBeforeReset.add(amountToTreasury)
     );
-
     const bondAfter = await bondingShare.balanceOf(secondAddress, idSecond);
     // bonding share should remain the same
     expect(bondBefore).to.equal(bondAfter);
@@ -178,16 +164,14 @@ describe("Bonding.Price.Reset", () => {
     // price of uAD against 3CRV should be lower than before
     // meaning for a uAD you can have less  3CRV
     expect(amountOf3CRVforOneUADAfter).to.be.lt(amountOf3CRVforOneUADBefore);
-
     const pool0bal = await metaPool.balances(0);
     const pool1bal = await metaPool.balances(1);
     expect(bondingUADBalanceBefore).to.equal(0);
     expect(bondingUADBalanceAfter).to.equal(0);
     expect(pool1bal).to.equal(
-      ethers.utils.parseEther("9802.922157745192898523")
+      ethers.utils.parseEther("9803.393775449769704549")
     );
     expect(pool0bal).to.equal(ethers.utils.parseEther("10000"));
-
     await swapToUpdateOracle(metaPool, crvToken, uAD, admin);
 
     await twapOracle.update();

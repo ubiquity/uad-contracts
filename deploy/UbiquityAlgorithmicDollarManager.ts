@@ -13,6 +13,18 @@ import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
 
+function pressAnyKey(msg = "Press any key to continue") {
+  return new Promise((resolve) => {
+    console.log(msg || "Press any key to continue");
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on("data", () => {
+      process.stdin.destroy();
+      resolve(undefined);
+    });
+  });
+}
+
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts, ethers, network } = hre;
 
@@ -27,15 +39,30 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   });
 
   /*   const [admin] = await ethers.getSigners();
-  const adminAdr = admin.address; */
+  const adminAdr = admin.address;
 
+
+  */
+  /*   let mgrAdr = "0xf1df21D46921Ca23906c2689b9DA25e63e686934";
+  let uADdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
+  let uGovdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
+  let UARForDollarsCalculatorAddress = "";
+  let couponsForDollarsCalculatorAddress = "";
+  let dollarMintingCalculatorAddress =
+    "0x552b513d1aAed6a1CF37eA6bAe3ffCaDBc8D5ca5"; */
+  let mgrAdr = "";
+  let uADdeployAddress = "";
+  let uGovdeployAddress = "";
+  let UARForDollarsCalculatorAddress = "";
+  let couponsForDollarsCalculatorAddress = "";
+  let dollarMintingCalculatorAddress = "";
   const couponLengthBlocks = 1110857;
   let curve3CrvToken = "";
-
   let curveFactory = "";
   let curve3CrvBasePool = "";
+  let curveWhaleAddress = "";
   // let ubq = "ubq.eth";
-  ({ curve3CrvToken, curveFactory, curve3CrvBasePool } =
+  ({ curve3CrvToken, curveFactory, curve3CrvBasePool, curveWhaleAddress } =
     await getNamedAccounts());
   deployments.log(
     `*****
@@ -49,15 +76,18 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     from: adminAdr,
     log: true,
   };
-  /*  const mgr = await deployments.deploy("UbiquityAlgorithmicDollarManager", {
-    args: [admin.address],
-    ...opts,
-  }); */
+  if (mgrAdr.length === 0) {
+    const mgr = await deployments.deploy("UbiquityAlgorithmicDollarManager", {
+      args: [adminAdr],
+      ...opts,
+    });
+    mgrAdr = mgr.address;
+  }
 
   const mgrFactory = await ethers.getContractFactory(
     "UbiquityAlgorithmicDollarManager"
   );
-  const mgrAdr = "0xf1df21D46921Ca23906c2689b9DA25e63e686934";
+
   const manager: UbiquityAlgorithmicDollarManager = mgrFactory.attach(
     mgrAdr // mgr.address
   ) as UbiquityAlgorithmicDollarManager;
@@ -67,27 +97,48 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     manager.address
   );
   // uAD
-  /* const uADdeploy = await deployments.deploy("UbiquityAlgorithmicDollar", {
-    args: [manager.address],
-    ...opts,
-  }); */
+  if (uADdeployAddress.length === 0) {
+    const uADdeploy = await deployments.deploy("UbiquityAlgorithmicDollar", {
+      args: [manager.address],
+      ...opts,
+    });
+
+    uADdeployAddress = uADdeploy.address;
+  }
+  /* */
   const uadFactory = await ethers.getContractFactory(
     "UbiquityAlgorithmicDollar"
   );
-  const uADdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
+
   const uAD: UbiquityAlgorithmicDollar = uadFactory.attach(
     uADdeployAddress
   ) as UbiquityAlgorithmicDollar;
-  // await manager.setDollarTokenAddress(uAD.address);
+
+  const dollarTokenAdrFromMgr = await manager.dollarTokenAddress();
+  if (dollarTokenAdrFromMgr !== uAD.address) {
+    deployments.log("dollarTokenAddress will be set to:", uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
+  }
 
   deployments.log("UbiquityAlgorithmicDollar deployed at:", uAD.address);
+
   // uGov
-  /*  const uGov = await deployments.deploy("UbiquityGovernance", {
-    args: [manager.address],
-    ...opts,
-  }); */
-  // await manager.setGovernanceTokenAddress(uGov.address);
-  // deployments.log("UbiquityGovernance deployed at:", uGov.address);
+
+  if (uGovdeployAddress.length === 0) {
+    const uGov = await deployments.deploy("UbiquityGovernance", {
+      args: [manager.address],
+      ...opts,
+    });
+
+    uGovdeployAddress = uGov.address;
+  }
+  const govTokenAdrFromMgr = await manager.governanceTokenAddress();
+  if (govTokenAdrFromMgr !== uGovdeployAddress) {
+    deployments.log("UbiquityGovernance will be set to:", uGovdeployAddress);
+    await manager.connect(admin).setGovernanceTokenAddress(uGovdeployAddress);
+  }
+
+  deployments.log("UbiquityGovernance deployed at:", uGovdeployAddress);
   // set twap Oracle Address
 
   const crvToken = (await ethers.getContractAt(
@@ -97,43 +148,89 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log("crvToken deployed at:", crvToken.address);
 
   // set uAR for dollar Calculator
-  /* const uARCalc = await deployments.deploy("UARForDollarsCalculator", {
-    args: [manager.address],
-    ...opts,
-  });
-  await manager.setUARCalculatorAddress(uARCalc.address); */
-  // deployments.log("uAR for dollar Calculator deployed at:", uARCalc.address);
+
+  if (UARForDollarsCalculatorAddress.length === 0) {
+    const uARCalc = await deployments.deploy("UARForDollarsCalculator", {
+      args: [manager.address],
+      ...opts,
+    });
+
+    UARForDollarsCalculatorAddress = uARCalc.address;
+  }
+  const uarCalcAdrFromMgr = await manager.uarCalculatorAddress();
+  if (uarCalcAdrFromMgr !== UARForDollarsCalculatorAddress) {
+    deployments.log(
+      "uarCalculator will be set to:",
+      UARForDollarsCalculatorAddress
+    );
+    await manager
+      .connect(admin)
+      .setUARCalculatorAddress(UARForDollarsCalculatorAddress);
+  }
+
+  deployments.log(
+    "uAR for dollar Calculator deployed at:",
+    UARForDollarsCalculatorAddress
+  );
 
   // set coupon for dollar Calculator
-  /* const couponsForDollarsCalculator = await deployments.deploy(
-    "CouponsForDollarsCalculator",
-    {
-      args: [manager.address],
-      ...opts,
-    }
-  );
-  await manager.setCouponCalculatorAddress(couponsForDollarsCalculator.address);
+  if (couponsForDollarsCalculatorAddress.length === 0) {
+    const couponsForDollarsCalculator = await deployments.deploy(
+      "CouponsForDollarsCalculator",
+      {
+        args: [manager.address],
+        ...opts,
+      }
+    );
+
+    couponsForDollarsCalculatorAddress = couponsForDollarsCalculator.address;
+  }
+  const couponCalcAdrFromMgr = await manager.couponCalculatorAddress();
+  if (couponCalcAdrFromMgr !== couponsForDollarsCalculatorAddress) {
+    deployments.log(
+      "coupons For Dollars Calculator will be set to:",
+      couponsForDollarsCalculatorAddress
+    );
+    await manager
+      .connect(admin)
+      .setCouponCalculatorAddress(couponsForDollarsCalculatorAddress);
+  }
+
   deployments.log(
     "coupons for dollar Calculator deployed at:",
-    couponsForDollarsCalculator.address
-  ); */
+    couponsForDollarsCalculatorAddress
+  );
+
   // set Dollar Minting Calculator
-  /*  const dollarMintingCalculator = await deployments.deploy(
-    "DollarMintingCalculator",
-    {
-      args: [manager.address],
-      ...opts,
-    }
-  ); */
-  const dollarMintingCalculatorAddress =
-    "0x552b513d1aAed6a1CF37eA6bAe3ffCaDBc8D5ca5";
-  await manager
-    .connect(admin)
-    .setDollarMintingCalculatorAddress(dollarMintingCalculatorAddress);
+
+  if (dollarMintingCalculatorAddress.length === 0) {
+    const dollarMintingCalculator = await deployments.deploy(
+      "DollarMintingCalculator",
+      {
+        args: [manager.address],
+        ...opts,
+      }
+    );
+
+    dollarMintingCalculatorAddress = dollarMintingCalculator.address;
+  }
+  const dollarMintingCalcAdrFromMgr =
+    await manager.dollarMintingCalculatorAddress();
+  if (dollarMintingCalcAdrFromMgr !== dollarMintingCalculatorAddress) {
+    deployments.log(
+      "Dollars Minting Calculator will be set to:",
+      dollarMintingCalculatorAddress
+    );
+    await manager
+      .connect(admin)
+      .setDollarMintingCalculatorAddress(dollarMintingCalculatorAddress);
+  }
+
   deployments.log(
     "dollar minting Calculator deployed at:",
     dollarMintingCalculatorAddress
   );
+
   // set debt coupon token
 
   const debtCoupon = await deployments.deploy("DebtCoupon", {
@@ -190,8 +287,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   await myUAR.connect(admin).raiseCapital(ethers.utils.parseEther("250000"));
   const adminUARBal = await myUAR.connect(admin).balanceOf(adminAdr);
   deployments.log(
-    `
-    *** capital raised for admin:${adminAdr}  at:${ethers.utils.formatEther(
+    `  *** capital raised for admin:${adminAdr}  at:${ethers.utils.formatEther(
       adminUARBal
     )}`
   );
@@ -287,23 +383,34 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   const net = await ethers.provider.getNetwork();
   deployments.log(`Current chain ID: ${net.chainId}`);
+
+  await uAD.connect(admin).mint(manager.address, ethers.utils.parseEther("10"));
+  deployments.log(`10 uAD were minted for the manager`);
+
+  const balMgrUAD = await uAD.balanceOf(manager.address);
+  deployments.log(`-- manager: ${ethers.utils.formatEther(balMgrUAD)} uAD`);
   /** TO BE REMOVED FOR MAINNET */
   // we should transfer 3CRV manually to the manager contract
   // kindly ask a whale to give us some 3CRV
-  // if (net.chainId === 31337) {
-  // hardhat local
-  /* await network.provider.request({
+  if (net.chainId === 31337) {
+    // hardhat local
+    await network.provider.request({
       method: "hardhat_impersonateAccount",
       params: [curveWhaleAddress],
     });
     const curveWhale = ethers.provider.getSigner(curveWhaleAddress);
     await crvToken
       .connect(curveWhale)
-      .transfer(manager.address, ethers.utils.parseEther("10000")); */
+      .transfer(manager.address, ethers.utils.parseEther("10"));
+  }
+  deployments.log(
+    `We expect you to transfer 10 3CRV to the manager:${manager.address}`
+  );
 
-  await uAD.connect(admin).mint(manager.address, ethers.utils.parseEther("10"));
-  deployments.log(`10 uAD were minted for the manager`);
-
+  await pressAnyKey();
+  const balMgrCRV = await crvToken.balanceOf(manager.address);
+  deployments.log(`-- manager: ${ethers.utils.formatEther(balMgrCRV)} 3CRV`);
+  deployments.log(`now deploying metapool`);
   // deploy the stableswap pool we need 3CRV and uAD
   await manager
     .connect(admin)
@@ -407,15 +514,13 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   await uAD.connect(admin).approve(routerAdr, ethers.utils.parseEther("10000"));
   await uGOV.connect(admin).approve(routerAdr, ethers.utils.parseEther("1000"));
-  const admUgovBal = await uGOV.balanceOf(adminAdr);
-  const admUADBal = await uAD.balanceOf(adminAdr);
-  deployments.log(`
-    ****
-   admin get ${ethers.utils.formatEther(
-     admUgovBal
-   )} uGOV and ${ethers.utils.formatEther(
-    admUADBal
-  )} uad before deploying the UAD UGOV SushiPool
+  const admUgovBal = ethers.utils.formatEther(await uGOV.balanceOf(adminAdr));
+  const admUADBal = ethers.utils.formatEther(await uAD.balanceOf(adminAdr));
+  deployments.log(` ****
+   admin get
+   ${admUgovBal} uGOV and
+   ${admUADBal}  uAD
+   before deploying the UAD-UGOV SushiPool
     `);
   const router = (await ethers.getContractAt(
     "IUniswapV2Router02",

@@ -231,7 +231,8 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         debtCoupon.burnCoupons(msg.sender, amount, id);
 
         // Mint UGOV tokens to this contract. Transfer UGOV tokens to msg.sender i.e. debt holder
-        IERC20Ubiquity uGOVToken = IERC20Ubiquity(manager.governanceTokenAddress());
+        IERC20Ubiquity uGOVToken =
+            IERC20Ubiquity(manager.governanceTokenAddress());
         uGovAmount = amount / expiredCouponConvertionRate;
         uGOVToken.mint(msg.sender, uGovAmount);
     }

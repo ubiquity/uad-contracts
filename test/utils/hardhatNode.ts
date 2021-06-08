@@ -1,4 +1,6 @@
+import { ContractTransaction } from "ethers";
 import { network, ethers } from "hardhat";
+import { TransactionReceipt } from "@ethersproject/abstract-provider";
 
 export async function passOneHour(): Promise<void> {
   await network.provider.request({
@@ -24,6 +26,13 @@ export async function latestBlockNumber(): Promise<{
 export async function mineTsBlock(ts: number): Promise<void> {
   const blockBefore = await ethers.provider.getBlock("latest");
   await mineBlock(blockBefore.timestamp + ts);
+}
+
+export async function getTXReceipt(
+  ct: ContractTransaction
+): Promise<TransactionReceipt> {
+  const receipt = await ethers.provider.getTransactionReceipt(ct.hash);
+  return receipt;
 }
 
 export async function mineNBlock(

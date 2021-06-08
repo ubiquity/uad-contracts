@@ -52,9 +52,8 @@ const config: HardhatUserConfig = {
     curve3CrvBasePool: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     curve3CrvToken: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
     curveFactory: "0x0959158b6040D32d04c301A72CBFD6b39E21c9AE",
-    usdDepositerAddress: "0xA79828DF1850E8a3A3064576f380D90aECDD3359",
-    curveWhaleAddress: "0x1C0b104A9EeFf2F7001348a49fA28b8A0D23d637",
-    daiWhaleAddress: "0x13aec50f5d3c011cd3fed44e2a30c515bd8a5a06",
+    curveWhaleAddress: "0xC2872ab688400940d5a6041599b3F7de20730d49",
+    daiWhaleAddress: "0x16463c0fdB6BA9618909F5b120ea1581618C1b9E",
     sushiMultiSig: "0x9a8541Ddf3a932a9A922B607e9CF7301f1d47bD1",
     ubq: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd",
   },
@@ -77,7 +76,7 @@ const config: HardhatUserConfig = {
         url: `https://eth-mainnet.alchemyapi.io/v2/${
           process.env.ALCHEMY_API_KEY || ""
         }`,
-        blockNumber: 12150000,
+        blockNumber: 12592661,
       },
       accounts,
       /*  accounts: [

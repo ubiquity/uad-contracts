@@ -93,7 +93,6 @@ const deposit: IbondTokens = async function (
 async function withdraw(signer: Signer, id: number): Promise<BigNumber> {
   const signerAdr = await signer.getAddress();
   const bond: BigNumber = await bondingShare.balanceOf(signerAdr, id);
-
   await expect(bonding.connect(signer).withdraw(bond, id))
     .to.emit(bondingShare, "TransferSingle")
     .withArgs(
@@ -103,7 +102,6 @@ async function withdraw(signer: Signer, id: number): Promise<BigNumber> {
       id,
       bond
     );
-
   return metaPool.balanceOf(signerAdr);
 }
 

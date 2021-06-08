@@ -29,6 +29,8 @@ describe("UbiquityAlgorithmicDollar", () => {
   describe("SetName", () => {
     const newName = "Super Moon UBQ";
     it("should work", async () => {
+      const prevName = await uAD.name();
+      expect(prevName).to.equal("Ubiquity Algorithmic Dollar");
       await uAD.connect(admin).setName(newName);
       const name = await uAD.name();
       expect(name).to.equal(newName);
@@ -42,6 +44,8 @@ describe("UbiquityAlgorithmicDollar", () => {
   describe("SetSymbol", () => {
     const newSymbol = "UBMOON";
     it("should work", async () => {
+      const prevSym = await uAD.symbol();
+      expect(prevSym).to.equal("uAD");
       await uAD.connect(admin).setSymbol(newSymbol);
       const symbol = await uAD.symbol();
       expect(symbol).to.equal(newSymbol);

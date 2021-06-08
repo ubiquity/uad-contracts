@@ -64,22 +64,6 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         _holderBalances[to].add(id);
     }
 
-    /*     /// @notice burn boinding shares tokens from specified account
-    /// @param account the account to burn from
-    /// @param amount the amount to burn
-    function burnFrom(
-        address account,
-        uint256 id,
-        uint256 amount
-    )
-        public
-        onlyBurner
-        whenNotPaused // to suppress ? if BURNER_ROLE should do it even paused ?
-    {
-        _burn(account, amount);
-           _totalSupply -= amount;
-    } */
-
     // @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
     function mintBatch(
         address to,

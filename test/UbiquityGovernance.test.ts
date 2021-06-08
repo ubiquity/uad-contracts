@@ -26,6 +26,36 @@ describe("UbiquityGovernance", () => {
     const UGOV = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await UGOV.deploy(manager.address)) as UbiquityGovernance;
   });
+  describe("SetName", () => {
+    const newName = "Super Moon uGOV";
+    it("should work", async () => {
+      const prevName = await uGOV.name();
+      expect(prevName).to.equal("Ubiquity");
+      await uGOV.connect(admin).setName(newName);
+      const name = await uGOV.name();
+      expect(name).to.equal(newName);
+    });
+    it("should fail if not admin", async () => {
+      await expect(
+        uGOV.connect(secondAccount).setName(newName)
+      ).to.revertedWith("ERC20: deployer must be manager admin");
+    });
+  });
+  describe("SetSymbol", () => {
+    const newSymbol = "UGOVMOON";
+    it("should work", async () => {
+      const prevSym = await uGOV.symbol();
+      expect(prevSym).to.equal("UBQ");
+      await uGOV.connect(admin).setSymbol(newSymbol);
+      const symbol = await uGOV.symbol();
+      expect(symbol).to.equal(newSymbol);
+    });
+    it("should fail if not admin", async () => {
+      await expect(
+        uGOV.connect(secondAccount).setSymbol(newSymbol)
+      ).to.revertedWith("ERC20: deployer must be manager admin");
+    });
+  });
   describe("Transfer", () => {
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();

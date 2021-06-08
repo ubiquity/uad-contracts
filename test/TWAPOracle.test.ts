@@ -38,7 +38,7 @@ describe("TWAPOracle", () => {
       curveWhaleAddress,
     } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
-    await resetFork(12150000);
+    await resetFork(12592661);
     const Manager = await ethers.getContractFactory(
       "UbiquityAlgorithmicDollarManager"
     );

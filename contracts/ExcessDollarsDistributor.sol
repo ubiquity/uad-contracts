@@ -32,7 +32,9 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
     function distributeDollars() external override {
         //the excess dollars which were sent to this contract by the coupon manager
         uint256 excessDollars =
-            IERC20Ubiquity(manager.dollarTokenAddress()).balanceOf(address(this));
+            IERC20Ubiquity(manager.dollarTokenAddress()).balanceOf(
+                address(this)
+            );
         if (excessDollars > _minAmountToDistribute) {
             address treasuryAddress = manager.treasuryAddress();
 
@@ -55,7 +57,10 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
     }
 
     // swap half amount to uGOV
-    function _swapDollarsForGovernance(bytes16 amountIn) internal returns (uint256) {
+    function _swapDollarsForGovernance(bytes16 amountIn)
+        internal
+        returns (uint256)
+    {
         address[] memory path = new address[](2);
         path[0] = manager.dollarTokenAddress();
         path[1] = manager.governanceTokenAddress();

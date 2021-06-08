@@ -117,7 +117,6 @@ describe("Bonding2", () => {
 
     it("admin account should be able to redeem uBOND", async () => {
       await mineNBlock(blockCountInAWeek.toNumber());
-
       const balBSBefore = await bondingShare.balanceOf(adminAddress, idAdmin);
       expect(balBSBefore).to.be.equal(
         ethers.utils.parseEther("100.099999999999999999")
@@ -126,7 +125,7 @@ describe("Bonding2", () => {
       const TotalLPInBondingBefore = await metaPool.balanceOf(bonding.address);
       const balLPBefore = await metaPool.balanceOf(adminAddress);
       expect(balLPBefore).to.be.equal(
-        ethers.utils.parseEther("18949.481094897152263334")
+        ethers.utils.parseEther("18974.979391392984888116")
       );
       await withdraw(admin, idAdmin);
       const TotalLPInBondingAfter = await metaPool.balanceOf(bonding.address);
@@ -138,7 +137,6 @@ describe("Bonding2", () => {
         balBSBefore.toString(),
         TotalLPInBondingBefore.toString()
       );
-
       expect(balBSAfter).to.be.equal(0);
       const lpWithdrawn = balLPAfter.sub(balLPBefore);
       const isPrecise = isAmountEquivalent(
