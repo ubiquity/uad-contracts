@@ -19,7 +19,7 @@ function pressAnyKey(msg = "Press any key to continue") {
     process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdin.on("data", () => {
-      process.stdin.destroy();
+      // process.stdin.destroy();
       resolve(undefined);
     });
   });
@@ -30,9 +30,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 
+  // hardhat local
   const admin = ethers.provider.getSigner(ubqAdmin);
   const adminAdr = await admin.getAddress();
-  // hardhat local
   await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [ubqAdmin],
@@ -45,7 +45,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   */
   /*   let mgrAdr = "0xf1df21D46921Ca23906c2689b9DA25e63e686934";
   let uADdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
-  let uGovdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
+  let uGovdeployAddress = "0x8b2403Ec6470194c789736571E2AA1C91B5B568F";
   let UARForDollarsCalculatorAddress = "";
   let couponsForDollarsCalculatorAddress = "";
   let dollarMintingCalculatorAddress =
@@ -132,6 +132,11 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     uGovdeployAddress = uGov.address;
   }
+  const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
+  const uGOV: UbiquityGovernance = uGOVFactory.attach(
+    uGovdeployAddress
+  ) as UbiquityGovernance;
+
   const govTokenAdrFromMgr = await manager.governanceTokenAddress();
   if (govTokenAdrFromMgr !== uGovdeployAddress) {
     deployments.log("UbiquityGovernance will be set to:", uGovdeployAddress);
@@ -448,45 +453,21 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   // get some token for the faucet to the admin
   await uAD.connect(admin).mint(adminAdr, ethers.utils.parseEther("20000"));
-  /* await crvToken
-    .connect(curveWhale)
-    .transfer(admin.address, ethers.utils.parseEther("20000")); */
-  deployments.log(`
-  ***
-  10000 uAD were minted for the treasury aka admin ${adminAdr}
-  don't forget to add liquidity to metapool:${metaPoolAddr} with these uAD
-  first you need to call approve on uAD:${uAD.address} and crvToken:${crvToken.address}
-  then call metaPool["add_liquidity(uint256[2],uint256)"] or go through crv.finance
-  ***
-  `);
   const metaPool = (await ethers.getContractAt(
     "IMetaPool",
     metaPoolAddr
   )) as IMetaPool;
-  await uAD
-    .connect(admin)
-    .approve(metaPoolAddr, ethers.utils.parseEther("10000"));
-  await crvToken
-    .connect(admin)
-    .approve(metaPoolAddr, ethers.utils.parseEther("10000"));
-  deployments.log(`
-  ***
-  approve was called for admin on uAD:${uAD.address} and crvToken:${crvToken.address}
-  for 10k uad and 10k 3crv
-  don't forget to add liquidity to metapool:${metaPoolAddr} with these uAD and 3CRV
-  either call metaPool["add_liquidity(uint256[2],uint256)"] or go through crv.finance
-  ***
-  `);
-  /*   await metaPool["add_liquidity(uint256[2],uint256)"](
-    [ethers.utils.parseEther("10000"), ethers.utils.parseEther("10000")],
-    0
-  ); */
+
+  /* await crvToken
+    .connect(curveWhale)
+    .transfer(admin.address, ethers.utils.parseEther("20000")); */
+
   const uADBal = await uAD.balanceOf(adminAdr);
   const crvBal = await crvToken.balanceOf(adminAdr);
   const lpBal = await metaPool.balanceOf(adminAdr);
   deployments.log(`
     ****
-    Faucet charged
+    admin addr charged :
     uAD:${ethers.utils.formatEther(uADBal)}
     3crv:${ethers.utils.formatEther(crvBal)}
     uAD-3CRV LP:${ethers.utils.formatEther(lpBal)}
@@ -497,18 +478,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     `);
   deployments.log(`
     ****
-   We know need to deploy the UAD UGOV SushiPool
+    let's deploy the UAD-UGOV SushiPool
     `);
   //  }
 
-  // setSushiSwapPoolAddress
-  // await deployUADUGOVSushiPool(thirdAccount);
   // need some uGOV to provide liquidity
   const routerAdr = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // SushiV2Router02
-  const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
-  const uGOV: UbiquityGovernance = uGOVFactory.attach(
-    "0x8b2403Ec6470194c789736571E2AA1C91B5B568F"
-  ) as UbiquityGovernance;
 
   await uGOV.connect(admin).mint(adminAdr, ethers.utils.parseEther("1000"));
 
@@ -559,12 +534,18 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     "IUniswapV2Pair",
     pairAdr
   )) as IUniswapV2Pair;
-
+  const reserves = await ugovUadPair.getReserves();
   const admLPBal = await ugovUadPair.balanceOf(adminAdr);
 
   deployments.log(`
     ****
-    manager sushi uGOVuAD LP token   ${ethers.utils.formatEther(admLPBal)}
+    uAD.address,:${uAD.address}
+    uGOV.address,:${uGOV.address}
+    token0:${await ugovUadPair.token0()}
+    token1:${await ugovUadPair.token1()}
+    reserves[0]:${ethers.utils.formatEther(reserves[0])}
+    reserves[1]:${ethers.utils.formatEther(reserves[1])}
+    admin sushi uGOVuAD LP token   ${ethers.utils.formatEther(admLPBal)}
     `);
   const mgrtwapOracleAddress = await manager.twapOracleAddress();
   const mgrdebtCouponAddress = await manager.debtCouponAddress();
@@ -613,6 +594,49 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     ExcessDollarsDistributor:${mgrExcessDollarsDistributor}
     `);
 
+  deployments.log(`
+    ***
+    10000 uAD were minted for the treasury aka admin ${adminAdr}
+    don't forget to add liquidity to metapool:${metaPoolAddr} with these uAD
+    first you need to call approve on uAD:${uAD.address} and crvToken:${crvToken.address}
+    then call metaPool["add_liquidity(uint256[2],uint256)"] or go through crv.finance
+    ***
+    `);
+
+  await uAD
+    .connect(admin)
+    .approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+  await crvToken
+    .connect(admin)
+    .approve(metaPoolAddr, ethers.utils.parseEther("10000"));
+  deployments.log(`
+      ***
+      approve was called for admin:${adminAdr} on uAD:${uAD.address} and crvToken:${crvToken.address}
+      for 10k uad and 10k 3crv`);
+  deployments.log(`
+      We can now add liquidity to metapool:${metaPoolAddr} with these uAD and 3CRV
+      either call metaPool["add_liquidity(uint256[2],uint256)"] or go through crv.finance
+      here is the actual balance for the admin addr
+      uAD:${ethers.utils.formatEther(await uAD.balanceOf(adminAdr))}
+      3CRV:${ethers.utils.formatEther(await crvToken.balanceOf(adminAdr))}
+      ***
+      `);
+
+  await pressAnyKey();
+  deployments.log(`
+    Providing liquidity to the metapool current LP balance:
+      ${ethers.utils.formatEther(await metaPool.balanceOf(adminAdr))}
+    `);
+  await metaPool
+    .connect(admin)
+    ["add_liquidity(uint256[2],uint256)"](
+      [ethers.utils.parseEther("10000"), ethers.utils.parseEther("10000")],
+      0
+    );
+  deployments.log(`
+    liquidity Added to the metapool current LP balance:
+      ${ethers.utils.formatEther(await metaPool.balanceOf(adminAdr))}
+    `);
   deployments.log(`
     That's all folks !
     `);
