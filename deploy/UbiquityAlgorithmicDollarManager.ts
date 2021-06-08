@@ -28,10 +28,10 @@ function pressAnyKey(msg = "Press any key to continue") {
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts, ethers, network } = hre;
 
-  const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
-
   // hardhat local
-  /*   const admin = ethers.provider.getSigner(ubqAdmin);
+  /*
+  const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
+  const admin = ethers.provider.getSigner(ubqAdmin);
   const adminAdr = await admin.getAddress();
   await network.provider.request({
     method: "hardhat_impersonateAccount",
