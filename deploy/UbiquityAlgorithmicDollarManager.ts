@@ -31,18 +31,16 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 
   // hardhat local
-  const admin = ethers.provider.getSigner(ubqAdmin);
+  /*   const admin = ethers.provider.getSigner(ubqAdmin);
   const adminAdr = await admin.getAddress();
   await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [ubqAdmin],
-  });
+  }); */
 
-  /*   const [admin] = await ethers.getSigners();
+  const [admin] = await ethers.getSigners();
   const adminAdr = admin.address;
 
-
-  */
   /*   let mgrAdr = "0xf1df21D46921Ca23906c2689b9DA25e63e686934";
   let uADdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
   let uGovdeployAddress = "0x8b2403Ec6470194c789736571E2AA1C91B5B568F";
