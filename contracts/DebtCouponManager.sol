@@ -225,7 +225,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         require(id <= block.number, "Coupon has not expired");
         require(
             debtCoupon.balanceOf(msg.sender, id) >= amount,
-            "User doesnt have enough coupons"
+            "User not enough coupons"
         );
 
         debtCoupon.burnCoupons(msg.sender, amount, id);
@@ -252,7 +252,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         require(id > block.timestamp, "Coupon has expired");
         require(
             debtCoupon.balanceOf(msg.sender, id) >= amount,
-            "User doesnt have enough coupons"
+            "User not enough coupons"
         );
 
         debtCoupon.burnCoupons(msg.sender, amount, id);
@@ -322,7 +322,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         require(id > block.number, "Coupon has expired");
         require(
             debtCoupon.balanceOf(msg.sender, id) >= amount,
-            "User doesnt have enough coupons"
+            "User not enough coupons"
         );
 
         mintClaimableDollars();

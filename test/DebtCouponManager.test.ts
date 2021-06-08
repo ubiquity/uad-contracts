@@ -587,7 +587,7 @@ describe("DebtCouponManager", () => {
     expect(uarTotalSupply).to.equal(secondAccUARBalAfter);
     await debtCoupon.updateTotalDebt();
     const totalOutstandingDebt = BigNumber.from(
-      await ethers.provider.getStorageAt(debtCoupon.address, 5)
+      await ethers.provider.getStorageAt(debtCoupon.address, 4)
     );
 
     expect(totalOutstandingDebt).to.equal(uDebtCoupons);
@@ -808,7 +808,7 @@ describe("DebtCouponManager", () => {
     expect(uarTotalSupply).to.equal(secondAccUARBalAfter);
     await debtCoupon.updateTotalDebt();
     const totalOutstandingDebt = BigNumber.from(
-      await ethers.provider.getStorageAt(debtCoupon.address, 5)
+      await ethers.provider.getStorageAt(debtCoupon.address, 4)
     );
     expect(totalOutstandingDebt).to.equal(uDebtCoupons);
 
@@ -1093,7 +1093,7 @@ describe("DebtCouponManager", () => {
       debtCouponMgr
         .connect(secondAccount)
         .burnExpiredCouponsForUGOV(expiryBlock, debtCoupons.add(oneETH))
-    ).to.revertedWith("User doesn't have enough coupons");
+    ).to.revertedWith("User not enough coupons");
   });
   it("burnExpiredCouponsForUGOV should revert if coupon is not expired", async () => {
     const pool0bal = await metaPool.balances(0);
@@ -1329,6 +1329,11 @@ describe("DebtCouponManager", () => {
       await debtCouponMgr.expiredCouponConvertionRate();
     expect(expiredCouponConvertionRateAfter).to.equal(42);
   });
+  it("setExpiredCouponConvertionRate should fail if not coupon manager", async () => {
+    await expect(
+      debtCouponMgr.connect(secondAccount).setExpiredCouponConvertionRate(42)
+    ).to.revertedWith("Caller is not a coupon manager");
+  });
   it("setCoupon should work", async () => {
     const currentCouponLengthBlocks = await debtCouponMgr.couponLengthBlocks();
     expect(currentCouponLengthBlocks).to.equal(couponLengthBlocks);
@@ -1455,7 +1460,7 @@ describe("DebtCouponManager", () => {
       debtCouponMgr
         .connect(secondAccount)
         .redeemCoupons(expiryBlock, debtCoupons.mul(2))
-    ).to.revertedWith("User doesnt have enough coupons");
+    ).to.revertedWith("User not enough coupons");
     // should expire after couponLengthBlocks block
     const blockBefore = await ethers.provider.getBlock(
       await ethers.provider.getBlockNumber()
