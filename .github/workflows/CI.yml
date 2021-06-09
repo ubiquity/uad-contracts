@@ -16,7 +16,6 @@ jobs:
       ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
       TREASURY_PRIV_KEY: ${{ secrets.TREASURY_PRIV_KEY }}
       SECOND_ACC_PRIV_KEY: ${{ secrets.SECOND_ACC_PRIV_KEY }}
-      TS_NODE_TRANSPILE_ONLY: 1
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
@@ -34,5 +33,7 @@ jobs:
 
       - run: yarn install --frozen-lockfile --ignore-scripts
       - run: yarn first
+        env:
+          TS_NODE_TRANSPILE_ONLY: 1
       - run: yarn lint
       - run: yarn test
