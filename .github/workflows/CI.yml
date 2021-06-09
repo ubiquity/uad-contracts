@@ -33,6 +33,6 @@ jobs:
             ${{ matrix.os }}-yarn2-
 
       - run: yarn install --frozen-lockfile --ignore-scripts
-
+      - run: yarn first
       - run: yarn lint
       - run: yarn test

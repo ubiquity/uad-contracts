@@ -9,3 +9,4 @@ import "./tx";
 import "./faucet";
 import "./incentive";
 import "./metapool";
+import "./price";

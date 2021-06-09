@@ -4,10 +4,12 @@ import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
+import { TWAPOracle } from "../artifacts/types/TWAPOracle";
+import { DollarMintingCalculator } from "../artifacts/types/DollarMintingCalculator";
 // This file is only here to make interacting with the Dapp easier,
 // feel free to ignore it if you don't need it.
 
-task("metapool", "Get info about our curve metapool").setAction(
+task("price", "get information about UAD price").setAction(
   async (
     taskArgs: { receiver: string; manager: string },
     { ethers, getNamedAccounts }
@@ -34,59 +36,31 @@ task("metapool", "Get info about our curve metapool").setAction(
       "IMetaPool",
       metaPoolAddr
     )) as IMetaPool;
+
     let curveFactory = "";
     let DAI = "";
     let USDC = "";
     let USDT = "";
-
-    ({ curveFactory, DAI, USDC, USDT } = await getNamedAccounts());
+    let curve3CrvToken = "";
+    ({ curveFactory, DAI, USDC, USDT, curve3CrvToken } =
+      await getNamedAccounts());
 
     const curvePoolFactory = (await ethers.getContractAt(
       "ICurveFactory",
       curveFactory
     )) as ICurveFactory;
 
-    const pool0UADbal = await metaPool.balances(0);
-    const pool1CRVbal = await metaPool.balances(1);
-
-    console.log(`
-    pool0UADbal:${ethers.utils.formatEther(pool0UADbal)}
-    pool1CRVbal:${ethers.utils.formatEther(pool1CRVbal)}
-      `);
-    const rates = await curvePoolFactory.get_rates(metaPool.address);
-    console.log(`
-      rates
-      0:${ethers.utils.formatEther(rates[0])}
-      1:${ethers.utils.formatEther(rates[1])}
-        `);
-    const underBalances = await curvePoolFactory.get_underlying_balances(
-      metaPool.address
-    );
-
-    console.log(`
-    underBalances
-    0:${ethers.utils.formatEther(underBalances[0])}
-    1:${ethers.utils.formatEther(underBalances[1])}
-    2:${ethers.utils.formatUnits(underBalances[2], "mwei")}
-    3:${ethers.utils.formatUnits(underBalances[3], "mwei")}
-        `);
     const indices = await curvePoolFactory.get_coin_indices(
       metaPool.address,
       DAI,
       USDT
     );
-    console.log(`
-    DAI indices:${indices[0].toString()}
-    USDT indices:${indices[1].toString()}  `);
 
     const indices2 = await curvePoolFactory.get_coin_indices(
       metaPool.address,
       uAD.address,
       USDC
     );
-    console.log(`
-    uAD indices:${indices2[0].toString()}
-    USDC indices:${indices2[1].toString()}  `);
     const dyDAI2USDT = await metaPool[
       "get_dy_underlying(int128,int128,uint256)"
     ](indices[0], indices[1], ethers.utils.parseEther("1"));
@@ -102,15 +76,6 @@ task("metapool", "Get info about our curve metapool").setAction(
     const dyuAD2USDT = await metaPool[
       "get_dy_underlying(int128,int128,uint256)"
     ](indices2[0], indices[1], ethers.utils.parseEther("1"));
-    const decimals = await curvePoolFactory.get_underlying_decimals(
-      metaPool.address
-    );
-    console.log(`
-    uAD decimals : ${decimals[0].toString()}
-    DAI decimals : ${decimals[1].toString()}
-    USDC decimals : ${decimals[2].toString()}
-    USDT decimals : ${decimals[3].toString()}
-    `);
 
     console.log(`
     1 DAI => ${ethers.utils.formatUnits(dyDAI2USDT, "mwei")} USDT
@@ -118,5 +83,32 @@ task("metapool", "Get info about our curve metapool").setAction(
     1 uAD => ${ethers.utils.formatEther(dyuAD2DAI)} DAI
     1 uAD => ${ethers.utils.formatUnits(dyuAD2USDT, "mwei")} USDT
       `);
+
+    const mgrtwapOracleAddress = await manager.twapOracleAddress();
+    const twapOracle = (await ethers.getContractAt(
+      "TWAPOracle",
+      mgrtwapOracleAddress
+    )) as TWAPOracle;
+    const oraclePriceuAD = await twapOracle.consult(uAD.address);
+    const oraclePrice3Crv = await twapOracle.consult(curve3CrvToken);
+    console.log(`---TWAPOracle:${mgrtwapOracleAddress}  `);
+    console.log(`
+    TWAP PRICE
+    1 uAD => ${ethers.utils.formatEther(oraclePriceuAD)} 3CRV
+    1 3CRV => ${ethers.utils.formatEther(oraclePrice3Crv)} uAD
+      `);
+
+    const dollarMintingCalculatorAddress =
+      await manager.dollarMintingCalculatorAddress();
+    const dollarMintingCalculator = (await ethers.getContractAt(
+      "DollarMintingCalculator",
+      dollarMintingCalculatorAddress
+    )) as DollarMintingCalculator;
+    const dollarsToMint = await dollarMintingCalculator.getDollarsToMint();
+
+    console.log(`
+      Dollar to be minted
+      ${ethers.utils.formatEther(dollarsToMint)} uAD
+        `);
   }
 );

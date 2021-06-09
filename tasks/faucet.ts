@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
-import { ERC20 } from "./types/ERC20";
-import { UbiquityAlgorithmicDollarManager } from "./types/UbiquityAlgorithmicDollarManager";
+import { ERC20 } from "../artifacts/types/ERC20";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 // This file is only here to make interacting with the Dapp easier,
 // feel free to ignore it if you don't need it.
 

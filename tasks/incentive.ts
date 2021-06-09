@@ -1,17 +1,13 @@
 import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
-import { ERC20 } from "./types/ERC20";
-import { UbiquityAlgorithmicDollar } from "./types/UbiquityAlgorithmicDollar";
-import { UbiquityAlgorithmicDollarManager } from "./types/UbiquityAlgorithmicDollarManager";
-import { CurveUADIncentive } from "./types/CurveUADIncentive";
+import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 // This file is only here to make interacting with the Dapp easier,
 // feel free to ignore it if you don't need it.
 
 task("incentive", "Sends ETH and tokens to an address").setAction(
-  async (
-    taskArgs: { receiver: string; manager: string },
-    { ethers, getNamedAccounts }
-  ) => {
+  async (taskArgs: { receiver: string; manager: string }, { ethers }) => {
     const net = await ethers.provider.getNetwork();
 
     if (net.name === "hardhat") {
@@ -40,8 +36,8 @@ task("incentive", "Sends ETH and tokens to an address").setAction(
     const isSellPenaltyOn = await curveIncentive.isSellPenaltyOn();
     const isBuyIncentiveOn = await curveIncentive.isBuyIncentiveOn();
     console.log(`
-    isSellPenaltyOn:${isSellPenaltyOn}
-    isBuyIncentiveOn:${isBuyIncentiveOn}
+    isSellPenaltyOn: ${isSellPenaltyOn ? "True" : "False"}
+    isBuyIncentiveOn: ${isBuyIncentiveOn ? "True" : "False"}
       `);
   }
 );
