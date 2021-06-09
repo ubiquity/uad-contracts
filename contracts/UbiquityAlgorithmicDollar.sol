@@ -14,7 +14,7 @@ contract UbiquityAlgorithmicDollar is ERC20Ubiquity {
     );
 
     constructor(address _manager)
-        ERC20Ubiquity(_manager, "UbiquityAlgorithmicDollar", "uAD")
+        ERC20Ubiquity(_manager, "Ubiquity Algorithmic Dollar", "uAD")
     {} // solhint-disable-line no-empty-blocks
 
     /// @param account the account to incentivize
@@ -26,7 +26,7 @@ contract UbiquityAlgorithmicDollar is ERC20Ubiquity {
                 ERC20Ubiquity.manager.UBQ_TOKEN_MANAGER_ROLE(),
                 msg.sender
             ),
-            "uAD: must have admin role"
+            "Dollar: must have admin role"
         );
 
         incentiveContract[account] = incentive;

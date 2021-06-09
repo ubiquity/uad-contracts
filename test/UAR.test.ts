@@ -32,7 +32,7 @@ describe("UAR", () => {
     uAD = (await uADFactory.deploy(
       manager.address
     )) as UbiquityAlgorithmicDollar;
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
     await uAD.mint(await admin.getAddress(), ethers.utils.parseEther("10000"));
     // set treasury
     await manager
@@ -52,9 +52,39 @@ describe("UAR", () => {
     uAR = (await uARFactory.deploy(manager.address)) as UbiquityAutoRedeem;
     await manager.setuARTokenAddress(uAR.address);
   });
+  describe("SetName", () => {
+    const newName = "Super Moon UAR";
+    it("should work", async () => {
+      const prevName = await uAR.name();
+      expect(prevName).to.equal("Ubiquity Auto Redeem");
+      await uAR.connect(admin).setName(newName);
+      const name = await uAR.name();
+      expect(name).to.equal(newName);
+    });
+    it("should fail if not admin", async () => {
+      await expect(uAR.connect(secondAcc).setName(newName)).to.revertedWith(
+        "ERC20: deployer must be manager admin"
+      );
+    });
+  });
+  describe("SetSymbol", () => {
+    const newSymbol = "UARMOON";
+    it("should work", async () => {
+      const prevSym = await uAR.symbol();
+      expect(prevSym).to.equal("uAR");
+      await uAR.connect(admin).setSymbol(newSymbol);
+      const symbol = await uAR.symbol();
+      expect(symbol).to.equal(newSymbol);
+    });
+    it("should fail if not admin", async () => {
+      await expect(uAR.connect(secondAcc).setSymbol(newSymbol)).to.revertedWith(
+        "ERC20: deployer must be manager admin"
+      );
+    });
+  });
   it("should revert if you call raise capital when not being a minter", async () => {
     await expect(uAR.connect(secondAcc).raiseCapital(100)).to.be.revertedWith(
-      "UBQ token: not minter"
+      "Governance token: not minter"
     );
   });
   it("raise capital should mint UAR for the treasury", async () => {

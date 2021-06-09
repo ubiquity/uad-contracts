@@ -23,7 +23,7 @@ describe("CouponForDollarCalculator", () => {
     // set uAD Mock
     const UAD = await ethers.getContractFactory("MockuADToken");
     uAD = (await UAD.deploy(uADTotalSupply)) as MockuADToken;
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
     // set debt coupon Mock
     const debtCouponFactory = await ethers.getContractFactory("MockDebtCoupon");
     debtCoupon = (await debtCouponFactory.deploy(totalDebt)) as MockDebtCoupon;
@@ -146,6 +146,6 @@ describe("CouponForDollarCalculator", () => {
     expect(totalOutstandingDebt).to.equal(totalDebt);
     await expect(
       couponsForDollarsCalculator.getCouponAmount(1)
-    ).to.revertedWith("coupon4Dollar: DEBT_TOO_HIGH");
+    ).to.revertedWith("Coupon to dollar: DEBT_TOO_HIGH");
   });
 });

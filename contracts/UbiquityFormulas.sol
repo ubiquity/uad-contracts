@@ -3,8 +3,6 @@ pragma solidity ^0.8.3;
 
 import "./libs/ABDKMathQuad.sol";
 
-// import "hardhat/console.sol";
-
 contract UbiquityFormulas {
     using ABDKMathQuad for uint256;
     using ABDKMathQuad for bytes16;

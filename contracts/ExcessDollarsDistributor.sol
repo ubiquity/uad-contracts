@@ -11,7 +11,6 @@ import "./interfaces/IMetaPool.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./SushiSwapPool.sol";
 import "./libs/ABDKMathQuad.sol";
-import "hardhat/console.sol";
 
 /// @title An excess dollar distributor which sends dollars to treasury,
 /// lp rewards and inflation rewards
@@ -33,7 +32,9 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
     function distributeDollars() external override {
         //the excess dollars which were sent to this contract by the coupon manager
         uint256 excessDollars =
-            IERC20Ubiquity(manager.uADTokenAddress()).balanceOf(address(this));
+            IERC20Ubiquity(manager.dollarTokenAddress()).balanceOf(
+                address(this)
+            );
         if (excessDollars > _minAmountToDistribute) {
             address treasuryAddress = manager.treasuryAddress();
 
@@ -41,12 +42,12 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
             uint256 tenPercent =
                 excessDollars.fromUInt().div(uint256(10).fromUInt()).toUInt();
 
-            IERC20Ubiquity(manager.uADTokenAddress()).safeTransfer(
+            IERC20Ubiquity(manager.dollarTokenAddress()).safeTransfer(
                 treasuryAddress,
                 tenPercent
             );
             // convert uAD to uGOV-UAD LP on sushi and burn them
-            _uGovBuyBackLPAndBurn(tenPercent);
+            _governanceBuyBackLPAndBurn(tenPercent);
             // convert remaining uAD to curve LP tokens
             // and transfer the curve LP tokens to the bonding contract
             _convertToCurveLPAndTransfer(
@@ -56,10 +57,13 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
     }
 
     // swap half amount to uGOV
-    function _swapUADForUGOV(bytes16 amountIn) internal returns (uint256) {
+    function _swapDollarsForGovernance(bytes16 amountIn)
+        internal
+        returns (uint256)
+    {
         address[] memory path = new address[](2);
-        path[0] = manager.uADTokenAddress();
-        path[1] = manager.uGOVTokenAddress();
+        path[0] = manager.dollarTokenAddress();
+        path[1] = manager.governanceTokenAddress();
         uint256[] memory amounts =
             _router.swapExactTokensForTokens(
                 amountIn.toUInt(),
@@ -73,33 +77,33 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
     }
 
     // buy-back and burn uGOV
-    function _uGovBuyBackLPAndBurn(uint256 amount) internal {
+    function _governanceBuyBackLPAndBurn(uint256 amount) internal {
         bytes16 amountUAD = (amount.fromUInt()).div(uint256(2).fromUInt());
 
         // we need to approve sushi router
-        IERC20Ubiquity(manager.uADTokenAddress()).safeApprove(
+        IERC20Ubiquity(manager.dollarTokenAddress()).safeApprove(
             address(_router),
             0
         );
-        IERC20Ubiquity(manager.uADTokenAddress()).safeApprove(
+        IERC20Ubiquity(manager.dollarTokenAddress()).safeApprove(
             address(_router),
             amount
         );
-        uint256 amountUGOV = _swapUADForUGOV(amountUAD);
+        uint256 amountUGOV = _swapDollarsForGovernance(amountUAD);
 
-        IERC20Ubiquity(manager.uGOVTokenAddress()).safeApprove(
+        IERC20Ubiquity(manager.governanceTokenAddress()).safeApprove(
             address(_router),
             0
         );
-        IERC20Ubiquity(manager.uGOVTokenAddress()).safeApprove(
+        IERC20Ubiquity(manager.governanceTokenAddress()).safeApprove(
             address(_router),
             amountUGOV
         );
 
         // deposit liquidity and transfer to zero address (burn)
         _router.addLiquidity(
-            manager.uADTokenAddress(),
-            manager.uGOVTokenAddress(),
+            manager.dollarTokenAddress(),
+            manager.governanceTokenAddress(),
             amountUAD.toUInt(),
             amountUGOV,
             0,
@@ -118,11 +122,11 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         returns (uint256)
     {
         // we need to approve  metaPool
-        IERC20Ubiquity(manager.uADTokenAddress()).safeApprove(
+        IERC20Ubiquity(manager.dollarTokenAddress()).safeApprove(
             manager.stableSwapMetaPoolAddress(),
             0
         );
-        IERC20Ubiquity(manager.uADTokenAddress()).safeApprove(
+        IERC20Ubiquity(manager.dollarTokenAddress()).safeApprove(
             manager.stableSwapMetaPoolAddress(),
             amount
         );

@@ -7,3 +7,5 @@ import "./blockNumber";
 import "./chainId";
 import "./tx";
 import "./faucet";
+import "./incentive";
+import "./metapool";

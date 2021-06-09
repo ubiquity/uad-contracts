@@ -114,3 +114,4 @@ deployments/ropsten
 
 # VSCode user settings
 .vscode
+.ignore/

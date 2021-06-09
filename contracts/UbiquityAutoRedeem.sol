@@ -5,7 +5,7 @@ import "./ERC20Ubiquity.sol";
 
 contract UbiquityAutoRedeem is ERC20Ubiquity {
     constructor(address _manager)
-        ERC20Ubiquity(_manager, "UbiquityAutoRedeem", "uAR")
+        ERC20Ubiquity(_manager, "Ubiquity Auto Redeem", "uAR")
     {} // solhint-disable-line no-empty-blocks
 
     /// @notice raise capital in form of uAR (only redeemable when uAD > 1$)

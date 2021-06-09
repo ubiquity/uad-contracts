@@ -36,9 +36,9 @@ const factoryAdr = "0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac"; // SushiV2Facto
 const routerAdr = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // SushiV2Router02
 const masterChefAdr = "0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd"; // MasterChef
 const firstPair = "0x680A025Da7b1be2c204D7745e809919bCE074026"; // SushiSwap SUSHI/USDT LP (SLP)
-const reserveA = "1201055109316335905137";
-const reserveB = "17860836355";
-const nbPairs = 901;
+const reserveA = "1518287028779922369700";
+const reserveB = "15598625844";
+const nbPairs = 1290;
 
 describe("SushiSwapPool", () => {
   let admin: Signer;
@@ -79,11 +79,11 @@ describe("SushiSwapPool", () => {
 
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
-    await manager.setuADTokenAddress(uAD.address);
+    await manager.setDollarTokenAddress(uAD.address);
 
     const UGOV = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await UGOV.deploy(manager.address)) as UbiquityGovernance;
-    await manager.setuGOVTokenAddress(uGOV.address);
+    await manager.setGovernanceTokenAddress(uGOV.address);
     sushiFactory = await ethers.getContractFactory("SushiSwapPool");
     sushiUGOVPool = (await sushiFactory.deploy(
       manager.address
@@ -111,7 +111,6 @@ describe("SushiSwapPool", () => {
     });
     it("should get first pair 0xB4e...", async () => {
       const pair = await factory.allPairs(0);
-
       expect(pair).to.be.equal(firstPair);
     });
   });

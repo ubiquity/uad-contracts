@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./utils/SafeAddArray.sol";
 
-import "hardhat/console.sol";
-
 /// @title ERC1155 Ubiquity preset
 /// @author Ubiquity Algorithmic Dollar
 /// @notice ERC1155 with :
@@ -26,7 +24,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyMinter() {
         require(
             manager.hasRole(manager.UBQ_MINTER_ROLE(), msg.sender),
-            "UBQ token: not minter"
+            "Governance token: not minter"
         );
         _;
     }
@@ -34,7 +32,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyBurner() {
         require(
             manager.hasRole(manager.UBQ_BURNER_ROLE(), msg.sender),
-            "UBQ token: not burner"
+            "Governance token: not burner"
         );
         _;
     }
@@ -42,7 +40,7 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyPauser() {
         require(
             manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
-            "UBQ token: not pauser"
+            "Governance token: not pauser"
         );
         _;
     }
@@ -65,22 +63,6 @@ contract ERC1155Ubiquity is ERC1155, ERC1155Burnable, ERC1155Pausable {
         _totalSupply += amount;
         _holderBalances[to].add(id);
     }
-
-    /*     /// @notice burn boinding shares tokens from specified account
-    /// @param account the account to burn from
-    /// @param amount the amount to burn
-    function burnFrom(
-        address account,
-        uint256 id,
-        uint256 amount
-    )
-        public
-        onlyBurner
-        whenNotPaused // to suppress ? if BURNER_ROLE should do it even paused ?
-    {
-        _burn(account, amount);
-           _totalSupply -= amount;
-    } */
 
     // @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
     function mintBatch(

@@ -42,7 +42,7 @@ describe("ExcessDollarsDistributor", () => {
       await getNamedAccounts());
     [admin, secondAccount, thirdAccount, treasury, bondingContract] =
       await ethers.getSigners();
-    await resetFork(12150000);
+    await resetFork(12592661);
     router = (await ethers.getContractAt(
       "IUniswapV2Router02",
       routerAdr
@@ -62,10 +62,10 @@ describe("ExcessDollarsDistributor", () => {
     uAD = (await uADFactory.deploy(
       manager.address
     )) as UbiquityAlgorithmicDollar;
-    await manager.setuADTokenAddress(uAD.address);
+    await manager.setDollarTokenAddress(uAD.address);
     const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
     uGOV = (await uGOVFactory.deploy(manager.address)) as UbiquityGovernance;
-    await manager.setuGOVTokenAddress(uGOV.address);
+    await manager.setGovernanceTokenAddress(uGOV.address);
     // set twap Oracle Address
     crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
 

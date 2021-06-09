@@ -38,9 +38,11 @@ interface UbiquityAlgorithmicDollarManagerInterface
     "debtCouponAddress()": FunctionFragment;
     "deployStableSwapPool(address,address,address,uint256,uint256)": FunctionFragment;
     "dollarMintingCalculatorAddress()": FunctionFragment;
+    "dollarTokenAddress()": FunctionFragment;
     "formulasAddress()": FunctionFragment;
     "getExcessDollarsDistributor(address)": FunctionFragment;
     "getRoleAdmin(bytes32)": FunctionFragment;
+    "governanceTokenAddress()": FunctionFragment;
     "grantRole(bytes32,address)": FunctionFragment;
     "hasRole(bytes32,address)": FunctionFragment;
     "masterChefAddress()": FunctionFragment;
@@ -51,8 +53,10 @@ interface UbiquityAlgorithmicDollarManagerInterface
     "setCouponCalculatorAddress(address)": FunctionFragment;
     "setDebtCouponAddress(address)": FunctionFragment;
     "setDollarMintingCalculatorAddress(address)": FunctionFragment;
+    "setDollarTokenAddress(address)": FunctionFragment;
     "setExcessDollarsDistributor(address,address)": FunctionFragment;
     "setFormulasAddress(address)": FunctionFragment;
+    "setGovernanceTokenAddress(address)": FunctionFragment;
     "setIncentiveToUAD(address,address)": FunctionFragment;
     "setMasterChefAddress(address)": FunctionFragment;
     "setStableSwapMetaPoolAddress(address)": FunctionFragment;
@@ -60,16 +64,12 @@ interface UbiquityAlgorithmicDollarManagerInterface
     "setTreasuryAddress(address)": FunctionFragment;
     "setTwapOracleAddress(address)": FunctionFragment;
     "setUARCalculatorAddress(address)": FunctionFragment;
-    "setuADTokenAddress(address)": FunctionFragment;
     "setuARTokenAddress(address)": FunctionFragment;
-    "setuGOVTokenAddress(address)": FunctionFragment;
     "stableSwapMetaPoolAddress()": FunctionFragment;
     "supportsInterface(bytes4)": FunctionFragment;
     "sushiSwapPoolAddress()": FunctionFragment;
     "treasuryAddress()": FunctionFragment;
     "twapOracleAddress()": FunctionFragment;
-    "uADTokenAddress()": FunctionFragment;
-    "uGOVTokenAddress()": FunctionFragment;
     "uarCalculatorAddress()": FunctionFragment;
   };
 
@@ -138,6 +138,10 @@ interface UbiquityAlgorithmicDollarManagerInterface
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "dollarTokenAddress",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "formulasAddress",
     values?: undefined
   ): string;
@@ -148,6 +152,10 @@ interface UbiquityAlgorithmicDollarManagerInterface
   encodeFunctionData(
     functionFragment: "getRoleAdmin",
     values: [BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "governanceTokenAddress",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "grantRole",
@@ -190,11 +198,19 @@ interface UbiquityAlgorithmicDollarManagerInterface
     values: [string]
   ): string;
   encodeFunctionData(
+    functionFragment: "setDollarTokenAddress",
+    values: [string]
+  ): string;
+  encodeFunctionData(
     functionFragment: "setExcessDollarsDistributor",
     values: [string, string]
   ): string;
   encodeFunctionData(
     functionFragment: "setFormulasAddress",
+    values: [string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "setGovernanceTokenAddress",
     values: [string]
   ): string;
   encodeFunctionData(
@@ -226,15 +242,7 @@ interface UbiquityAlgorithmicDollarManagerInterface
     values: [string]
   ): string;
   encodeFunctionData(
-    functionFragment: "setuADTokenAddress",
-    values: [string]
-  ): string;
-  encodeFunctionData(
     functionFragment: "setuARTokenAddress",
-    values: [string]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "setuGOVTokenAddress",
     values: [string]
   ): string;
   encodeFunctionData(
@@ -255,14 +263,6 @@ interface UbiquityAlgorithmicDollarManagerInterface
   ): string;
   encodeFunctionData(
     functionFragment: "twapOracleAddress",
-    values?: undefined
-  ): string;
-  encodeFunctionData(
-    functionFragment: "uADTokenAddress",
-    values?: undefined
-  ): string;
-  encodeFunctionData(
-    functionFragment: "uGOVTokenAddress",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -335,6 +335,10 @@ interface UbiquityAlgorithmicDollarManagerInterface
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "dollarTokenAddress",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "formulasAddress",
     data: BytesLike
   ): Result;
@@ -344,6 +348,10 @@ interface UbiquityAlgorithmicDollarManagerInterface
   ): Result;
   decodeFunctionResult(
     functionFragment: "getRoleAdmin",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "governanceTokenAddress",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "grantRole", data: BytesLike): Result;
@@ -378,11 +386,19 @@ interface UbiquityAlgorithmicDollarManagerInterface
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "setDollarTokenAddress",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "setExcessDollarsDistributor",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
     functionFragment: "setFormulasAddress",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "setGovernanceTokenAddress",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -414,15 +430,7 @@ interface UbiquityAlgorithmicDollarManagerInterface
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "setuADTokenAddress",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "setuARTokenAddress",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "setuGOVTokenAddress",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -443,14 +451,6 @@ interface UbiquityAlgorithmicDollarManagerInterface
   ): Result;
   decodeFunctionResult(
     functionFragment: "twapOracleAddress",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "uADTokenAddress",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "uGOVTokenAddress",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -595,6 +595,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: CallOverrides
     ): Promise<[string]>;
 
+    dollarTokenAddress(overrides?: CallOverrides): Promise<[string]>;
+
+    "dollarTokenAddress()"(overrides?: CallOverrides): Promise<[string]>;
+
     formulasAddress(overrides?: CallOverrides): Promise<[string]>;
 
     "formulasAddress()"(overrides?: CallOverrides): Promise<[string]>;
@@ -615,6 +619,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       role: BytesLike,
       overrides?: CallOverrides
     ): Promise<[string]>;
+
+    governanceTokenAddress(overrides?: CallOverrides): Promise<[string]>;
+
+    "governanceTokenAddress()"(overrides?: CallOverrides): Promise<[string]>;
 
     grantRole(
       role: BytesLike,
@@ -718,6 +726,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    setDollarTokenAddress(
+      _dollarTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    "setDollarTokenAddress(address)"(
+      _dollarTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     setExcessDollarsDistributor(
       debtCouponManagerAddress: string,
       excessCouponDistributor: string,
@@ -737,6 +755,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setFormulasAddress(address)"(
       _formulasAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    setGovernanceTokenAddress(
+      _governanceTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    "setGovernanceTokenAddress(address)"(
+      _governanceTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -812,16 +840,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    setuADTokenAddress(
-      _uADTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
-    "setuADTokenAddress(address)"(
-      _uADTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
     setuARTokenAddress(
       _uarTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -829,16 +847,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setuARTokenAddress(address)"(
       _uarTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
-    setuGOVTokenAddress(
-      _uGOVTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<ContractTransaction>;
-
-    "setuGOVTokenAddress(address)"(
-      _uGOVTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -867,14 +875,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     twapOracleAddress(overrides?: CallOverrides): Promise<[string]>;
 
     "twapOracleAddress()"(overrides?: CallOverrides): Promise<[string]>;
-
-    uADTokenAddress(overrides?: CallOverrides): Promise<[string]>;
-
-    "uADTokenAddress()"(overrides?: CallOverrides): Promise<[string]>;
-
-    uGOVTokenAddress(overrides?: CallOverrides): Promise<[string]>;
-
-    "uGOVTokenAddress()"(overrides?: CallOverrides): Promise<[string]>;
 
     uarCalculatorAddress(overrides?: CallOverrides): Promise<[string]>;
 
@@ -961,6 +961,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     overrides?: CallOverrides
   ): Promise<string>;
 
+  dollarTokenAddress(overrides?: CallOverrides): Promise<string>;
+
+  "dollarTokenAddress()"(overrides?: CallOverrides): Promise<string>;
+
   formulasAddress(overrides?: CallOverrides): Promise<string>;
 
   "formulasAddress()"(overrides?: CallOverrides): Promise<string>;
@@ -981,6 +985,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     role: BytesLike,
     overrides?: CallOverrides
   ): Promise<string>;
+
+  governanceTokenAddress(overrides?: CallOverrides): Promise<string>;
+
+  "governanceTokenAddress()"(overrides?: CallOverrides): Promise<string>;
 
   grantRole(
     role: BytesLike,
@@ -1084,6 +1092,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  setDollarTokenAddress(
+    _dollarTokenAddress: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  "setDollarTokenAddress(address)"(
+    _dollarTokenAddress: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   setExcessDollarsDistributor(
     debtCouponManagerAddress: string,
     excessCouponDistributor: string,
@@ -1103,6 +1121,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
   "setFormulasAddress(address)"(
     _formulasAddress: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  setGovernanceTokenAddress(
+    _governanceTokenAddress: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  "setGovernanceTokenAddress(address)"(
+    _governanceTokenAddress: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -1178,16 +1206,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  setuADTokenAddress(
-    _uADTokenAddress: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
-  "setuADTokenAddress(address)"(
-    _uADTokenAddress: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
   setuARTokenAddress(
     _uarTokenAddress: string,
     overrides?: Overrides & { from?: string | Promise<string> }
@@ -1195,16 +1213,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
   "setuARTokenAddress(address)"(
     _uarTokenAddress: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
-  setuGOVTokenAddress(
-    _uGOVTokenAddress: string,
-    overrides?: Overrides & { from?: string | Promise<string> }
-  ): Promise<ContractTransaction>;
-
-  "setuGOVTokenAddress(address)"(
-    _uGOVTokenAddress: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -1233,14 +1241,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
   twapOracleAddress(overrides?: CallOverrides): Promise<string>;
 
   "twapOracleAddress()"(overrides?: CallOverrides): Promise<string>;
-
-  uADTokenAddress(overrides?: CallOverrides): Promise<string>;
-
-  "uADTokenAddress()"(overrides?: CallOverrides): Promise<string>;
-
-  uGOVTokenAddress(overrides?: CallOverrides): Promise<string>;
-
-  "uGOVTokenAddress()"(overrides?: CallOverrides): Promise<string>;
 
   uarCalculatorAddress(overrides?: CallOverrides): Promise<string>;
 
@@ -1327,6 +1327,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: CallOverrides
     ): Promise<string>;
 
+    dollarTokenAddress(overrides?: CallOverrides): Promise<string>;
+
+    "dollarTokenAddress()"(overrides?: CallOverrides): Promise<string>;
+
     formulasAddress(overrides?: CallOverrides): Promise<string>;
 
     "formulasAddress()"(overrides?: CallOverrides): Promise<string>;
@@ -1347,6 +1351,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       role: BytesLike,
       overrides?: CallOverrides
     ): Promise<string>;
+
+    governanceTokenAddress(overrides?: CallOverrides): Promise<string>;
+
+    "governanceTokenAddress()"(overrides?: CallOverrides): Promise<string>;
 
     grantRole(
       role: BytesLike,
@@ -1450,6 +1458,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: CallOverrides
     ): Promise<void>;
 
+    setDollarTokenAddress(
+      _dollarTokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "setDollarTokenAddress(address)"(
+      _dollarTokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
     setExcessDollarsDistributor(
       debtCouponManagerAddress: string,
       excessCouponDistributor: string,
@@ -1469,6 +1487,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setFormulasAddress(address)"(
       _formulasAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setGovernanceTokenAddress(
+      _governanceTokenAddress: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "setGovernanceTokenAddress(address)"(
+      _governanceTokenAddress: string,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1544,16 +1572,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: CallOverrides
     ): Promise<void>;
 
-    setuADTokenAddress(
-      _uADTokenAddress: string,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    "setuADTokenAddress(address)"(
-      _uADTokenAddress: string,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
     setuARTokenAddress(
       _uarTokenAddress: string,
       overrides?: CallOverrides
@@ -1561,16 +1579,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setuARTokenAddress(address)"(
       _uarTokenAddress: string,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    setuGOVTokenAddress(
-      _uGOVTokenAddress: string,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    "setuGOVTokenAddress(address)"(
-      _uGOVTokenAddress: string,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1599,14 +1607,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     twapOracleAddress(overrides?: CallOverrides): Promise<string>;
 
     "twapOracleAddress()"(overrides?: CallOverrides): Promise<string>;
-
-    uADTokenAddress(overrides?: CallOverrides): Promise<string>;
-
-    "uADTokenAddress()"(overrides?: CallOverrides): Promise<string>;
-
-    uGOVTokenAddress(overrides?: CallOverrides): Promise<string>;
-
-    "uGOVTokenAddress()"(overrides?: CallOverrides): Promise<string>;
 
     uarCalculatorAddress(overrides?: CallOverrides): Promise<string>;
 
@@ -1725,6 +1725,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
+    dollarTokenAddress(overrides?: CallOverrides): Promise<BigNumber>;
+
+    "dollarTokenAddress()"(overrides?: CallOverrides): Promise<BigNumber>;
+
     formulasAddress(overrides?: CallOverrides): Promise<BigNumber>;
 
     "formulasAddress()"(overrides?: CallOverrides): Promise<BigNumber>;
@@ -1748,6 +1752,10 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       role: BytesLike,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
+
+    governanceTokenAddress(overrides?: CallOverrides): Promise<BigNumber>;
+
+    "governanceTokenAddress()"(overrides?: CallOverrides): Promise<BigNumber>;
 
     grantRole(
       role: BytesLike,
@@ -1851,6 +1859,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    setDollarTokenAddress(
+      _dollarTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    "setDollarTokenAddress(address)"(
+      _dollarTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     setExcessDollarsDistributor(
       debtCouponManagerAddress: string,
       excessCouponDistributor: string,
@@ -1870,6 +1888,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setFormulasAddress(address)"(
       _formulasAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    setGovernanceTokenAddress(
+      _governanceTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    "setGovernanceTokenAddress(address)"(
+      _governanceTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1945,16 +1973,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    setuADTokenAddress(
-      _uADTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
-    "setuADTokenAddress(address)"(
-      _uADTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
     setuARTokenAddress(
       _uarTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -1962,16 +1980,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setuARTokenAddress(address)"(
       _uarTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
-    setuGOVTokenAddress(
-      _uGOVTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<BigNumber>;
-
-    "setuGOVTokenAddress(address)"(
-      _uGOVTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -2002,14 +2010,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     twapOracleAddress(overrides?: CallOverrides): Promise<BigNumber>;
 
     "twapOracleAddress()"(overrides?: CallOverrides): Promise<BigNumber>;
-
-    uADTokenAddress(overrides?: CallOverrides): Promise<BigNumber>;
-
-    "uADTokenAddress()"(overrides?: CallOverrides): Promise<BigNumber>;
-
-    uGOVTokenAddress(overrides?: CallOverrides): Promise<BigNumber>;
-
-    "uGOVTokenAddress()"(overrides?: CallOverrides): Promise<BigNumber>;
 
     uarCalculatorAddress(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -2145,6 +2145,14 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
+    dollarTokenAddress(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    "dollarTokenAddress()"(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
     formulasAddress(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     "formulasAddress()"(
@@ -2168,6 +2176,14 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "getRoleAdmin(bytes32)"(
       role: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    governanceTokenAddress(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    "governanceTokenAddress()"(
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
@@ -2275,6 +2291,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
+    setDollarTokenAddress(
+      _dollarTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    "setDollarTokenAddress(address)"(
+      _dollarTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     setExcessDollarsDistributor(
       debtCouponManagerAddress: string,
       excessCouponDistributor: string,
@@ -2294,6 +2320,16 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setFormulasAddress(address)"(
       _formulasAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    setGovernanceTokenAddress(
+      _governanceTokenAddress: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    "setGovernanceTokenAddress(address)"(
+      _governanceTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -2369,16 +2405,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
-    setuADTokenAddress(
-      _uADTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    "setuADTokenAddress(address)"(
-      _uADTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
     setuARTokenAddress(
       _uarTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
@@ -2386,16 +2412,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
 
     "setuARTokenAddress(address)"(
       _uarTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    setuGOVTokenAddress(
-      _uGOVTokenAddress: string,
-      overrides?: Overrides & { from?: string | Promise<string> }
-    ): Promise<PopulatedTransaction>;
-
-    "setuGOVTokenAddress(address)"(
-      _uGOVTokenAddress: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -2434,18 +2450,6 @@ export class UbiquityAlgorithmicDollarManager extends Contract {
     twapOracleAddress(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     "twapOracleAddress()"(
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    uADTokenAddress(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    "uADTokenAddress()"(
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    uGOVTokenAddress(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    "uGOVTokenAddress()"(
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 

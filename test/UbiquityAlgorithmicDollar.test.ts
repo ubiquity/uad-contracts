@@ -26,6 +26,36 @@ describe("UbiquityAlgorithmicDollar", () => {
     const UAD = await ethers.getContractFactory("UbiquityAlgorithmicDollar");
     uAD = (await UAD.deploy(manager.address)) as UbiquityAlgorithmicDollar;
   });
+  describe("SetName", () => {
+    const newName = "Super Moon UBQ";
+    it("should work", async () => {
+      const prevName = await uAD.name();
+      expect(prevName).to.equal("Ubiquity Algorithmic Dollar");
+      await uAD.connect(admin).setName(newName);
+      const name = await uAD.name();
+      expect(name).to.equal(newName);
+    });
+    it("should fail if not admin", async () => {
+      await expect(uAD.connect(secondAccount).setName(newName)).to.revertedWith(
+        "ERC20: deployer must be manager admin"
+      );
+    });
+  });
+  describe("SetSymbol", () => {
+    const newSymbol = "UBMOON";
+    it("should work", async () => {
+      const prevSym = await uAD.symbol();
+      expect(prevSym).to.equal("uAD");
+      await uAD.connect(admin).setSymbol(newSymbol);
+      const symbol = await uAD.symbol();
+      expect(symbol).to.equal(newSymbol);
+    });
+    it("should fail if not admin", async () => {
+      await expect(
+        uAD.connect(secondAccount).setSymbol(newSymbol)
+      ).to.revertedWith("ERC20: deployer must be manager admin");
+    });
+  });
   describe("Transfer", () => {
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();
@@ -75,7 +105,7 @@ describe("UbiquityAlgorithmicDollar", () => {
         uAD
           .connect(secondAccount)
           .mint(thirdAdr, ethers.utils.parseEther("10000"))
-      ).to.revertedWith("UBQ token: not minter");
+      ).to.revertedWith("Governance token: not minter");
     });
   });
   describe("Burn", () => {
@@ -105,7 +135,7 @@ describe("UbiquityAlgorithmicDollar", () => {
       );
       await expect(
         uAD.connect(admin).burnFrom(sndAdr, ethers.utils.parseEther("10000"))
-      ).to.revertedWith("UBQ token: not burner");
+      ).to.revertedWith("Governance token: not burner");
     });
     it("should work", async () => {
       const sndAdr = await secondAccount.getAddress();

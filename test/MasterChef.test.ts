@@ -288,8 +288,9 @@ describe("MasterChef", () => {
       const isRewardPrecise = isAmountEquivalent(
         baluGovAfter.sub(baluGOVBefore).toString(),
         pendingCalculated.sub(lostPrecision).toString(),
-        "0.000000000001"
+        "0.0000000001"
       );
+
       expect(isRewardPrecise).to.be.true;
     });
 

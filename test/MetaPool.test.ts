@@ -43,7 +43,7 @@ describe("MetaPool", () => {
       daiWhaleAddress,
     } = await getNamedAccounts());
     [admin, secondAccount] = await ethers.getSigners();
-    await resetFork(12150000);
+    await resetFork(12592661);
     const Manager = await ethers.getContractFactory(
       "UbiquityAlgorithmicDollarManager"
     );
@@ -65,7 +65,7 @@ describe("MetaPool", () => {
     );
     await Promise.all(mintings);
 
-    await manager.connect(admin).setuADTokenAddress(uAD.address);
+    await manager.connect(admin).setDollarTokenAddress(uAD.address);
 
     crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
     daiToken = (await ethers.getContractAt("ERC20", DAI)) as ERC20;
@@ -208,7 +208,7 @@ describe("MetaPool", () => {
     it("should return correct name", async () => {
       const name = await metaPool.name();
       expect(name).to.equal(
-        "Curve.fi Factory USD Metapool: UbiquityAlgorithmicDollar"
+        "Curve.fi Factory USD Metapool: Ubiquity Algorithmic Dollar"
       );
       const symbol = await metaPool.symbol();
       expect(symbol).to.equal("uAD3CRV-f");
@@ -227,31 +227,31 @@ describe("MetaPool", () => {
         1,
         ethers.utils.parseEther("1")
       );
-      expect(dyuADto3CRV).to.equal("986194034853243644");
+      expect(dyuADto3CRV).to.equal("983945512295267596");
     });
     it("should return correct underlying token price", async () => {
       const dyuAD2USDT = await metaPool[
         "get_dy_underlying(int128,int128,uint256)"
       ](0, 3, ethers.utils.parseEther("1"));
-      expect(dyuAD2USDT).to.equal("1000678");
+      expect(dyuAD2USDT).to.equal("1001098");
       const dyDAI2USDT = await metaPool[
         "get_dy_underlying(int128,int128,uint256)"
       ](1, 3, ethers.utils.parseEther("1"));
-      expect(dyDAI2USDT).to.equal("999691");
+      expect(dyDAI2USDT).to.equal("1000623");
       const dyuAD2DAI = await metaPool[
         "get_dy_underlying(int128,int128,uint256)"
       ](0, 1, ethers.utils.parseEther("1"));
-      expect(dyuAD2DAI).to.equal("1000581977224732088");
+      expect(dyuAD2DAI).to.equal("1000011060260788055");
       const dyDAI2uAD = await metaPool[
         "get_dy_underlying(int128,int128,uint256)"
       ](1, 0, ethers.utils.parseEther("1"));
-      expect(dyDAI2uAD).to.equal("998193085467601000");
+      expect(dyDAI2uAD).to.equal("998714251903486448");
     });
     it("deposit liquidity with only uAD should decrease its price", async () => {
       const dyuAD2USDT = await metaPool[
         "get_dy_underlying(int128,int128,uint256)"
       ](0, 3, ethers.utils.parseEther("1"));
-      expect(dyuAD2USDT).to.equal("1000678");
+      expect(dyuAD2USDT).to.equal("1001098");
       const dyuAD2CRV = await metaPool["get_dy(int128,int128,uint256)"](
         0,
         1,
@@ -447,16 +447,16 @@ describe("MetaPool", () => {
         metaPool.address
       );
       expect(balances[0]).to.equal(ethers.utils.parseEther("10000"));
-      expect(balances[1]).to.equal("3095551850613512101118");
-      expect(balances[2]).to.equal("3796702941");
-      expect(balances[3]).to.equal("3257341594");
+      expect(balances[1]).to.equal("1448133382413680542224");
+      expect(balances[2]).to.equal("5103950291");
+      expect(balances[3]).to.equal("3623739270");
     });
     it("should get the exchange rates between coins and underlying coins within a pool.", async () => {
       // Get the exchange rates between coins and underlying coins within a pool, normalized to a 1e18 precision.
       const rates = await curvePoolFactory.get_rates(metaPool.address);
       expect(rates[0]).to.equal(ethers.utils.parseEther("1"));
       expect(rates[1]).to.equal(
-        ethers.utils.parseEther("1.014953153764877573")
+        ethers.utils.parseEther("1.017504843248071274")
       );
     });
     it("should get virtual price.", async () => {

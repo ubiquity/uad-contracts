@@ -23,12 +23,14 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     bytes32 public constant PERMIT_TYPEHASH =
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
     mapping(address => uint256) public nonces;
+    string private _tokenName;
+    string private _symbol;
 
     // ----------- Modifiers -----------
     modifier onlyMinter() {
         require(
             manager.hasRole(manager.UBQ_MINTER_ROLE(), msg.sender),
-            "UBQ token: not minter"
+            "Governance token: not minter"
         );
         _;
     }
@@ -36,7 +38,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     modifier onlyBurner() {
         require(
             manager.hasRole(manager.UBQ_BURNER_ROLE(), msg.sender),
-            "UBQ token: not burner"
+            "Governance token: not burner"
         );
         _;
     }
@@ -44,7 +46,15 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     modifier onlyPauser() {
         require(
             manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
-            "UBQ token: not pauser"
+            "Governance token: not pauser"
+        );
+        _;
+    }
+
+    modifier onlyAdmin() {
+        require(
+            manager.hasRole(manager.DEFAULT_ADMIN_ROLE(), msg.sender),
+            "ERC20: deployer must be manager admin"
         );
         _;
     }
@@ -54,13 +64,15 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {
+        _tokenName = name_;
+        _symbol = symbol_;
         manager = UbiquityAlgorithmicDollarManager(_manager);
         // sender must be UbiquityAlgorithmicDollarManager roleAdmin
         // because he will get the admin, minter and pauser role on uAD and we want to
         // manage all permissions through the manager
         require(
             manager.hasRole(manager.DEFAULT_ADMIN_ROLE(), msg.sender),
-            "UAD: deployer must be manager admin"
+            "ERC20: deployer must be manager admin"
         );
         uint256 chainId;
         // solhint-disable-next-line no-inline-assembly
@@ -82,6 +94,18 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         );
     }
 
+    /// @notice setSymbol update token symbol
+    /// @param newSymbol new token symbol
+    function setSymbol(string memory newSymbol) external onlyAdmin {
+        _symbol = newSymbol;
+    }
+
+    /// @notice setName update token name
+    /// @param newName new token name
+    function setName(string memory newName) external onlyAdmin {
+        _tokenName = newName;
+    }
+
     /// @notice permit spending of uAD. owner has signed a message allowing
     ///         spender to transfer up to amount uAD
     /// @param owner the uAD holder
@@ -98,7 +122,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         bytes32 s
     ) external override {
         // solhint-disable-next-line not-rely-on-time
-        require(deadline >= block.timestamp, "uAD: EXPIRED");
+        require(deadline >= block.timestamp, "Dollar: EXPIRED");
         bytes32 digest =
             keccak256(
                 abi.encodePacked(
@@ -119,7 +143,7 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(
             recoveredAddress != address(0) && recoveredAddress == owner,
-            "uAD: INVALID_SIGNATURE"
+            "Dollar: INVALID_SIGNATURE"
         );
         _approve(owner, spender, value);
     }
@@ -167,6 +191,21 @@ contract ERC20Ubiquity is IERC20Ubiquity, ERC20, ERC20Burnable, ERC20Pausable {
     // @dev Unpauses all token transfers.
     function unpause() public onlyPauser {
         _unpause();
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() public view override(ERC20) returns (string memory) {
+        return _tokenName;
+    }
+
+    /**
+     * @dev Returns the symbol of the token, usually a shorter version of the
+     * name.
+     */
+    function symbol() public view override(ERC20) returns (string memory) {
+        return _symbol;
     }
 
     function _beforeTokenTransfer(

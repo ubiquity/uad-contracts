@@ -4,7 +4,6 @@ pragma solidity ^0.8.3;
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
-import "hardhat/console.sol";
 
 contract SushiSwapPool {
     IUniswapV2Factory public factory =
@@ -15,21 +14,24 @@ contract SushiSwapPool {
 
     constructor(address _manager) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
-        require(manager.uADTokenAddress() != address(0), "uAD Address not set");
         require(
-            manager.uGOVTokenAddress() != address(0),
+            manager.dollarTokenAddress() != address(0),
+            "Dollar address not set"
+        );
+        require(
+            manager.governanceTokenAddress() != address(0),
             "uGOV Address not set"
         );
         // check if pair already exist
         address pool =
             factory.getPair(
-                manager.uADTokenAddress(),
-                manager.uGOVTokenAddress()
+                manager.dollarTokenAddress(),
+                manager.governanceTokenAddress()
             );
         if (pool == address(0)) {
             pool = factory.createPair(
-                manager.uADTokenAddress(),
-                manager.uGOVTokenAddress()
+                manager.dollarTokenAddress(),
+                manager.governanceTokenAddress()
             );
         }
         pair = IUniswapV2Pair(pool);

@@ -27,7 +27,7 @@ task("faucet", "Sends ETH and tokens to an address")
         "UbiquityAlgorithmicDollarManager",
         taskArgs.manager
       )) as UbiquityAlgorithmicDollarManager;
-      const uADAdr = await manager.uADTokenAddress();
+      const uADAdr = await manager.dollarTokenAddress();
       const uADtoken = (await ethers.getContractAt("ERC20", uADAdr)) as ERC20;
       const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
       const curveLPtoken = (await ethers.getContractAt(

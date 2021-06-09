@@ -93,7 +93,6 @@ const deposit: IbondTokens = async function (
 async function withdraw(signer: Signer, id: number): Promise<BigNumber> {
   const signerAdr = await signer.getAddress();
   const bond: BigNumber = await bondingShare.balanceOf(signerAdr, id);
-
   await expect(bonding.connect(signer).withdraw(bond, id))
     .to.emit(bondingShare, "TransferSingle")
     .withArgs(
@@ -103,7 +102,6 @@ async function withdraw(signer: Signer, id: number): Promise<BigNumber> {
       id,
       bond
     );
-
   return metaPool.balanceOf(signerAdr);
 }
 
@@ -190,14 +188,14 @@ async function bondingSetup(): Promise<{
   uAD = (await (
     await ethers.getContractFactory("UbiquityAlgorithmicDollar")
   ).deploy(manager.address)) as UbiquityAlgorithmicDollar;
-  await manager.setuADTokenAddress(uAD.address);
+  await manager.setDollarTokenAddress(uAD.address);
   // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
   await manager.connect(admin).setTreasuryAddress(await treasury.getAddress());
   // DEPLOY UGOV token Contract
   uGOV = (await (
     await ethers.getContractFactory("UbiquityGovernance")
   ).deploy(manager.address)) as UbiquityGovernance;
-  await manager.setuGOVTokenAddress(uGOV.address);
+  await manager.setGovernanceTokenAddress(uGOV.address);
 
   // GET 3CRV token contract
   crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;

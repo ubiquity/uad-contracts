@@ -25,7 +25,7 @@ describe("DollarMintingCalculator", () => {
     const UAD = await ethers.getContractFactory("MockuADToken");
     uAD = (await UAD.deploy(uADTotalSupply)) as MockuADToken;
 
-    await manager.setuADTokenAddress(uAD.address);
+    await manager.setDollarTokenAddress(uAD.address);
     // set TWAP Oracle Mock
 
     const TWAPOracleFactory = await ethers.getContractFactory("MockTWAPOracle");

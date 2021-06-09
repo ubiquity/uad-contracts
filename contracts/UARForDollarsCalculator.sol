@@ -6,7 +6,6 @@ import "./interfaces/IUARForDollarsCalculator.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./libs/ABDKMathQuad.sol";
 import "./DebtCoupon.sol";
-import "hardhat/console.sol";
 
 /// @title Uses the following formula: ((1/(1-R)^2) - 1)
 contract UARForDollarsCalculator is IUARForDollarsCalculator {
@@ -49,8 +48,8 @@ contract UARForDollarsCalculator is IUARForDollarsCalculator {
     {
         require(
             DebtCoupon(manager.debtCouponAddress()).getTotalOutstandingDebt() <
-                IERC20(manager.uADTokenAddress()).totalSupply(),
-            "uAR4Dollar: DEBT_TOO_HIGH"
+                IERC20(manager.dollarTokenAddress()).totalSupply(),
+            "uAR to Dollar: DEBT_TOO_HIGH"
         );
         bytes16 coef = _coef.fromUInt().div((uint256(1 ether)).fromUInt());
         bytes16 curBlock = uint256(block.number).fromUInt();

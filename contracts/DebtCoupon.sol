@@ -13,9 +13,6 @@ contract DebtCoupon is ERC1155 {
 
     UbiquityAlgorithmicDollarManager public manager;
 
-    address public redemptionContractAddress = address(0);
-    bool private _redemptionContractSet = false;
-
     //not public as if called externally can give inaccurate value. see method
     uint256 private _totalOutstandingDebt;
 
@@ -45,19 +42,6 @@ contract DebtCoupon is ERC1155 {
     constructor(address _manager) ERC1155("URI") {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         _totalOutstandingDebt = 0;
-    }
-
-    /// @notice This can only be done once, and should be done post-deployment!
-    function setRedemptionContractAddress(address newAddress)
-        external
-        onlyCouponManager
-    {
-        require(
-            !_redemptionContractSet,
-            "Redemption contract has already been set"
-        );
-        _redemptionContractSet = true;
-        redemptionContractAddress = newAddress;
     }
 
     /// @notice Mint an amount of coupons expiring at a certain block for a certain recipient
@@ -94,7 +78,7 @@ contract DebtCoupon is ERC1155 {
     ) public onlyCouponManager {
         require(
             balanceOf(couponOwner, expiryBlockNumber) >= amount,
-            "Coupon owner doesn't have enough coupons"
+            "Coupon owner not enough coupons"
         );
         _burn(couponOwner, expiryBlockNumber, amount);
         emit BurnedCoupons(couponOwner, expiryBlockNumber, amount);

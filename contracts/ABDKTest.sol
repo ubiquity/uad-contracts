@@ -6,7 +6,6 @@ import "./interfaces/IUARForDollarsCalculator.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./libs/ABDKMathQuad.sol";
 import "./DebtCoupon.sol";
-import "hardhat/console.sol";
 
 contract ABDKTest {
     using ABDKMathQuad for uint256;

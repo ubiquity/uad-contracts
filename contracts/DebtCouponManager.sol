@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./interfaces/IDebtRedemption.sol";
 import "./interfaces/IUARForDollarsCalculator.sol";
@@ -103,7 +102,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
 
         // we burn user's dollars.
-        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+        UbiquityAlgorithmicDollar(manager.dollarTokenAddress()).burnFrom(
             msg.sender,
             amount
         );
@@ -140,7 +139,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         uint256 uarToMint = uarCalculator.getUARAmount(amount, blockHeightDebt);
 
         // we burn user's dollars.
-        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+        UbiquityAlgorithmicDollar(manager.dollarTokenAddress()).burnFrom(
             msg.sender,
             amount
         );
@@ -226,13 +225,14 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         require(id <= block.number, "Coupon has not expired");
         require(
             debtCoupon.balanceOf(msg.sender, id) >= amount,
-            "User doesnt have enough coupons"
+            "User not enough coupons"
         );
 
         debtCoupon.burnCoupons(msg.sender, amount, id);
 
         // Mint UGOV tokens to this contract. Transfer UGOV tokens to msg.sender i.e. debt holder
-        IERC20Ubiquity uGOVToken = IERC20Ubiquity(manager.uGOVTokenAddress());
+        IERC20Ubiquity uGOVToken =
+            IERC20Ubiquity(manager.governanceTokenAddress());
         uGovAmount = amount / expiredCouponConvertionRate;
         uGOVToken.mint(msg.sender, uGovAmount);
     }
@@ -252,7 +252,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         require(id > block.timestamp, "Coupon has expired");
         require(
             debtCoupon.balanceOf(msg.sender, id) >= amount,
-            "User doesnt have enough coupons"
+            "User not enough coupons"
         );
 
         debtCoupon.burnCoupons(msg.sender, amount, id);
@@ -286,7 +286,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         );
 
         UbiquityAlgorithmicDollar uAD =
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
+            UbiquityAlgorithmicDollar(manager.dollarTokenAddress());
         uint256 maxRedeemableUAR = uAD.balanceOf(address(this));
 
         if (maxRedeemableUAR <= 0) {
@@ -322,12 +322,12 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         require(id > block.number, "Coupon has expired");
         require(
             debtCoupon.balanceOf(msg.sender, id) >= amount,
-            "User doesnt have enough coupons"
+            "User not enough coupons"
         );
 
         mintClaimableDollars();
         UbiquityAlgorithmicDollar uAD =
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
+            UbiquityAlgorithmicDollar(manager.dollarTokenAddress());
         UbiquityAutoRedeem autoRedeemToken =
             UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
         // uAR have a priority on uDEBT coupon holder
@@ -367,7 +367,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         dollarsMintedThisCycle = totalMintableDollars;
 
         UbiquityAlgorithmicDollar uAD =
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress());
+            UbiquityAlgorithmicDollar(manager.dollarTokenAddress());
         // uAD  dollars should  be minted to address(this)
         uAD.mint(address(this), dollarsToMint);
         UbiquityAutoRedeem autoRedeemToken =
@@ -399,7 +399,7 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         TWAPOracle(manager.twapOracleAddress()).update();
         return
             TWAPOracle(manager.twapOracleAddress()).consult(
-                manager.uADTokenAddress()
+                manager.dollarTokenAddress()
             );
     }
 }

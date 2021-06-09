@@ -7,7 +7,6 @@ import "./interfaces/IIncentive.sol";
 import "./TWAPOracle.sol";
 import "./UbiquityAlgorithmicDollar.sol";
 import "./libs/ABDKMathQuad.sol";
-import "hardhat/console.sol";
 
 /// @title Uniswap trading incentive contract
 /// @author uAD Protocol
@@ -30,7 +29,7 @@ contract CurveUADIncentive is IIncentive {
     }
     modifier onlyUAD() {
         require(
-            msg.sender == manager.uADTokenAddress(),
+            msg.sender == manager.dollarTokenAddress(),
             "CurveIncentive: Caller is not uAD"
         );
         _;
@@ -99,7 +98,7 @@ contract CurveUADIncentive is IIncentive {
 
         if (incentive != 0) {
             // this means CurveIncentive should be a minter of UGOV
-            IUbiquityGovernance(manager.uGOVTokenAddress()).mint(
+            IUbiquityGovernance(manager.governanceTokenAddress()).mint(
                 target,
                 incentive
             );
@@ -147,15 +146,14 @@ contract CurveUADIncentive is IIncentive {
 
         uint256 penalty = _getPercentDeviationFromUnderPeg(amount);
         if (penalty != 0) {
-            require(penalty < amount, "uAD: Burn exceeds trade size");
+            require(penalty < amount, "Dollar: burn exceeds trade size");
 
             require(
-                UbiquityAlgorithmicDollar(manager.uADTokenAddress()).balanceOf(
-                    target
-                ) >= penalty + amount,
-                "uAD: balance too low to get penalized"
+                UbiquityAlgorithmicDollar(manager.dollarTokenAddress())
+                    .balanceOf(target) >= penalty + amount,
+                "Dollar: balance too low to get penalized"
             );
-            UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+            UbiquityAlgorithmicDollar(manager.dollarTokenAddress()).burnFrom(
                 target,
                 penalty
             ); // burn from the recipient
@@ -169,7 +167,7 @@ contract CurveUADIncentive is IIncentive {
     function _getTWAPPrice() internal view returns (uint256) {
         return
             TWAPOracle(manager.twapOracleAddress()).consult(
-                manager.uADTokenAddress()
+                manager.dollarTokenAddress()
             );
     }
 }
