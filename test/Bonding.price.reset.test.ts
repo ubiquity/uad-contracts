@@ -5,7 +5,7 @@ import { bondingSetup, deposit } from "./BondingSetup";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { Bonding } from "../artifacts/types/Bonding";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { ERC20 } from "../tasks/types/ERC20";
+import { ERC20 } from "../artifacts/types/ERC20";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { swapToUpdateOracle } from "./utils/swap";
 

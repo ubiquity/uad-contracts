@@ -26,6 +26,12 @@ yarn install
 
 ## Building
 
+If it is the first compilation, and only the first time, we need to generate the types first:
+
+```sh
+yarn run first
+```
+
 Compile the smart contracts:
 
 ```sh
@@ -49,6 +55,40 @@ npx hardhat run --network <your-network> scripts/deployment.ts
 ```
 
 Note that by default smart contracts will be deployed locally using hardhat development node.
+
+## Mainnet monitoring
+
+### Token
+
+this task will retrieve information about all our tokens including LP token
+
+```sh
+npx hardhat --network mainnet token
+```
+
+### Incentives
+
+this task will retrieve information about the current incentives and penalty on uAD buy and sell
+
+```sh
+npx hardhat --network mainnet incentive
+```
+
+### Metapool
+
+this task will retrieve information about our curve uAD-3CRV metapool
+
+```sh
+npx hardhat --network mainnet metapool
+```
+
+### Price
+
+this task will retrieve information about uAD price
+
+```sh
+npx hardhat --network mainnet price
+```
 
 ## Testing
 

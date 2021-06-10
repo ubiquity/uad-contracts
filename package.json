@@ -4,6 +4,7 @@
   "description": "Bonding system for the Universal Digital Dollar",
   "main": "index.js",
   "scripts": {
+    "first": "npx hardhat clean && TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
     "compile": "hardhat compile",
     "test": "npx hardhat test",
     "test:coverage": "npx hardhat coverage",
@@ -57,6 +58,7 @@
     "@types/mocha": "^8.2.0",
     "@typescript-eslint/eslint-plugin": "^4.26.0",
     "@typescript-eslint/parser": "^4.26.0",
+    "@uniswap/sdk": "^3.0.3",
     "abi-to-sol": "^0.2.1",
     "babel-eslint": "^10.1.0",
     "big.js": "^6.1.0",

@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
+import { BigNumber } from "ethers";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
@@ -12,7 +13,6 @@ import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
-import { BigNumber } from "ethers";
 
 function pressAnyKey(msg = "Press any key to continue") {
   return new Promise((resolve) => {
