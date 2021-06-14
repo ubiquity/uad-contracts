@@ -111,9 +111,7 @@ if you experience some timeout issues try running tests one by one
 ## Contracts
 
 - twapOracle
-
   - `0x7944d5b8f9668AfB1e648a61e54DEa8DE734c1d1`
-
 - debtCoupon
   - `0xAd7cceAB6d1633B1760A38650Ad12632B2C7a831`
 - uADToken
@@ -149,9 +147,9 @@ if you experience some timeout issues try running tests one by one
 - UbiquityAlgorithmicDollarManager
   - `0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98`
 - curveIncentive
-  - ` 0x86965cdB680350C5de2Fd8D28055DecDDD52745E`
+  - `0x86965cdB680350C5de2Fd8D28055DecDDD52745E`
 - treasury
-  - ` 0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd | ubq.eth(edited)`
+  - `0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd | ubq.eth`
 
 ## Licensing
 
