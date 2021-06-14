@@ -587,7 +587,7 @@ describe("DebtCouponManager", () => {
     expect(uarTotalSupply).to.equal(secondAccUARBalAfter);
     await debtCoupon.updateTotalDebt();
     const totalOutstandingDebt = BigNumber.from(
-      await ethers.provider.getStorageAt(debtCoupon.address, 4)
+      await ethers.provider.getStorageAt(debtCoupon.address, 6)
     );
 
     expect(totalOutstandingDebt).to.equal(uDebtCoupons);
@@ -770,6 +770,7 @@ describe("DebtCouponManager", () => {
       amountToExchangeForCoupon
     );
     // we also exchange the same amount of uAD for uDEBT
+
     await expect(
       debtCouponMgr
         .connect(secondAccount)
@@ -808,7 +809,7 @@ describe("DebtCouponManager", () => {
     expect(uarTotalSupply).to.equal(secondAccUARBalAfter);
     await debtCoupon.updateTotalDebt();
     const totalOutstandingDebt = BigNumber.from(
-      await ethers.provider.getStorageAt(debtCoupon.address, 4)
+      await ethers.provider.getStorageAt(debtCoupon.address, 6)
     );
     expect(totalOutstandingDebt).to.equal(uDebtCoupons);
 
@@ -993,6 +994,7 @@ describe("DebtCouponManager", () => {
         expiryBlock + 1,
         uDebtToMint
       );
+
     const debtCouponsAfterDebtRedeem = await debtCoupon.balanceOf(
       secondAccountAdr,
       expiryBlock + 1
@@ -1233,7 +1235,11 @@ describe("DebtCouponManager", () => {
       expiryBlock
     );
     expect(debtCoupons).to.equal(couponToMint);
-
+    const approve = await debtCoupon.isApprovedForAll(
+      secondAccountAdr,
+      debtCouponMgr.address
+    );
+    expect(approve).to.be.false;
     // check outstanding debt now
     const totalOutstandingDebt = await debtCoupon.getTotalOutstandingDebt();
     expect(totalOutstandingDebt).to.equal(debtCoupons);
@@ -1244,28 +1250,55 @@ describe("DebtCouponManager", () => {
     await ethers.provider.getBlock(await ethers.provider.getBlockNumber());
     const expiredCouponConvertionRate =
       await debtCouponMgr.expiredCouponConvertionRate();
+
+    const hl = await debtCoupon.holderTokens(secondAccountAdr);
+    expect(hl.length).to.equal(1);
+    expect(hl[0]).to.equal(expiryBlock);
+
+    // DebtCouponManager should be approved to move user's debtCoupon
+    await debtCoupon
+      .connect(secondAccount)
+      .setApprovalForAll(debtCouponMgr.address, true);
+    const approveAfter = await debtCoupon.isApprovedForAll(
+      secondAccountAdr,
+      debtCouponMgr.address
+    );
+    expect(approveAfter).to.be.true;
     await expect(
       debtCouponMgr
         .connect(secondAccount)
-        .burnExpiredCouponsForUGOV(expiryBlock, debtCoupons.sub(oneETH))
+        .burnExpiredCouponsForUGOV(
+          expiryBlock,
+          debtCoupons.sub(ethers.utils.parseEther("0.5"))
+        )
     )
       .to.emit(debtCoupon, "BurnedCoupons")
-      .withArgs(secondAccountAdr, expiryBlock, debtCoupons.sub(oneETH))
+      .withArgs(
+        secondAccountAdr,
+        expiryBlock,
+        debtCoupons.sub(ethers.utils.parseEther("0.5"))
+      )
       .and.to.emit(uGOV, "Minting")
       .withArgs(
         secondAccountAdr,
         debtCouponMgr.address,
-        debtCoupons.sub(oneETH).div(expiredCouponConvertionRate)
+        debtCoupons
+          .sub(ethers.utils.parseEther("0.5"))
+          .div(expiredCouponConvertionRate)
       )
       .and.to.emit(uGOV, "Transfer")
       .withArgs(
         ethers.constants.AddressZero,
         secondAccountAdr,
-        debtCoupons.sub(oneETH).div(expiredCouponConvertionRate)
+        debtCoupons
+          .sub(ethers.utils.parseEther("0.5"))
+          .div(expiredCouponConvertionRate)
       );
     const balanceUGOVAfter = await uGOV.balanceOf(secondAccountAdr);
     expect(balanceUGOVAfter.sub(balanceUGOVBefore)).to.equal(
-      debtCoupons.sub(oneETH).div(expiredCouponConvertionRate)
+      debtCoupons
+        .sub(ethers.utils.parseEther("0.5"))
+        .div(expiredCouponConvertionRate)
     );
     // Even if price is above 1 we should be able to redeem coupon
 
@@ -1296,25 +1329,25 @@ describe("DebtCouponManager", () => {
     await expect(
       debtCouponMgr
         .connect(secondAccount)
-        .burnExpiredCouponsForUGOV(expiryBlock, oneETH)
+        .burnExpiredCouponsForUGOV(expiryBlock, ethers.utils.parseEther("0.5"))
     )
       .to.emit(debtCoupon, "BurnedCoupons")
-      .withArgs(secondAccountAdr, expiryBlock, oneETH)
+      .withArgs(secondAccountAdr, expiryBlock, ethers.utils.parseEther("0.5"))
       .and.to.emit(uGOV, "Minting")
       .withArgs(
         secondAccountAdr,
         debtCouponMgr.address,
-        oneETH.div(expiredCouponConvertionRate)
+        ethers.utils.parseEther("0.5").div(expiredCouponConvertionRate)
       )
       .and.to.emit(uGOV, "Transfer")
       .withArgs(
         ethers.constants.AddressZero,
         secondAccountAdr,
-        oneETH.div(expiredCouponConvertionRate)
+        ethers.utils.parseEther("0.5").div(expiredCouponConvertionRate)
       );
     const balanceUGOVAfter2ndRedeem = await uGOV.balanceOf(secondAccountAdr);
     expect(balanceUGOVAfter2ndRedeem.sub(balanceUGOVAfter)).to.equal(
-      oneETH.div(expiredCouponConvertionRate)
+      ethers.utils.parseEther("0.5").div(expiredCouponConvertionRate)
     );
   });
   it("setExpiredCouponConvertionRate should work", async () => {
@@ -1533,6 +1566,20 @@ describe("DebtCouponManager", () => {
       .to.emit(debtCoupon, "MintedCoupons")
       .withArgs(secondAccountAdr, expiryBlock, couponToMint);
 
+    const debtIds = await debtCoupon.holderTokens(secondAccountAdr);
+    const debtBalanceOfs = debtIds.map((id) => {
+      return debtCoupon.balanceOf(secondAccountAdr, id);
+    });
+    const debtBalances = await Promise.all(debtBalanceOfs);
+    let fullBalance = BigNumber.from(0);
+    if (debtBalances.length > 0) {
+      fullBalance = debtBalances.reduce((prev, cur) => {
+        return prev.add(cur);
+      });
+    }
+    expect(fullBalance).to.equal(couponToMint);
+    expect(debtIds.length).to.equal(1);
+    expect(debtIds[0]).to.equal(expiryBlock);
     const balanceAfter = await uAD.balanceOf(secondAccountAdr);
 
     expect(
@@ -1660,6 +1707,14 @@ describe("DebtCouponManager", () => {
         expiryBlock,
         debtCoupons
       );
+
+    const debtAfterIds = await debtCoupon.holderTokens(secondAccountAdr);
+    expect(debtAfterIds.length).to.equal(1);
+    const debtBalanceAfter = await debtCoupon.balanceOf(
+      secondAccountAdr,
+      debtAfterIds[0]
+    );
+    expect(debtBalanceAfter).to.equal(0);
     // we minted more uAD than what we needed for our coupon
     expect(mintableUAD).to.be.gt(debtCoupons);
 

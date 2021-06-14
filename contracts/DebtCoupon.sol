@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "./ERC1155Ubiquity.sol";
 import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 
 /// @title A coupon redeemable for dollars with an expiry block number
 /// @notice An ERC1155 where the token ID is the expiry block number
 /// @dev Implements ERC1155 so receiving contracts must implement IERC1155Receiver
-contract DebtCoupon is ERC1155 {
+contract DebtCoupon is ERC1155Ubiquity {
     using StructuredLinkedList for StructuredLinkedList.List;
-
-    UbiquityAlgorithmicDollarManager public manager;
 
     //not public as if called externally can give inaccurate value. see method
     uint256 private _totalOutstandingDebt;
@@ -39,7 +37,7 @@ contract DebtCoupon is ERC1155 {
     }
 
     //@dev URI param is if we want to add an off-chain meta data uri associated with this contract
-    constructor(address _manager) ERC1155("URI") {
+    constructor(address _manager) ERC1155Ubiquity(_manager, "URI") {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         _totalOutstandingDebt = 0;
     }
@@ -52,7 +50,7 @@ contract DebtCoupon is ERC1155 {
         uint256 amount,
         uint256 expiryBlockNumber
     ) public onlyCouponManager {
-        _mint(recipient, expiryBlockNumber, amount, "");
+        mint(recipient, expiryBlockNumber, amount, "");
         emit MintedCoupons(recipient, expiryBlockNumber, amount);
 
         //insert new relevant block number if it doesnt exist in our list
@@ -80,7 +78,7 @@ contract DebtCoupon is ERC1155 {
             balanceOf(couponOwner, expiryBlockNumber) >= amount,
             "Coupon owner not enough coupons"
         );
-        _burn(couponOwner, expiryBlockNumber, amount);
+        burn(couponOwner, expiryBlockNumber, amount);
         emit BurnedCoupons(couponOwner, expiryBlockNumber, amount);
 
         //update the total supply for that expiry and total outstanding debt

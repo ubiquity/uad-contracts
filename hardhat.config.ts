@@ -91,7 +91,9 @@ const config: HardhatUserConfig = {
       ], */
     },
     mainnet: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY || ""}`,
+      url: `https://eth-mainnet.alchemyapi.io/v2/${
+        process.env.ALCHEMY_API_KEY || ""
+      }`,
       accounts,
       gasPrice: 30,
     },
