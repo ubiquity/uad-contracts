@@ -13,18 +13,7 @@ import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
-
-function pressAnyKey(msg = "Press any key to continue") {
-  return new Promise((resolve) => {
-    console.log(msg || "Press any key to continue");
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on("data", () => {
-      // process.stdin.destroy();
-      resolve(undefined);
-    });
-  });
-}
+import pressAnyKey from "./utils/flow";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts, ethers, network } = hre;

@@ -3,8 +3,6 @@ import "@nomiclabs/hardhat-waffle";
 import { BigNumber } from "ethers";
 import {
   ChainId,
-  Fetcher,
-  WETH,
   Route,
   Pair,
   Trade,
