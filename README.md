@@ -113,7 +113,7 @@ if you experience some timeout issues try running tests one by one
 - twapOracle
   - `0x7944d5b8f9668AfB1e648a61e54DEa8DE734c1d1`
 - debtCoupon
-  - `0xAd7cceAB6d1633B1760A38650Ad12632B2C7a831`
+  - `0xcEFAF85110536eC6F78B0B71624BfA584B6fABa1`
 - uADToken
   - `0x0F644658510c95CB46955e55D7BA9DDa9E9fBEc6`
 - couponCalculator
