@@ -20,6 +20,7 @@ import { BondingShare } from "../artifacts/types/BondingShare";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
+import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 // This file is only here to make interacting with the Dapp easier,
 // feel free to ignore it if you don't need it.
 
@@ -59,12 +60,25 @@ total supply:${ethers.utils.formatEther(await uAD.totalSupply())} uAD
       "DollarMintingCalculator",
       dollarMintingCalculatorAddress
     )) as DollarMintingCalculator;
-    const dollarsToMint = await dollarMintingCalculator.getDollarsToMint();
+    const mgrtwapOracleAddress = await manager.twapOracleAddress();
+    const twapOracle = (await ethers.getContractAt(
+      "TWAPOracle",
+      mgrtwapOracleAddress
+    )) as TWAPOracle;
+    const oraclePriceuAD = await twapOracle.consult(uAD.address);
+    if (oraclePriceuAD.gt(ethers.utils.parseEther("1"))) {
+      const dollarsToMint = await dollarMintingCalculator.getDollarsToMint();
 
-    console.log(`
+      console.log(`
       Dollar to be minted
       ${ethers.utils.formatEther(dollarsToMint)} uAD
         `);
+    } else {
+      console.log(`twapPrice :${ethers.utils.formatEther(
+        oraclePriceuAD
+      )} can't calculate dollars to mint
+        `);
+    }
 
     const uGOVAdr = await manager.governanceTokenAddress();
 

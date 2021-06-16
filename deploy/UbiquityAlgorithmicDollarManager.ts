@@ -666,7 +666,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log(`
     ****
     debtCouponMgr:${debtCouponMgr.address}
-
     manager ALL VARS:
     mgrtwapOracleAddress:${mgrtwapOracleAddress}
     debtCouponAddress:${mgrdebtCouponAddress}

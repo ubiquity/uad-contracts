@@ -11,3 +11,4 @@ import "./incentive";
 import "./metapool";
 import "./price";
 import "./token";
+import "./manager";

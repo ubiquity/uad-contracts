@@ -91,6 +91,14 @@ this task will retrieve information about uAD price
 npx hardhat --network mainnet price
 ```
 
+### Manager
+
+this task will all the addresses registered in the manager
+
+```sh
+npx hardhat --network mainnet manager
+```
+
 ## Testing
 
 ### Requirements:
