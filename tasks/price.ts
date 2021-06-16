@@ -97,18 +97,19 @@ task("price", "get information about UAD price").setAction(
     1 uAD => ${ethers.utils.formatEther(oraclePriceuAD)} 3CRV
     1 3CRV => ${ethers.utils.formatEther(oraclePrice3Crv)} uAD
       `);
+    if (oraclePriceuAD.gt(ethers.utils.parseEther("1"))) {
+      const dollarMintingCalculatorAddress =
+        await manager.dollarMintingCalculatorAddress();
+      const dollarMintingCalculator = (await ethers.getContractAt(
+        "DollarMintingCalculator",
+        dollarMintingCalculatorAddress
+      )) as DollarMintingCalculator;
+      const dollarsToMint = await dollarMintingCalculator.getDollarsToMint();
 
-    const dollarMintingCalculatorAddress =
-      await manager.dollarMintingCalculatorAddress();
-    const dollarMintingCalculator = (await ethers.getContractAt(
-      "DollarMintingCalculator",
-      dollarMintingCalculatorAddress
-    )) as DollarMintingCalculator;
-    const dollarsToMint = await dollarMintingCalculator.getDollarsToMint();
-
-    console.log(`
+      console.log(`
       Dollar to be minted
       ${ethers.utils.formatEther(dollarsToMint)} uAD
         `);
+    }
   }
 );
