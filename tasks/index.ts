@@ -12,3 +12,4 @@ import "./metapool";
 import "./price";
 import "./token";
 import "./manager";
+import "./priceReset";
