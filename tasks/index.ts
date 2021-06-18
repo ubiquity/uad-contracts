@@ -13,3 +13,4 @@ import "./price";
 import "./token";
 import "./manager";
 import "./priceReset";
+import "./excessDollarDistribution";
