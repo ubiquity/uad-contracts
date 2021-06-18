@@ -1,6 +1,5 @@
 import { task, types } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
-import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
