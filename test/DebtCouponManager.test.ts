@@ -431,11 +431,11 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         excessUAD
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .and.to.emit(uAD, "Transfer") //  transfer of 50% of excess minted uAD to treasury
       .withArgs(
         excessDollarsDistributor.address,
         await treasury.getAddress(),
-        excessUAD.div(10).toString()
+        excessUAD.div(2).toString()
       )
       .and.to.emit(uAR, "Transfer") // burn uAR
       .withArgs(
@@ -901,11 +901,11 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         excessUAD
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .and.to.emit(uAD, "Transfer") //  transfer of 50% of excess minted uAD to treasury
       .withArgs(
         excessDollarsDistributor.address,
         await treasury.getAddress(),
-        excessUAD.div(10).toString()
+        excessUAD.div(2).toString()
       )
       .and.to.emit(uAR, "Transfer") // burn uAR
       .withArgs(
@@ -1693,11 +1693,11 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         excessUAD
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .and.to.emit(uAD, "Transfer") //  transfer of 50% of excess minted uAD to treasury
       .withArgs(
         excessDollarsDistributor.address,
         await treasury.getAddress(),
-        excessUAD.div(10).toString()
+        excessUAD.div(2).toString()
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
@@ -1758,7 +1758,6 @@ describe("DebtCouponManager", () => {
     const expected = lpTo3CRV.div(100).mul(99);
     // approve metapool to burn LP on behalf of admin
     await metaPool.approve(metaPool.address, admBalance);
-
     await metaPool["remove_liquidity_one_coin(uint256,int128,uint256)"](
       oneETH,
       1,
@@ -1871,11 +1870,11 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         excessUAD
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .and.to.emit(uAD, "Transfer") //  transfer of 50% of excess minted uAD to treasury
       .withArgs(
         excessDollarsDistributor.address,
         await treasury.getAddress(),
-        excessUAD.div(10).toString()
+        excessUAD.div(2).toString()
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
@@ -1940,17 +1939,17 @@ describe("DebtCouponManager", () => {
       )
       .and.to.emit(uAD, "Transfer") //  transfer of uAD to user
       .withArgs(debtCouponMgr.address, secondAccountAdr, oneETH)
-      .and.to.emit(uAD, "Transfer") //  transfer  excess minted uAD to excess distributor
+      .and.to.emit(uAD, "Transfer") //  transfer excess minted uAD to excess distributor
       .withArgs(
         debtCouponMgr.address,
         excessDollarsDistributor.address,
         dollarsToMint
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .and.to.emit(uAD, "Transfer") //  transfer of 50% of excess minted uAD to treasury
       .withArgs(
         excessDollarsDistributor.address,
         await treasury.getAddress(),
-        dollarsToMint.div(10)
+        dollarsToMint.div(2).add(1)
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
@@ -2097,11 +2096,11 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         excessUAD
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .and.to.emit(uAD, "Transfer") //  transfer of 50% of excess minted uAD to treasury
       .withArgs(
         excessDollarsDistributor.address,
         await treasury.getAddress(),
-        excessUAD.div(10).toString()
+        excessUAD.div(2).toString()
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(
@@ -2218,11 +2217,11 @@ describe("DebtCouponManager", () => {
         excessDollarsDistributor.address,
         mintableUADThisTime.sub(newDebtCoupons)
       )
-      .and.to.emit(uAD, "Transfer") //  transfer of 10% of excess minted uAD to treasury
+      .and.to.emit(uAD, "Transfer") //  transfer of 50% of excess minted uAD to treasury
       .withArgs(
         excessDollarsDistributor.address,
         await treasury.getAddress(),
-        mintableUADThisTime.sub(newDebtCoupons).div(10)
+        mintableUADThisTime.sub(newDebtCoupons).div(2)
       )
       .and.to.emit(debtCoupon, "TransferSingle") // ERC1155
       .withArgs(

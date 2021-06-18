@@ -41,17 +41,18 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
             // curve uAD-3CRV liquidity pool
             uint256 tenPercent =
                 excessDollars.fromUInt().div(uint256(10).fromUInt()).toUInt();
-
+            uint256 fiftyPercent =
+                excessDollars.fromUInt().div(uint256(2).fromUInt()).toUInt();
             IERC20Ubiquity(manager.dollarTokenAddress()).safeTransfer(
                 treasuryAddress,
-                tenPercent
+                fiftyPercent
             );
             // convert uAD to uGOV-UAD LP on sushi and burn them
             _governanceBuyBackLPAndBurn(tenPercent);
             // convert remaining uAD to curve LP tokens
             // and transfer the curve LP tokens to the bonding contract
             _convertToCurveLPAndTransfer(
-                excessDollars - tenPercent - tenPercent
+                excessDollars - fiftyPercent - tenPercent
             );
         }
     }
@@ -131,7 +132,7 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
             amount
         );
 
-        // swap 3CRV=> x uAD
+        // swap  amount of uAD => 3CRV
         uint256 amount3CRVReceived =
             IMetaPool(manager.stableSwapMetaPoolAddress()).exchange(
                 0,

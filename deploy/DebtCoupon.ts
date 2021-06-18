@@ -12,7 +12,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     from: admin.address,
     log: true,
   };
-  let mgrAdr = "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
+  let mgrAdr = "";
   if (mgrAdr.length === 0) {
     const manager = await deployments.deploy(
       "UbiquityAlgorithmicDollarManager",

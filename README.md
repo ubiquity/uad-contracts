@@ -116,6 +116,14 @@ yarn run test
 
 if you experience some timeout issues try running tests one by one
 
+### Forking
+
+to run a local node that forks mainnet you can run
+
+```sh
+yarn hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/$ALCHEMY_API_KEY --fork-block-number 12658501 --no-deploy --show-accounts
+```
+
 ## Contracts
 
 - twapOracle
@@ -163,3 +171,7 @@ if you experience some timeout issues try running tests one by one
 
 Copyright (c) 2021 Ubiquity
 Licensed under the MIT License
+
+```
+
+```
