@@ -5,14 +5,15 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC20Ubiquity.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ITWAPOracle.sol";
-import "./interfaces/IERC1155Ubiquity.sol";
+import "./BondingShareV2.sol";
 import "./interfaces/IUbiquityFormulas.sol";
 
-contract MasterChef {
+contract MasterChefV2 {
     using SafeERC20 for IERC20Ubiquity;
     using SafeERC20 for IERC20;
     // Info of each user.
     struct UserInfo {
+        bytes32 userID: // keccak256 of BS ID + UBQRights
         uint256 amount; // How many uAD-3CRV LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
         //
@@ -92,8 +93,8 @@ contract MasterChef {
         UserInfo storage user = userInfo[sender];
         _updatePool();
         if (user.amount > 0) {
-            uint256 pending =
-                ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
+            uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
+                user.rewardDebt;
             _safeUGOVTransfer(sender, pending);
         }
         user.amount = user.amount + _amount;
@@ -109,8 +110,8 @@ contract MasterChef {
         UserInfo storage user = userInfo[sender];
         require(user.amount >= _amount, "MC: amount too high");
         _updatePool();
-        uint256 pending =
-            ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
+        uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
+            user.rewardDebt;
         _safeUGOVTransfer(sender, pending);
         user.amount = user.amount - _amount;
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
@@ -120,11 +121,14 @@ contract MasterChef {
     /// @dev get pending uGOV rewards from MasterChef.
     /// @return amount of pending rewards transfered to msg.sender
     /// @notice only send pending rewards
-    function getRewards() external returns (uint256) {
+    function getRewards(uint256 bondingShareID) external returns (uint256) {
+        // calculate user ID
+        uint256 balance = BondingShareV2(manager.bondingShareAddress()).balanceOf(msg.sender, bondingShareID)
+uint256 rights = BondingShareV2(manager.bondingShareAddress()).balanceOf(msg.sender, bondingShareID)
         UserInfo storage user = userInfo[msg.sender];
         _updatePool();
-        uint256 pending =
-            ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
+        uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
+            user.rewardDebt;
         _safeUGOVTransfer(msg.sender, pending);
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
         return pending;
@@ -134,8 +138,8 @@ contract MasterChef {
     function pendingUGOV(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
-        uint256 lpSupply =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
+        .totalSupply();
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = _getMultiplier();
@@ -166,7 +170,7 @@ contract MasterChef {
 
         if (isPriceDiffEnough) {
             uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
-                .ugovMultiply(uGOVmultiplier, currentPrice);
+            .ugovMultiply(uGOVmultiplier, currentPrice);
             lastPrice = currentPrice;
         }
     }
@@ -177,8 +181,8 @@ contract MasterChef {
             return;
         }
         _updateUGOVMultiplier();
-        uint256 lpSupply =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
+        .totalSupply();
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
