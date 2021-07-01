@@ -7,13 +7,13 @@ import * as ABI from "../deployments/mainnet/Bonding.json"; // Contract ABI
 
 const inter = new ethers.utils.Interface(ABI.abi);
 
-// const possibleFunctionNames = ABI.abi.map((a) => a.name);
-// // console.log("Functions available: ", possibleFunctionNames.join(", "));
-
 const BONDING_CONTRACT_ADDRESS = "0x831e3674Abc73d7A3e9d8a9400AF2301c32cEF0C";
 const API_URL = "https://api.etherscan.io/api";
 const CONTRACT_GENESIS_BLOCK = 12595544;
 const DEFAULT_OUTPUT_NAME = "bonding_transactions.json";
+const contractFunctions = ABI.abi
+  .filter((a) => a.type === "function")
+  .map((a) => a.name as string);
 
 type EtherscanResponse = {
   status: string;
@@ -42,6 +42,7 @@ type CliArgs = {
     | "crvPriceReset"
     | "uADPriceReset";
   isError: boolean;
+  listFunctions: boolean;
 };
 
 type ParsedTransaction = {
@@ -54,8 +55,8 @@ type ParsedTransaction = {
 };
 
 task(
-  "getBondingContracts",
-  "Extract bonding contracts from Etherscan API and save them to a file"
+  "getBondingTransactions",
+  "Extract the bonding contract transactions from Etherscan API and save them to a file"
 )
   .addPositionalParam(
     "path",
@@ -95,6 +96,13 @@ task(
     const parsedPath = path.parse(taskArgs.path);
     if (!fs.existsSync(parsedPath.dir))
       throw new Error(`Path ${parsedPath.dir} does not exist`);
+
+    console.log("Contract functions:");
+    printInGroups(contractFunctions, 4);
+
+    if (taskArgs.name && !~contractFunctions.indexOf(taskArgs.name)) {
+      throw new Error(`Function does not exists of the contract`);
+    }
 
     try {
       const response = await fetchEtherscanBondingContract(taskArgs);
@@ -207,4 +215,16 @@ function writeToDisk(transactions: ParsedTransaction[], path: string) {
       2
     )
   );
+}
+
+function printInGroups(items: string[], groups: number) {
+  const pad = Math.max(...items.map((f) => f.length)) + 1;
+  contractFunctions
+    .reduce<string[][]>((r, e, i) => {
+      i % groups ? r[r.length - 1].push(e) : r.push([e]);
+      return r;
+    }, [])
+    .forEach((funs) =>
+      console.log("   ", ...funs.map((f) => f.padEnd(pad, " ")))
+    );
 }

@@ -3,7 +3,7 @@
 import "./accountsFromMnemonic";
 import "./accounts";
 import "./get-code";
-import "./getBondingContracts";
+import "./getBondingTransactions";
 import "./blockNumber";
 import "./chainId";
 import "./tx";
