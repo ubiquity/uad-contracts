@@ -2,6 +2,7 @@
 pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Pausable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
@@ -12,9 +13,21 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
     UbiquityAlgorithmicDollarManager public manager;
     // Mapping from account to operator approvals
     mapping(address => uint256[]) private _holderBalances;
-    mapping(uint256 => uint256) private _ubqRights;
+    mapping(uint256 => Bond) private _bonds;
+    uint256 private _totalLP;
     uint256 private _totalSupply;
-
+    struct Bond {
+        // address of the minter
+        address minter;
+        // lp amount deposited by the user
+        uint256 lpDeposited;
+        // lp that were already there when created
+        uint256 lpRewardDebt;
+        uint256 creationBlock;
+        uint256 endBlock;
+        // lp remaining for a user
+        uint256 lpAmount;
+    }
     // ----------- Modifiers -----------
     modifier onlyMinter() {
         require(
@@ -48,16 +61,27 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
     }
 
     // @dev Creates `amount` new tokens for `to`, of token type `id`.
+    /// @param to owner address
+    /// @param lpDeposited amount of LP token deposited
+    /// @param lpRewardDebt amount of excess LP token inside the bonding contract
     function mint(
         address to,
-        uint256 id,
-        uint256 amount,
-        uint256 ubqAmount
-    ) public virtual onlyMinter {
-        _mint(to, id, amount, bytes(""));
-        _totalSupply += amount;
+        uint256 lpDeposited,
+        uint256 lpRewardDebt,
+        uint256 endBlock
+    ) public virtual onlyMinter whenNotPaused returns (uint256 id) {
+        id = _totalSupply;
+        _mint(to, id, 1, bytes(""));
+        _totalSupply += 1;
         _holderBalances[to].add(id);
-        _ubqRights[id] = ubqAmount;
+        Bond storage _bond = _bonds[id];
+        _bond.minter = to;
+        _bond.lpDeposited = lpDeposited;
+        _bond.lpAmount = lpDeposited;
+        _bond.lpRewardDebt = lpRewardDebt;
+        _bond.creationBlock = block.number;
+        _bond.endBlock = endBlock;
+        _totalLP += lpDeposited;
     }
 
     // @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
@@ -103,7 +127,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256 id,
         uint256 amount,
         bytes memory data
-    ) public override {
+    ) public override whenNotPaused {
         super.safeTransferFrom(from, to, id, amount, data);
         _holderBalances[to].add(id);
     }
@@ -117,16 +141,47 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) public virtual override {
+    ) public virtual override whenNotPaused {
         super.safeBatchTransferFrom(from, to, ids, amounts, data);
         _holderBalances[to].add(ids);
     }
 
     /**
-     * @dev Total amount of tokens in with a given id.
+     * @dev Total amount of tokens  .
      */
     function totalSupply() public view virtual returns (uint256) {
         return _totalSupply;
+    }
+
+    /**
+     * @dev Total amount of LP tokens deposited.
+     */
+    function totalLP() public view virtual returns (uint256) {
+        return _totalLP;
+    }
+
+    /**
+     * @dev return bond details.
+     */
+    function getBond(uint256 id) public view returns (Bond memory) {
+        return _bonds[id];
+    }
+
+    /// @dev update bond LP amount , LP rewards debt and end block.
+    /// @param _bondId bonding sahre id
+    /// @param _lpAmount amount of LP token deposited
+    /// @param _lpRewardDebt amount of excess LP token inside the bonding contract
+    /// @param _endBlock end locking period block number
+    function updateBond(
+        uint256 _bondId,
+        uint256 _lpAmount,
+        uint256 _lpRewardDebt,
+        uint256 _endBlock
+    ) external onlyMinter whenNotPaused {
+        Bond storage bond = _bonds[_bondId];
+        bond.lpAmount = _lpAmount;
+        bond.lpRewardDebt = _lpRewardDebt;
+        bond.endBlock = _endBlock;
     }
 
     /**
@@ -145,8 +200,11 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256 id,
         uint256 amount
     ) internal virtual override whenNotPaused {
-        super._burn(account, id, amount);
-        _totalSupply -= amount;
+        require(amount == 1, "amount <> 1");
+        super._burn(account, id, 1);
+        Bond storage _bond = _bonds[id];
+        require(_bond.lpAmount == 0, "LP <> 0");
+        _totalSupply -= 1;
     }
 
     function _burnBatch(

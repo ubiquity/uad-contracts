@@ -394,9 +394,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   }
 
   const blockCountInAWeek = await bonding.blockCountInAWeek();
-  if (!blockCountInAWeek.eq(BigNumber.from(420))) {
-    await bonding.connect(admin).setBlockCountInAWeek(420);
-  }
+  // if (!blockCountInAWeek.eq(BigNumber.from(420))) {
+  await bonding.connect(admin).setBlockCountInAWeek(46550);
+  //}
 
   const bondingCtrFromMgr = await manager.bondingContractAddress();
   if (bondingCtrFromMgr !== bonding.address) {
