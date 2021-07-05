@@ -10,12 +10,6 @@ import "./utils/SafeAddArray.sol";
 
 contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
     using SafeAddArray for uint256[];
-    UbiquityAlgorithmicDollarManager public manager;
-    // Mapping from account to operator approvals
-    mapping(address => uint256[]) private _holderBalances;
-    mapping(uint256 => Bond) private _bonds;
-    uint256 private _totalLP;
-    uint256 private _totalSupply;
     struct Bond {
         // address of the minter
         address minter;
@@ -28,6 +22,14 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         // lp remaining for a user
         uint256 lpAmount;
     }
+
+    UbiquityAlgorithmicDollarManager public manager;
+    // Mapping from account to operator approvals
+    mapping(address => uint256[]) private _holderBalances;
+    mapping(uint256 => Bond) private _bonds;
+    uint256 private _totalLP;
+    uint256 private _totalSupply;
+
     // ----------- Modifiers -----------
     modifier onlyMinter() {
         require(
@@ -58,6 +60,23 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
      */
     constructor(address _manager, string memory uri) ERC1155(uri) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
+    }
+
+    /// @dev update bond LP amount , LP rewards debt and end block.
+    /// @param _bondId bonding sahre id
+    /// @param _lpAmount amount of LP token deposited
+    /// @param _lpRewardDebt amount of excess LP token inside the bonding contract
+    /// @param _endBlock end locking period block number
+    function updateBond(
+        uint256 _bondId,
+        uint256 _lpAmount,
+        uint256 _lpRewardDebt,
+        uint256 _endBlock
+    ) external onlyMinter whenNotPaused {
+        Bond storage bond = _bonds[_bondId];
+        bond.lpAmount = _lpAmount;
+        bond.lpRewardDebt = _lpRewardDebt;
+        bond.endBlock = _endBlock;
     }
 
     // @dev Creates `amount` new tokens for `to`, of token type `id`.
@@ -165,23 +184,6 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
      */
     function getBond(uint256 id) public view returns (Bond memory) {
         return _bonds[id];
-    }
-
-    /// @dev update bond LP amount , LP rewards debt and end block.
-    /// @param _bondId bonding sahre id
-    /// @param _lpAmount amount of LP token deposited
-    /// @param _lpRewardDebt amount of excess LP token inside the bonding contract
-    /// @param _endBlock end locking period block number
-    function updateBond(
-        uint256 _bondId,
-        uint256 _lpAmount,
-        uint256 _lpRewardDebt,
-        uint256 _endBlock
-    ) external onlyMinter whenNotPaused {
-        Bond storage bond = _bonds[_bondId];
-        bond.lpAmount = _lpAmount;
-        bond.lpRewardDebt = _lpRewardDebt;
-        bond.endBlock = _endBlock;
     }
 
     /**

@@ -14,8 +14,6 @@ contract MasterChefV2 {
     using SafeERC20 for IERC20Ubiquity;
     using SafeERC20 for IERC20;
 
-    uint256 private _totalShares;
-
     // Info of each user.
     struct BondingShareInfo {
         uint256 amount; // bonding rights.
@@ -37,6 +35,8 @@ contract MasterChefV2 {
         uint256 lastRewardBlock; // Last block number that uGOVs distribution occurs.
         uint256 accuGOVPerShare; // Accumulated uGOVs per share, times 1e12. See below.
     }
+
+    uint256 private _totalShares;
 
     // Ubiquity Manager
     UbiquityAlgorithmicDollarManager public manager;
@@ -106,8 +106,8 @@ contract MasterChefV2 {
         BondingShareInfo storage bs = _bsInfo[_bondingShareID];
         _updatePool();
         if (bs.amount > 0) {
-            uint256 pending = ((bs.amount * pool.accuGOVPerShare) / 1e12) -
-                bs.rewardDebt;
+            uint256 pending =
+                ((bs.amount * pool.accuGOVPerShare) / 1e12) - bs.rewardDebt;
             _safeUGOVTransfer(to, pending);
         }
         bs.amount = bs.amount + _amount;
@@ -125,8 +125,8 @@ contract MasterChefV2 {
         BondingShareInfo storage bs = _bsInfo[_bondingShareID];
         require(bs.amount >= _amount, "MC: amount too high");
         _updatePool();
-        uint256 pending = ((bs.amount * pool.accuGOVPerShare) / 1e12) -
-            bs.rewardDebt;
+        uint256 pending =
+            ((bs.amount * pool.accuGOVPerShare) / 1e12) - bs.rewardDebt;
         // send UGOV to Bonding Share holder
 
         _safeUGOVTransfer(to, pending);
@@ -151,8 +151,8 @@ contract MasterChefV2 {
         // calculate user reward
         BondingShareInfo storage user = _bsInfo[bondingShareID];
         _updatePool();
-        uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
-            user.rewardDebt;
+        uint256 pending =
+            ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
         _safeUGOVTransfer(msg.sender, pending);
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
         return pending;
@@ -166,8 +166,8 @@ contract MasterChefV2 {
     {
         BondingShareInfo storage user = _bsInfo[bondingShareID];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
-        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-        .totalSupply();
+        uint256 lpSupply =
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = _getMultiplier();
@@ -216,7 +216,7 @@ contract MasterChefV2 {
 
         if (isPriceDiffEnough) {
             uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
-            .ugovMultiply(uGOVmultiplier, currentPrice);
+                .ugovMultiply(uGOVmultiplier, currentPrice);
             lastPrice = currentPrice;
         }
     }
@@ -227,8 +227,8 @@ contract MasterChefV2 {
             return;
         }
         _updateUGOVMultiplier();
-        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-        .totalSupply();
+        uint256 lpSupply =
+            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
