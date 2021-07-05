@@ -32,11 +32,14 @@ contract BondingFormulas {
     /// @param _bond , bonding share
     /// @param _amount , amount of LP tokens
     /// @notice rewards = _amount;
-    function LpRewardsNormalization(
+    // solhint-disable-block  no-unused-vars
+    /* solhint-disable no-unused-vars */
+    function lpRewardsNormalization(
         BondingShareV2.Bond memory _bond,
         uint256[2] memory _shareInfo,
         uint256 _amount
     ) public pure returns (uint256) {
         return _amount;
     }
+    /* solhint-enable no-unused-vars */
 }

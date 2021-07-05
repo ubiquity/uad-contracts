@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { BigNumber } from "ethers";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
@@ -393,10 +392,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     await manager.connect(admin).grantRole(UBQ_BURNER_ROLE, bonding.address);
   }
 
-  const blockCountInAWeek = await bonding.blockCountInAWeek();
-  // if (!blockCountInAWeek.eq(BigNumber.from(420))) {
   await bonding.connect(admin).setBlockCountInAWeek(46550);
-  //}
+  const blockCountInAWeek = await bonding.blockCountInAWeek();
+  deployments.log("blockCountInAWeek set to:", blockCountInAWeek);
 
   const bondingCtrFromMgr = await manager.bondingContractAddress();
   if (bondingCtrFromMgr !== bonding.address) {

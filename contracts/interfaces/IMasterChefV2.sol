@@ -23,13 +23,6 @@ interface IMasterChefV2 {
         uint256 bondingShareID
     );
 
-    // Info of each user that stakes LP tokens.
-
-    function getBondingShareInfo(uint256 _id)
-        external
-        view
-        returns (uint256[2] memory);
-
     function deposit(
         address sender,
         uint256 amount,
@@ -42,6 +35,12 @@ interface IMasterChefV2 {
         uint256 amount,
         uint256 bondingShareID
     ) external;
+
+    // Info about a bondinh share
+    function getBondingShareInfo(uint256 _id)
+        external
+        view
+        returns (uint256[2] memory);
 
     // Total amount of shares
     function totalShares() external view returns (uint256);
