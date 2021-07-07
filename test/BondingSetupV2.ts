@@ -72,23 +72,24 @@ const deposit: IbondTokens = async function (
   duration: number
 ) {
   const signerAdr = await signer.getAddress();
-  await metaPool.connect(signer).approve(bonding.address, amount);
+  await metaPool.connect(signer).approve(bondingV2.address, amount);
   const blockBefore = await ethers.provider.getBlock(
     await ethers.provider.getBlockNumber()
   );
-  const n = blockBefore.number + 1 + duration * blockCountInAWeek.toNumber();
-  const endBlock = n - (n % 100);
-  const zz1 = await bonding.bondingDiscountMultiplier(); // zz1 = zerozero1 = 0.001 ether = 10^16
+  const endBlock =
+    blockBefore.number + 1 + duration * blockCountInAWeek.toNumber();
+  const zz1 = await bondingV2.bondingDiscountMultiplier(); // zz1 = zerozero1 = 0.001 ether = 10^16
   const multiplier = BigNumber.from(
     await ubiquityFormulas.durationMultiply(amount, duration, zz1)
   );
   const id = await bondingShareV2.totalSupply();
+
   await expect(bondingV2.connect(signer).deposit(amount, duration))
     .to.emit(bondingShareV2, "TransferSingle")
-    .withArgs(bonding.address, ethers.constants.AddressZero, signerAdr, id, 1)
+    .withArgs(bondingV2.address, ethers.constants.AddressZero, signerAdr, id, 1)
     .and.to.emit(bondingV2, "Deposit")
     .withArgs(signerAdr, id, amount, multiplier, duration, endBlock);
-
+  console.log(`bondingV2-deposit `);
   // 1 week = blockCountInAWeek blocks
 
   const bond: BigNumber = await bondingShareV2.balanceOf(signerAdr, id);
@@ -413,7 +414,6 @@ async function bondingSetup(): Promise<{
   bondingShareV2 = (await (
     await ethers.getContractFactory("BondingShareV2")
   ).deploy(manager.address, uri)) as BondingShareV2;
-
   await manager.setBondingShareAddress(bondingShareV2.address);
   const managerBondingShareAddress = await manager.bondingShareAddress();
   expect(bondingShareV2.address).to.be.equal(managerBondingShareAddress);
@@ -434,6 +434,8 @@ async function bondingSetup(): Promise<{
     [1, 208]
   )) as BondingV2;
 
+  // bondingV2 should have the UBQ_MINTER_ROLE to mint bonding shares
+  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, bondingV2.address);
   await bondingV2.setBlockCountInAWeek(420);
   blockCountInAWeek = await bondingV2.blockCountInAWeek();
   await manager.setBondingContractAddress(bondingV2.address);
