@@ -3,7 +3,7 @@ import { ethers, Signer, BigNumber } from "ethers";
 import { Bonding } from "../artifacts/types/Bonding";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { bondingSetup, deposit } from "./BondingSetupV2";
+import { bondingSetupV2, deposit } from "./BondingSetupV2";
 import { mineNBlock } from "./utils/hardhatNode";
 
 describe("migration", () => {
@@ -18,7 +18,7 @@ describe("migration", () => {
   let blockCountInAWeek: BigNumber;
   beforeEach(async () => {
     ({ secondAccount, uAD, bonding, bondingShare, sablier, blockCountInAWeek } =
-      await bondingSetup());
+      await bondingSetupV2());
   });
   it("onlyMigrator can call setMigrator  ", async () => {});
   it("setMigrator should work", async () => {});
