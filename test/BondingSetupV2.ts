@@ -54,7 +54,10 @@ let blockCountInAWeek: BigNumber;
 
 type IdBond = {
   id: BigNumber;
-  bond: BigNumber;
+  bsAmount: BigNumber;
+  shares: BigNumber;
+  creationBlock: number;
+  endBlock: number;
 };
 interface IbondTokens {
   (signer: Signer, amount: BigNumber, duration: number): Promise<IdBond>;
@@ -79,22 +82,21 @@ const deposit: IbondTokens = async function (
   const endBlock =
     blockBefore.number + 1 + duration * blockCountInAWeek.toNumber();
   const zz1 = await bondingV2.bondingDiscountMultiplier(); // zz1 = zerozero1 = 0.001 ether = 10^16
-  const multiplier = BigNumber.from(
+  const shares = BigNumber.from(
     await ubiquityFormulas.durationMultiply(amount, duration, zz1)
   );
   const id = await bondingShareV2.totalSupply();
-
+  const creationBlock = (await ethers.provider.getBlockNumber()) + 1;
   await expect(bondingV2.connect(signer).deposit(amount, duration))
     .to.emit(bondingShareV2, "TransferSingle")
     .withArgs(bondingV2.address, ethers.constants.AddressZero, signerAdr, id, 1)
     .and.to.emit(bondingV2, "Deposit")
-    .withArgs(signerAdr, id, amount, multiplier, duration, endBlock);
+    .withArgs(signerAdr, id, amount, shares, duration, endBlock);
   console.log(`bondingV2-deposit `);
   // 1 week = blockCountInAWeek blocks
 
-  const bond: BigNumber = await bondingShareV2.balanceOf(signerAdr, id);
-
-  return { id, bond };
+  const bsAmount: BigNumber = await bondingShareV2.balanceOf(signerAdr, id);
+  return { id, bsAmount, shares, creationBlock, endBlock };
 };
 
 // withdraw bonding shares of ID belonging to the signer and return the
