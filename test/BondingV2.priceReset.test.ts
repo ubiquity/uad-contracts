@@ -3,7 +3,7 @@ import { ethers, Signer, BigNumber } from "ethers";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { bondingSetup } from "./BondingSetupV2";
+import { bondingSetupV2 } from "./BondingSetupV2";
 import { mineNBlock } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { ERC20 } from "../artifacts/types/ERC20";
@@ -35,7 +35,7 @@ describe("price reset", () => {
       bondingShareV2,
       sablier,
       blockCountInAWeek,
-    } = await bondingSetup());
+    } = await bondingSetupV2());
   });
   it("onlyBondingManager can call uADPriceReset  ", async () => {
     await expect(

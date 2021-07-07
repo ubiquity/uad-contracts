@@ -186,13 +186,10 @@ contract BondingV2 is CollectableDust, Pausable {
             amount
         );
         // remove one coin
-        uint256 expected = (metaPool.calc_withdraw_one_coin(amount, 0) * 99) /
-            100;
-        // update twap
         uint256 coinWithdrawn = metaPool.remove_liquidity_one_coin(
             amount,
             0,
-            expected
+            0
         );
         ITWAPOracle(manager.twapOracleAddress()).update();
         uint256 toTransfer = IERC20(manager.dollarTokenAddress()).balanceOf(
@@ -208,6 +205,7 @@ contract BondingV2 is CollectableDust, Pausable {
             toTransfer,
             currentTokenPrice()
         );
+        // TODO remove totalLp
     }
 
     /// @dev crvPriceReset remove 3CRV unilateraly from the curve LP share sitting inside
@@ -228,13 +226,11 @@ contract BondingV2 is CollectableDust, Pausable {
             amount
         );
         // remove one coin
-        uint256 expected = (metaPool.calc_withdraw_one_coin(amount, 1) * 99) /
-            100;
         // update twap
         uint256 coinWithdrawn = metaPool.remove_liquidity_one_coin(
             amount,
             1,
-            expected
+            0
         );
         ITWAPOracle(manager.twapOracleAddress()).update();
         uint256 toTransfer = IERC20(manager.curve3PoolTokenAddress()).balanceOf(
@@ -250,6 +246,7 @@ contract BondingV2 is CollectableDust, Pausable {
             toTransfer,
             currentTokenPrice()
         );
+        // TODO remove totalLp
     }
 
     function setBondingFormulasAddress(address _bondingFormulasAddress)
