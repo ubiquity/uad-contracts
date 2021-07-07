@@ -201,7 +201,6 @@ async function bondingSetup(): Promise<{
   await bonding.setBlockCountInAWeek(420);
   blockCountInAWeek = await bonding.blockCountInAWeek();
   await manager.setBondingContractAddress(bonding.address);
-
   // DEPLOY BondingShare Contract
   bondingShare = (await (
     await ethers.getContractFactory("BondingShare")
@@ -217,7 +216,6 @@ async function bondingSetup(): Promise<{
   await bondingShare
     .connect(thirdAccount)
     .setApprovalForAll(bonding.address, true);
-
   // DEPLOY UAD token Contract
   uAD = (await (
     await ethers.getContractFactory("UbiquityAlgorithmicDollar")
@@ -253,7 +251,6 @@ async function bondingSetup(): Promise<{
       uAD.mint(signer, ethers.utils.parseEther("10000"))
   );
   await Promise.all(mintings);
-
   // Impersonate curve whale account
   await network.provider.request({
     method: "hardhat_impersonateAccount",
@@ -288,7 +285,6 @@ async function bondingSetup(): Promise<{
     4000000
   );
   metaPoolAddr = await manager.stableSwapMetaPoolAddress();
-
   // GET curve meta pool contract
   metaPool = (await ethers.getContractAt(
     "IMetaPool",
@@ -311,7 +307,6 @@ async function bondingSetup(): Promise<{
     await ethers.getContractFactory("TWAPOracle")
   ).deploy(metaPoolAddr, uAD.address, curve3CrvToken)) as TWAPOracle;
   await manager.setTwapOracleAddress(twapOracle.address);
-
   // DEPLOY MasterChef
   masterChef = (await (
     await ethers.getContractFactory("MasterChef")
@@ -352,7 +347,6 @@ async function bondingSetup(): Promise<{
     [ethers.utils.parseEther("100"), ethers.utils.parseEther("100")],
     true
   );
-
   await metaPool
     .connect(bondingMinAccount)
     ["add_liquidity(uint256[2],uint256)"](
@@ -373,8 +367,14 @@ async function bondingSetup(): Promise<{
     );
 
   const bondingMinBalance = await metaPool.balanceOf(bondingMinAccountAddress);
+  await metaPool
+    .connect(bondingMinAccount)
+    .approve(bonding.address, bondingMinBalance);
   await bonding.connect(bondingMinAccount).deposit(bondingMinBalance, 1);
   const bondingMaxBalance = await metaPool.balanceOf(bondingMaxAccountAddress);
+  await metaPool
+    .connect(bondingMaxAccount)
+    .approve(bonding.address, bondingMaxBalance);
   await bonding.connect(bondingMaxAccount).deposit(bondingMaxBalance, 208);
   const bondingMaxIds = await bondingShare.holderTokens(
     bondingMaxAccountAddress
@@ -405,9 +405,15 @@ async function bondingSetup(): Promise<{
   expect(masterChefV2.address).to.be.equal(managerMasterChefV2Address);
 
   // DEPLOY BondingShareV2 Contract
+  const uri = `{
+    "name": "Bonding Share",
+    "description": "Ubiquity Bonding Share V2",
+    "image": "https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg"
+  }`;
   bondingShareV2 = (await (
     await ethers.getContractFactory("BondingShareV2")
-  ).deploy(manager.address)) as BondingShareV2;
+  ).deploy(manager.address, uri)) as BondingShareV2;
+
   await manager.setBondingShareAddress(bondingShareV2.address);
   const managerBondingShareAddress = await manager.bondingShareAddress();
   expect(bondingShareV2.address).to.be.equal(managerBondingShareAddress);

@@ -16,7 +16,7 @@ describe("Bonding1", () => {
   let sablier: string;
   let secondAccount: Signer;
   let blockCountInAWeek: BigNumber;
-  before(async () => {
+  beforeEach(async () => {
     ({ secondAccount, uAD, bonding, bondingShare, sablier, blockCountInAWeek } =
       await bondingSetup());
   });
