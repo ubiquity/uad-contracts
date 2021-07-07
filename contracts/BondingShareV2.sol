@@ -15,9 +15,9 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         address minter;
         // lp amount deposited by the user
         uint256 lpDeposited;
+        uint256 creationBlock;
         // lp that were already there when created
         uint256 lpRewardDebt;
-        uint256 creationBlock;
         uint256 endBlock;
         // lp remaining for a user
         uint256 lpAmount;
