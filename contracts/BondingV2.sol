@@ -16,6 +16,7 @@ import "./interfaces/IMasterChefV2.sol";
 import "./interfaces/ITWAPOracle.sol";
 import "./interfaces/IERC1155Ubiquity.sol";
 import "./utils/CollectableDust.sol";
+import "hardhat/console.sol";
 
 contract BondingV2 is CollectableDust, Pausable {
     using SafeERC20 for IERC20;
@@ -312,7 +313,7 @@ contract BondingV2 is CollectableDust, Pausable {
             "Bonding: duration must be between 1 and 208 weeks"
         );
         _updateOracle();
-
+        console.log("_lpsAmount %s", _lpsAmount);
         // transfer lp token to the bonding contract
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
             msg.sender,
@@ -323,16 +324,16 @@ contract BondingV2 is CollectableDust, Pausable {
         // calculate the amount of share based on the amount of lp deposited and the duration
         uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
         .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
-
+        console.log("_sharesAmount %s", _sharesAmount);
         // calculate end locking period block number
         // 1 week = 45361 blocks = 2371753*7/366
         // n = (block + duration * 45361)
         // id = n - n % blockRonding
         // blockRonding = 100 => 2 ending zeros
         uint256 _endBlock = block.number + _weeks * blockCountInAWeek;
-
+        console.log("_endBlock %s", _endBlock);
         _id = _mint(_lpsAmount, _sharesAmount, _endBlock);
-
+        console.log("_id %s", _id);
         // set masterchef for uGOV rewards
         IMasterChefV2(manager.masterChefAddress()).deposit(
             msg.sender,

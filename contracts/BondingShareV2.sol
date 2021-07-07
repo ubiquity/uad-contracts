@@ -83,6 +83,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
     /// @param to owner address
     /// @param lpDeposited amount of LP token deposited
     /// @param lpRewardDebt amount of excess LP token inside the bonding contract
+    /// @param endBlock block number when the locking period ends
     function mint(
         address to,
         uint256 lpDeposited,
