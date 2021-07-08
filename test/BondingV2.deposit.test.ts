@@ -20,6 +20,7 @@ import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { swap3CRVtoUAD } from "./utils/swap";
+import { isAmountEquivalent } from "./utils/calc";
 
 describe("deposit", () => {
   let idBlock: number;
@@ -91,7 +92,15 @@ describe("deposit", () => {
     expect(shareDetail[0]).to.equal(shares);
     await mineNBlock(blockCountInAWeek.toNumber());
   });
-  it.only("pendingLpRewards should increase after inflation ", async () => {
+  it("pendingLpRewards should increase after inflation ", async () => {
+    console.log(
+      `
+      ---*-bonding lpRewards:${ethers.utils.formatEther(
+        await bondingV2.lpRewards()
+      )}
+
+    `
+    );
     const { id, bsAmount, shares, creationBlock, endBlock } = await deposit(
       secondAccount,
       one.mul(100),
@@ -176,6 +185,7 @@ describe("deposit", () => {
     const uADPriceAfter = await twapOracle.consult(uAD.address);
     console.log(` uADPriceAfter: ${ethers.utils.formatEther(uADPriceAfter)}`);
     const lpTotalSupplyAfter = await metaPool.totalSupply();
+    expect(lpTotalSupplyAfter).to.be.gt(lpTotalSupply);
     console.log(
       `  metaPool totalSupply : ${ethers.utils.formatEther(
         lpTotalSupplyAfter
@@ -183,11 +193,13 @@ describe("deposit", () => {
     );
     const pendingLpRewards = await bondingV2.pendingLpRewards(id);
     console.log(
-      ` pendingLpRewards: ${ethers.utils.formatEther(pendingLpRewards)}`
+      ` pendingLpRewards of id:${id}: ${ethers.utils.formatEther(
+        pendingLpRewards
+      )}`
     );
-    const lpToMigrate = await bondingV2.lpToMigrate();
-    console.log(` lpToMigrate: ${ethers.utils.formatEther(lpToMigrate)}`);
     const lpRewards = await bondingV2.lpRewards();
+    // lprewards has not been updated yet
+    expect(lpRewards).to.equal(0);
     console.log(` lpRewards: ${ethers.utils.formatEther(lpRewards)}`);
 
     const accLpRewardPerShare = await bondingV2.accLpRewardPerShare();
@@ -203,5 +215,74 @@ describe("deposit", () => {
     const totalShares = await masterChefV2.totalShares();
     console.log(`total shares: ${ethers.utils.formatEther(totalShares)}`);
     expect(shares).to.equal(totalShares);
+
+    // another deposit should not get some lp rewards
+    const ibond2 = await deposit(fourthAccount, one.mul(100), 1);
+    expect(ibond2.id).to.equal(1);
+    expect(ibond2.bsAmount).to.equal(1);
+    console.log(`*** BEFORE pendingLpRewards1`);
+    const pendingLpRewards1 = await bondingV2.pendingLpRewards(id);
+    //now lprewards should have been updated
+    const lpRewardsAfter2ndDeposit = await bondingV2.lpRewards();
+
+    console.log(`***
+    lpRewardsAfter2ndDeposit:${ethers.utils.formatEther(
+      lpRewardsAfter2ndDeposit
+    )}
+    pendingLpRewards1       :${ethers.utils.formatEther(pendingLpRewards1)}`);
+    // first user should get all the rewards
+
+    const isPrecise = isAmountEquivalent(
+      pendingLpRewards1.toString(),
+      lpRewardsAfter2ndDeposit.toString(),
+      "0.0000000001"
+    );
+    expect(isPrecise).to.be.true;
+    // expect(toMint).not.to.equal(calculatedToMint);
+
+    // expect(pendingLpRewards1).to.equal(lpRewardsAfter2ndDeposit);
+
+    const pendingLpRewards2 = await bondingV2.pendingLpRewards(ibond2.id);
+    // second user should get none of the previous rewards
+    expect(pendingLpRewards2).to.equal(0);
+    console.log(`*** pendingLpRewards2`);
+    console.log(
+      `
+      bonding lp balance:${ethers.utils.formatEther(
+        await metaPool.balanceOf(bondingV2.address)
+      )}
+      bonding lpRewards:${ethers.utils.formatEther(await bondingV2.lpRewards())}
+
+      bondingshare total lp deposited:${ethers.utils.formatEther(
+        await bondingShareV2.totalLP()
+      )}
+      pendingLpRewards1 of id:${id}: ${ethers.utils.formatEther(
+        pendingLpRewards1
+      )}
+      pendingLpRewards2 of id:${ibond2.id}: ${ethers.utils.formatEther(
+        pendingLpRewards2
+      )}`
+    );
+
+    const detail2 = await bondingShareV2.getBond(ibond2.id);
+    console.log(`
+    detail2:${JSON.stringify(detail2)}
+    lpRewardDebt: ${ethers.utils.formatEther(detail2.lpRewardDebt)}
+    `);
+
+    expect(detail2.lpAmount).to.equal(one.mul(100));
+    expect(detail2.lpDeposited).to.equal(one.mul(100));
+    expect(detail2.minter).to.equal(await fourthAccount.getAddress());
+    expect(detail2.lpRewardDebt).to.equal(pendingLpRewards1);
+    expect(detail2.creationBlock).to.equal(ibond2.creationBlock);
+    expect(detail2.endBlock).to.equal(ibond2.endBlock);
+
+    // lp amount should increase
+    const totalLPAfter2ndDeposit = await bondingShareV2.totalLP();
+    expect(totalLP.add(detail2.lpAmount)).to.equal(totalLPAfter2ndDeposit);
+    // bs shares should increase
+    const totalSharesAfter2ndDeposit = await masterChefV2.totalShares();
+    expect(totalShares.add(ibond2.shares)).to.equal(totalSharesAfter2ndDeposit);
+    // do a price reset
   });
 });
