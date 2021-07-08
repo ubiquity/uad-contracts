@@ -27,13 +27,17 @@ contract BondingV2 is CollectableDust, Pausable {
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public blockCountInAWeek = 45361;
     uint256 public accLpRewardPerShare = 0;
-    uint256 public lpToMigrate; // LP that are inside the bondign contract but need to be migrated
+    //uint256 public lpToMigrate; // LP that are inside the bondign contract but need to be migrated
     uint256 public lpRewards;
     address public bondingShareV1Address;
     address public bondingFormulasAddress;
     address public migrator; // temporary address to handle migration
+    address[] private _toMigrateOriginals;
+    uint256[] private _toMigrateLpBalances;
+    uint256[] private _toMigrateWeeks;
+
     // array 0: lp deposited,  1: weeks, 2: migrated (0=false 1 =true)
-    mapping(address => uint256[]) private _v1Holders;
+    // mapping(address => uint256[]) private _v1Holders;
 
     event PriceReset(
         address _tokenWithdrawn,
@@ -101,14 +105,9 @@ contract BondingV2 is CollectableDust, Pausable {
         bondingShareV1Address = _bondingShareV1Address;
         bondingFormulasAddress = _bondingFormulasAddress;
         migrator = msg.sender;
-        for (uint256 index = 0; index < _originals.length; index++) {
-            lpToMigrate += _lpBalances[index];
-            _v1Holders[_originals[index]] = [
-                _lpBalances[index],
-                _weeks[index],
-                0
-            ];
-        }
+        _toMigrateOriginals = _originals;
+        _toMigrateLpBalances = _lpBalances;
+        _toMigrateWeeks = _weeks;
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -124,44 +123,60 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 _lpBalance,
         uint256 _weeks
     ) external onlyMigrator {
-        lpToMigrate += _lpBalance;
-        _v1Holders[_original] = [_lpBalance, _weeks, 0];
+        migrate(_original, _lpBalance, _weeks);
+        /*         lpToMigrate += _lpBalance;
+        _v1Holders[_original] = [_lpBalance, _weeks, 0]; */
+    }
+
+    function migrateAll() external onlyMigrator {
+        for (uint256 index = 0; index < _toMigrateOriginals.length; index++) {
+            migrate(
+                _toMigrateOriginals[index],
+                _toMigrateLpBalances[index],
+                _toMigrateWeeks[index]
+            );
+        }
     }
 
     /// @dev removeUserToMigrate set  user as  migrated from V1
     /// @param _original address of v1 user
-    /// @notice user will then be able to migrate
-    function removeUserToMigrate(address _original) external onlyMigrator {
+    /// @notice user will then be able to migrate/*
+    /*function removeUserToMigrate(address _original) external onlyMigrator {
         _v1Holders[_original] = [0, 0, 1];
-    }
+    } */
 
     /// @dev migrate let a user migrate from V1
     /// @notice user will then be able to migrate
-    function migrate() external returns (uint256 _id) {
-        require(
+    function migrate(
+        address user,
+        uint256 _lpsAmount,
+        uint256 _weeks
+    ) internal returns (uint256 _id) {
+        /*   require(
             _v1Holders[msg.sender][0] > 0 && _v1Holders[msg.sender][2] == 0,
             "not registered or migrated"
-        );
-        uint256 _lpsAmount = _v1Holders[msg.sender][0];
+        ); */
+        /*    uint256 _lpsAmount = _v1Holders[msg.sender][0];
         uint256 _weeks = _v1Holders[msg.sender][1];
-        lpToMigrate -= _lpsAmount;
-
+        lpToMigrate -= _lpsAmount; */
+        // update the accumulated lp rewards per shares
+        _updateLpPerShare();
         // calculate the amount of share based on the amount of lp deposited and the duration
         uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
         .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
 
         // calculate end locking period block number
         uint256 endBlock = block.number + _weeks * blockCountInAWeek;
-        _id = _mint(_lpsAmount, _sharesAmount, endBlock);
+        _id = _mint(user, _lpsAmount, _sharesAmount, endBlock);
 
         // set masterchef for uGOV rewards
         IMasterChefV2(manager.masterChefAddress()).deposit(
-            msg.sender,
+            user,
             _sharesAmount,
             _id
         );
-        _v1Holders[msg.sender] = [0, 0, 1];
-        emit Migrated(msg.sender, _id, _lpsAmount, _sharesAmount, _weeks);
+        // _v1Holders[msg.sender] = [0, 0, 1];
+        emit Migrated(user, _id, _lpsAmount, _sharesAmount, _weeks);
     }
 
     function setMigrator(address _migrator) external onlyMigrator {
@@ -310,7 +325,10 @@ contract BondingV2 is CollectableDust, Pausable {
             "Bonding: duration must be between 1 and 208 weeks"
         );
         _updateOracle();
-        console.log("_lpsAmount %s", _lpsAmount);
+        console.log("## _lpsAmount %s", _lpsAmount);
+        // update the accumulated lp rewards per shares
+        _updateLpPerShare();
+
         // transfer lp token to the bonding contract
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
             msg.sender,
@@ -321,16 +339,16 @@ contract BondingV2 is CollectableDust, Pausable {
         // calculate the amount of share based on the amount of lp deposited and the duration
         uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
         .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
-        console.log("_sharesAmount %s", _sharesAmount);
+        console.log("## _sharesAmount %s", _sharesAmount);
         // calculate end locking period block number
         // 1 week = 45361 blocks = 2371753*7/366
         // n = (block + duration * 45361)
         // id = n - n % blockRonding
         // blockRonding = 100 => 2 ending zeros
         uint256 _endBlock = block.number + _weeks * blockCountInAWeek;
-        console.log("_endBlock %s", _endBlock);
-        _id = _mint(_lpsAmount, _sharesAmount, _endBlock);
-        console.log("_id %s", _id);
+        console.log("## _endBlock %s", _endBlock);
+        _id = _mint(msg.sender, _lpsAmount, _sharesAmount, _endBlock);
+        console.log("## _id %s", _id);
         // set masterchef for uGOV rewards
         IMasterChefV2(manager.masterChefAddress()).deposit(
             msg.sender,
@@ -536,16 +554,42 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 lpBalance = IERC20(manager.stableSwapMetaPoolAddress())
         .balanceOf(address(this));
         // the excess LP is the current balance minus the total deposited LP
-        uint256 currentLpRewards = lpBalance - bonding.totalLP();
-        uint256 newLpRewards = currentLpRewards - lpRewards;
+        console.log(
+            "## lpBalance:%s bonding.totalLP():%s  ",
+            lpBalance,
+            bonding.totalLP()
+        );
 
-        uint256 curAccLpRewardPerShare = accLpRewardPerShare +
-            ((newLpRewards * 1e12) /
-                IMasterChefV2(manager.masterChefAddress()).totalShares());
-        // we multiply the shares amount by the accumulated lpRewards per share
-        // and remove the lp Reward Debt
-        return
-            (bs[0] * (curAccLpRewardPerShare)) / (1e12) - (bond.lpRewardDebt);
+        console.log("## lpRewards:%s ", lpRewards);
+
+        if (lpBalance >= bonding.totalLP()) {
+            uint256 currentLpRewards = lpBalance - bonding.totalLP();
+            console.log("## currentLpRewards:%s ", currentLpRewards);
+            console.log("## lpRewards       :%s ", lpRewards);
+            uint256 curAccLpRewardPerShare = accLpRewardPerShare;
+            // if new rewards we should calculate the new curAccLpRewardPerShare
+            if (currentLpRewards > lpRewards) {
+                uint256 newLpRewards = currentLpRewards - lpRewards;
+                curAccLpRewardPerShare =
+                    accLpRewardPerShare +
+                    ((newLpRewards * 1e12) /
+                        IMasterChefV2(manager.masterChefAddress())
+                        .totalShares());
+            }
+            // we multiply the shares amount by the accumulated lpRewards per share
+            // and remove the lp Reward Debt
+            console.log(
+                "## bs[0]:%s curAccLpRewardPerShare:%s bond.lpRewardDebt:%s",
+                bs[0],
+                curAccLpRewardPerShare,
+                bond.lpRewardDebt
+            );
+            return
+                (bs[0] * (curAccLpRewardPerShare)) /
+                (1e12) -
+                (bond.lpRewardDebt);
+        }
+        return 0;
     }
 
     /// @dev return the amount of Lp token to be sent for the amount of shares an debt
@@ -589,25 +633,45 @@ contract BondingV2 is CollectableDust, Pausable {
         .balanceOf(address(this));
         // the excess LP is the current balance
         // minus the total deposited LP + LP that needs to be migrated
-        if (lpBalance > (bond.totalLP() + lpToMigrate)) {
-            uint256 currentLpRewards = lpBalance -
-                (bond.totalLP() + lpToMigrate);
+        uint256 totalShares = IMasterChefV2(manager.masterChefAddress())
+        .totalShares();
+        if (lpBalance >= bond.totalLP() && totalShares > 0) {
+            uint256 currentLpRewards = lpBalance - bond.totalLP();
+            console.log(
+                "##_updateLpPerShare lpBalance:%s bonding.totalLP():%s  ",
+                lpBalance,
+                bond.totalLP()
+            );
             uint256 newLpRewards = currentLpRewards - lpRewards;
+            console.log(
+                "##_updateLpPerShare currentLpRewards:%s ",
+                currentLpRewards
+            );
+            console.log(
+                "##_updateLpPerShare newLpReward     :%s ",
+                newLpRewards
+            );
             // is there new LP rewards to be distributed ?
             if (newLpRewards >= 0) {
                 // we calculate the new accumulated LP rewards per share
+                console.log(
+                    "##_updateLpPerShare: accLpRewardPerShare:%s newLpRewards:%s totalShares:%s",
+                    accLpRewardPerShare,
+                    newLpRewards,
+                    totalShares
+                );
                 accLpRewardPerShare =
                     accLpRewardPerShare +
-                    ((newLpRewards * 1e12) /
-                        IMasterChefV2(manager.masterChefAddress())
-                        .totalShares());
+                    ((newLpRewards * 1e12) / totalShares);
                 // update the bonding contract lpRewards
                 lpRewards = currentLpRewards;
+                console.log("##_updateLpPerShare: lpRewards:%s  ", lpRewards);
             }
         }
     }
 
     function _mint(
+        address to,
         uint256 lpAmount,
         uint256 shares,
         uint256 endBlock
@@ -617,13 +681,13 @@ contract BondingV2 is CollectableDust, Pausable {
             _currentShareValue != 0,
             "Bonding: share value should not be null"
         );
-        // update the accumulated lp rewards per shares
-        _updateLpPerShare();
+        /* // update the accumulated lp rewards per shares
+        _updateLpPerShare(); */
         // set the lp rewards debts so that this bonding share only get lp rewards from this day
-        uint256 lpRewardDebt = shares * accLpRewardPerShare;
+        uint256 lpRewardDebt = (shares * accLpRewardPerShare) / 1e12;
         return
             BondingShareV2(manager.bondingShareAddress()).mint(
-                msg.sender,
+                to,
                 lpAmount,
                 lpRewardDebt,
                 endBlock

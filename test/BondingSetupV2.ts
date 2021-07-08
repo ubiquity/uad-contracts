@@ -139,6 +139,8 @@ const deposit: IbondTokens = async function (
 ) {
   const signerAdr = await signer.getAddress();
   await metaPool.connect(signer).approve(bondingV2.address, amount);
+  const signerLPBalanceBefore = await metaPool.balanceOf(signerAdr);
+  const bondingLPBalanceBefore = await metaPool.balanceOf(bondingV2.address);
   const blockBefore = await ethers.provider.getBlock(
     await ethers.provider.getBlockNumber()
   );
@@ -157,7 +159,10 @@ const deposit: IbondTokens = async function (
     .withArgs(signerAdr, id, amount, shares, duration, endBlock);
   console.log(`bondingV2-deposit creationBlock:${creationBlock}`);
   // 1 week = blockCountInAWeek blocks
-
+  const signerLPBalanceAfter = await metaPool.balanceOf(signerAdr);
+  const bondingLPBalanceAfter = await metaPool.balanceOf(bondingV2.address);
+  expect(signerLPBalanceBefore).to.equal(signerLPBalanceAfter.add(amount));
+  expect(bondingLPBalanceAfter).to.equal(bondingLPBalanceBefore.add(amount));
   const bsAmount: BigNumber = await bondingShareV2.balanceOf(signerAdr, id);
   return { id, bsAmount, shares, creationBlock, endBlock };
 };
@@ -599,7 +604,13 @@ async function bondingSetupV2(): Promise<{
     [bondingMinBalance, bondingMaxBalance],
     [1, 208]
   )) as BondingV2;
-
+  // send the LP token from bonding V1 to V2
+  await bonding.sendDust(
+    bondingV2.address,
+    metaPool.address,
+    bondingMinBalance.add(bondingMaxBalance)
+  );
+  console.log("6");
   // bondingV2 should have the UBQ_MINTER_ROLE to mint bonding shares
   await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, bondingV2.address);
   await bondingV2.setBlockCountInAWeek(420);

@@ -1,8 +1,6 @@
 import { ethers, Signer } from "ethers";
 import { describe, it } from "mocha";
 import { expect } from "./setup";
-import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { bondingSetupV2 } from "./BondingSetupV2";
 
@@ -10,15 +8,11 @@ describe("Bonding", () => {
   let bondingV2: BondingV2;
   let admin: Signer;
   let secondAccount: Signer;
-  let uAD: UbiquityAlgorithmicDollar;
-  let sablier: string;
   let DAI: string;
   let USDC: string;
-  let twapOracle: TWAPOracle;
 
   before(async () => {
-    ({ admin, secondAccount, uAD, bondingV2, twapOracle, sablier, DAI, USDC } =
-      await bondingSetupV2());
+    ({ admin, secondAccount, bondingV2, DAI, USDC } = await bondingSetupV2());
   });
   describe("CollectableDust", () => {
     it("Admin should be able to add protocol token (CollectableDust)", async () => {
