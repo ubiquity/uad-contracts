@@ -29,7 +29,7 @@ import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 let couponsForDollarsCalculator: CouponsForDollarsCalculator;
 let debtCoupon: DebtCoupon;
 let debtCouponMgr: DebtCouponManager;
-let lpReward: Signer;
+let fifthAccount: Signer;
 let uAR: UbiquityAutoRedeem;
 let dollarMintingCalculator: DollarMintingCalculator;
 let uarForDollarsCalculator: UARForDollarsCalculator;
@@ -67,6 +67,7 @@ let adminAddress: string;
 let secondAddress: string;
 let ubiquityFormulas: UbiquityFormulas;
 let blockCountInAWeek: BigNumber;
+let sushiUGOVPool: SushiSwapPool;
 const couponLengthBlocks = 100;
 const routerAdr = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"; // SushiV2Router02
 let router: IUniswapV2Router02;
@@ -82,7 +83,9 @@ interface IbondTokens {
   (signer: Signer, amount: BigNumber, duration: number): Promise<IdBond>;
 }
 
-const deployUADUGOVSushiPool = async (signer: Signer): Promise<void> => {
+const deployUADUGOVSushiPool = async (
+  signer: Signer
+): Promise<SushiSwapPool> => {
   const signerAdr = await signer.getAddress();
   // need some uGOV to provide liquidity
   await uGOV.mint(signerAdr, ethers.utils.parseEther("1000"));
@@ -120,10 +123,9 @@ const deployUADUGOVSushiPool = async (signer: Signer): Promise<void> => {
     );
   console.log("deployUADUGOVSushiPool-02");
   const sushiFactory = await ethers.getContractFactory("SushiSwapPool");
-  const sushiUGOVPool = (await sushiFactory.deploy(
-    manager.address
-  )) as SushiSwapPool;
+  sushiUGOVPool = (await sushiFactory.deploy(manager.address)) as SushiSwapPool;
   await manager.setSushiSwapPoolAddress(sushiUGOVPool.address);
+  return sushiUGOVPool;
 };
 
 // First block 2020 = 9193266 https://etherscan.io/block/9193266
@@ -198,6 +200,7 @@ async function bondingSetupV2(): Promise<{
   secondAccount: Signer;
   thirdAccount: Signer;
   fourthAccount: Signer;
+  fifthAccount: Signer;
   treasury: Signer;
   bondingMaxAccount: Signer;
   bondingMinAccount: Signer;
@@ -223,6 +226,8 @@ async function bondingSetupV2(): Promise<{
   USDC: string;
   manager: UbiquityAlgorithmicDollarManager;
   blockCountInAWeek: BigNumber;
+  sushiUGOVPool: SushiSwapPool;
+  excessDollarsDistributor: ExcessDollarsDistributor;
 }> {
   // GET contracts adresses
   ({
@@ -243,7 +248,7 @@ async function bondingSetupV2(): Promise<{
     fourthAccount,
     bondingMaxAccount,
     bondingMinAccount,
-    lpReward,
+    fifthAccount,
   ] = await ethers.getSigners();
   console.log("000");
   router = (await ethers.getContractAt(
@@ -310,7 +315,7 @@ async function bondingSetupV2(): Promise<{
   ).deploy(manager.address)) as UbiquityGovernance;
   await manager.setGovernanceTokenAddress(uGOV.address);
   console.log("01-2");
-  await deployUADUGOVSushiPool(thirdAccount);
+  sushiUGOVPool = await deployUADUGOVSushiPool(thirdAccount);
   console.log("01-3");
   // GET 3CRV token contract
   crvToken = (await ethers.getContractAt("ERC20", curve3CrvToken)) as ERC20;
@@ -631,6 +636,7 @@ async function bondingSetupV2(): Promise<{
     fourthAccount,
     bondingMaxAccount,
     bondingMinAccount,
+    fifthAccount,
     treasury,
     curvePoolFactory,
     uAD,
@@ -649,6 +655,8 @@ async function bondingSetupV2(): Promise<{
     USDC,
     manager,
     blockCountInAWeek,
+    sushiUGOVPool,
+    excessDollarsDistributor,
   };
 }
 
