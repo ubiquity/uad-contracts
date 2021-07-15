@@ -4,7 +4,7 @@ import { expect } from "./setup";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { bondingSetupV2 } from "./BondingSetupV2";
 
-describe("Bonding", () => {
+describe("bondingV2 Setters", () => {
   let bondingV2: BondingV2;
   let admin: Signer;
   let secondAccount: Signer;

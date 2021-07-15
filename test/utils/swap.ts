@@ -1,4 +1,4 @@
-import { BigNumber, Signer, ethers } from "ethers";
+import { BigNumber, Signer } from "ethers";
 import { ERC20 } from "../../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../../artifacts/types/UbiquityAlgorithmicDollar";
 import { IMetaPool } from "../../artifacts/types/IMetaPool";
@@ -9,29 +9,15 @@ export async function swap3CRVtoUAD(
   amount: BigNumber,
   signer: Signer
 ): Promise<BigNumber> {
-  console.log(`swap3CRVtoUAD:`, curveMetaPool.address);
   const dy3CRVtoUAD = await curveMetaPool["get_dy(int128,int128,uint256)"](
     1,
     0,
     amount
   );
-  console.log(`dy3CRVtouAD:`, ethers.utils.formatEther(dy3CRVtoUAD));
   const expectedMinUAD = dy3CRVtoUAD.div(100).mul(99);
-  const awss = await crvToken.allowance(
-    await signer.getAddress(),
-    curveMetaPool.address
-  );
-  console.log(`awss:`, ethers.utils.formatEther(awss));
-  console.log(`amount:`, ethers.utils.formatEther(amount));
-  const bal = await crvToken
-    .connect(signer)
-    .balanceOf(await signer.getAddress());
-  console.log(`bal:`, ethers.utils.formatEther(bal));
   // signer need to approve metaPool for sending its coin
-  console.log(`crvToken:`, crvToken.address);
   await crvToken.connect(signer).approve(curveMetaPool.address, 0);
   await crvToken.connect(signer).approve(curveMetaPool.address, amount);
-  console.log(`after expectedMinuAD`);
   // secondAccount swap   3CRV=> x uAD
   await curveMetaPool
     .connect(signer)

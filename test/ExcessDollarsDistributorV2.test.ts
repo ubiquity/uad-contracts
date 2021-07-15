@@ -1,5 +1,5 @@
 import { BigNumber, Signer } from "ethers";
-import { ethers, getNamedAccounts, network } from "hardhat";
+import { ethers } from "hardhat";
 import { expect } from "chai";
 import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
@@ -9,7 +9,6 @@ import { bondingSetupV2 } from "./BondingSetupV2";
 import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { resetFork } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { ExcessDollarsDistributor } from "../artifacts/types/ExcessDollarsDistributor";
 import { BondingV2 } from "../artifacts/types/BondingV2";
@@ -18,19 +17,12 @@ import { isAmountEquivalent } from "./utils/calc";
 describe("ExcessDollarsDistributorV2", () => {
   let metaPool: IMetaPool;
   let manager: UbiquityAlgorithmicDollarManager;
-  let admin: Signer;
   let secondAccount: Signer;
   let thirdAccount: Signer;
-  let fourthAccount: Signer;
   let treasury: Signer;
   let bondingV2: BondingV2;
   let uAD: UbiquityAlgorithmicDollar;
   let crvToken: ERC20;
-  let curveFactory: string;
-  let curve3CrvBasePool: string;
-  let curve3CrvToken: string;
-  let curveWhaleAddress: string;
-  let curveWhale: Signer;
   let uGOV: UbiquityGovernance;
   let sushiUGOVPool: SushiSwapPool;
   let treasuryAdr: string;
@@ -42,13 +34,10 @@ describe("ExcessDollarsDistributorV2", () => {
     ({
       secondAccount,
       thirdAccount,
-      fourthAccount,
-      admin,
       uGOV,
       manager,
       bondingV2,
       treasury,
-      curveWhale,
       uAD,
       metaPool,
       crvToken,
@@ -60,8 +49,6 @@ describe("ExcessDollarsDistributorV2", () => {
       "IUniswapV2Router02",
       routerAdr
     )) as IUniswapV2Router02;
-    ({ curveFactory, curve3CrvBasePool, curve3CrvToken, curveWhaleAddress } =
-      await getNamedAccounts());
     // just mint som uAD
     // mint 10000 uAD each for admin, manager and secondAccount
     const mintings = [
