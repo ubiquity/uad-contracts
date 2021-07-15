@@ -14,7 +14,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         // address of the minter
         address minter;
         // lp amount deposited by the user
-        uint256 lpDeposited;
+        uint256 lpFirstDeposited;
         uint256 creationBlock;
         // lp that were already there when created
         uint256 lpRewardDebt;
@@ -74,6 +74,14 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256 _endBlock
     ) external onlyMinter whenNotPaused {
         Bond storage bond = _bonds[_bondId];
+        uint256 curLpAmount = bond.lpAmount;
+        if (curLpAmount > _lpAmount) {
+            // we are removing LP
+            _totalLP -= curLpAmount - _lpAmount;
+        } else {
+            // we are adding LP
+            _totalLP += _lpAmount - curLpAmount;
+        }
         bond.lpAmount = _lpAmount;
         bond.lpRewardDebt = _lpRewardDebt;
         bond.endBlock = _endBlock;
@@ -96,26 +104,12 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         _holderBalances[to].add(id);
         Bond storage _bond = _bonds[id];
         _bond.minter = to;
-        _bond.lpDeposited = lpDeposited;
+        _bond.lpFirstDeposited = lpDeposited;
         _bond.lpAmount = lpDeposited;
         _bond.lpRewardDebt = lpRewardDebt;
         _bond.creationBlock = block.number;
         _bond.endBlock = endBlock;
         _totalLP += lpDeposited;
-    }
-
-    // @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] variant of {mint}.
-    function mintBatch(
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) public virtual onlyMinter whenNotPaused {
-        _mintBatch(to, ids, amounts, data);
-        for (uint256 i = 0; i < ids.length; ++i) {
-            _totalSupply += amounts[i];
-        }
-        _holderBalances[to].add(ids);
     }
 
     /**

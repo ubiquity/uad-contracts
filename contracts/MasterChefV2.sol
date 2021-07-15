@@ -110,7 +110,7 @@ contract MasterChefV2 {
                 ((bs.amount * pool.accuGOVPerShare) / 1e12) - bs.rewardDebt;
             _safeUGOVTransfer(to, pending);
         }
-        bs.amount = bs.amount + _amount;
+        bs.amount += _amount;
         bs.rewardDebt = (bs.amount * pool.accuGOVPerShare) / 1e12;
         _totalShares += _amount;
         emit Deposit(to, _amount, _bondingShareID);
@@ -130,7 +130,7 @@ contract MasterChefV2 {
         // send UGOV to Bonding Share holder
 
         _safeUGOVTransfer(to, pending);
-        bs.amount = bs.amount - _amount;
+        bs.amount -= _amount;
         bs.rewardDebt = (bs.amount * pool.accuGOVPerShare) / 1e12;
         _totalShares -= _amount;
         emit Withdraw(to, _amount, _bondingShareID);
