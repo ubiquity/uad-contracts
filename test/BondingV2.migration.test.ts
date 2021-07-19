@@ -19,7 +19,7 @@ describe("bondingV2 migration", () => {
   let admin: Signer;
 
   beforeEach(async () => {
-    ({ secondAccount, uAD, bondingV2, bondingShare, blockCountInAWeek } =
+    ({ admin, secondAccount, uAD, bondingV2, bondingShare, blockCountInAWeek } =
       await bondingSetupV2());
     secondAddress = await secondAccount.getAddress();
   });
@@ -44,15 +44,10 @@ describe("bondingV2 migration", () => {
       .not.be.reverted;
   });
 
-  it("onlyMigrator can call addUserToMigrate and removeUserToMigrate", async () => {
+  it("onlyMigrator can call addUserToMigrate", async () => {
     // second account not migrator => addUserToMigrate should revert
     await expect(
       bondingV2.connect(secondAccount).addUserToMigrate(secondAddress, 1, 1)
-    ).to.to.be.revertedWith("not migrator");
-
-    // second account not migrator => removeUserToMigrate should revert
-    await expect(
-      bondingV2.connect(secondAccount).removeUserToMigrate(secondAddress)
     ).to.to.be.revertedWith("not migrator");
 
     // admin is migrator at init => setMigrator to second account
@@ -61,11 +56,6 @@ describe("bondingV2 migration", () => {
     // now second account is migrator => addUSerMigrate should not revert
     await expect(
       bondingV2.connect(secondAccount).addUserToMigrate(secondAddress, 1, 1)
-    ).to.not.be.reverted;
-
-    // now second account is migrator => removeUserToMigrate should not revert
-    await expect(
-      bondingV2.connect(secondAccount).removeUserToMigrate(secondAddress)
     ).to.not.be.reverted;
   });
 
