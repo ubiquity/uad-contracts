@@ -275,7 +275,7 @@ async function bondingSetupV2(): Promise<{
     curveFactory,
     curve3CrvBasePool,
     curve3CrvToken,
-    curveWhaleAddress,
+    curveWhaleAddress
   } = await getNamedAccounts());
 
   // GET first EOA account as admin Signer
@@ -287,7 +287,7 @@ async function bondingSetupV2(): Promise<{
     fourthAccount,
     bondingMaxAccount,
     bondingMinAccount,
-    fifthAccount,
+    fifthAccount
   ] = await ethers.getSigners();
   router = (await ethers.getContractAt(
     "IUniswapV2Router02",
@@ -367,7 +367,7 @@ async function bondingSetupV2(): Promise<{
     manager.address,
     fourthAddress,
     bondingMaxAccountAddress,
-    bondingMinAccountAddress,
+    bondingMinAccountAddress
   ].map(
     async (signer: string): Promise<ContractTransaction> =>
       uAD.mint(signer, ethers.utils.parseEther("10000"))
@@ -376,7 +376,7 @@ async function bondingSetupV2(): Promise<{
   // Impersonate curve whale account
   await network.provider.request({
     method: "hardhat_impersonateAccount",
-    params: [curveWhaleAddress],
+    params: [curveWhaleAddress]
   });
   curveWhale = ethers.provider.getSigner(curveWhaleAddress);
 
@@ -688,8 +688,7 @@ async function bondingSetupV2(): Promise<{
     manager,
     blockCountInAWeek,
     sushiUGOVPool,
-    excessDollarsDistributor,
+    excessDollarsDistributor
   };
 }
-
 export { bondingSetupV2, deposit, removeLiquidity, addLiquidity };
