@@ -29,13 +29,15 @@ contract BondingV2 is CollectableDust, Pausable {
 
     uint256 public lpRewards;
     address public bondingFormulasAddress;
+    
     address public migrator; // temporary address to handle migration
     address[] private _toMigrateOriginals;
     uint256[] private _toMigrateLpBalances;
     uint256[] private _toMigrateWeeks;
 
-    // _toMigrateId1[address] > 0 when address is to migrate, or 0 in all other cases                
+    // _toMigrateId1[address] > 0 when address is to migrate, or 0 in all other cases
     mapping(address => uint256) private _toMigrateId1;
+    bool migrating = false;
 
     // array 0: lp deposited,  1: weeks, 2: migrated (0=false 1 =true)
     // mapping(address => uint256[]) private _v1Holders;
@@ -94,6 +96,11 @@ contract BondingV2 is CollectableDust, Pausable {
         _;
     }
 
+    modifier whenMigrating() {
+        require(migrating, "not in migration");
+        _;
+    }
+    
     constructor(
         address _manager,
         address _bondingFormulasAddress,
@@ -106,16 +113,13 @@ contract BondingV2 is CollectableDust, Pausable {
         bondingShareV1Address = _bondingShareV1Address;
         migrator = msg.sender;
 
-        uint256 l = _toMigrateOriginals.length;
+        uint256 l = _originals.length;
         require(l > 0, "address array empty");
-        require(
-            l == _toMigrateLpBalances.length,
-            "balances array not same length"
-        );
-        require(l == _toMigrateWeeks.length, "weeks array not same length");
+        require(l == _lpBalances.length, "balances array not same length");
+        require(l == _weeks.length, "weeks array not same length");
 
         for (uint256 i = 0; i < l; ++i) {
-            _toMigrateId1[_toMigrateOriginals[i]] = i + 1;
+            _toMigrateId1[_originals[i]] = i + 1;
         }
         _toMigrateOriginals = _originals;
         _toMigrateLpBalances = _lpBalances;
@@ -127,10 +131,10 @@ contract BondingV2 is CollectableDust, Pausable {
 
     /// @dev migrate a user from V1
     /// @param _original address of v1 user
-    function migrate(address _original) external {
+    function migrate(address _original) external whenMigrating() {
         require(
             msg.sender == _original || msg.sender == migrator,
-            "only owner or admin can migrate"
+            "only owner or migrator can migrate"
         );
 
         // id1 of address
@@ -149,6 +153,10 @@ contract BondingV2 is CollectableDust, Pausable {
 
     function setMigrator(address _migrator) external onlyMigrator {
         migrator = _migrator;
+    }
+
+    function setMigrating(bool _migrating) external onlyMigrator {
+        migrating = _migrating;
     }
 
     /// @dev uADPriceReset remove uAD unilateraly from the curve LP share sitting inside
@@ -579,6 +587,9 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 _lpsAmount,
         uint256 _weeks
     ) internal returns (uint256 _id) {
+
+      require(_lpsAmount>0, "LP amount is zero");
+
         // update the accumulated lp rewards per shares
         _updateLpPerShare();
 

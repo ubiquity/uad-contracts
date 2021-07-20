@@ -61,8 +61,9 @@ let secondAccount: Signer;
 let thirdAccount: Signer;
 let fourthAccount: Signer;
 let treasury: Signer;
-let bondingMaxAccount: Signer;
+let bondingZeroAccount: Signer;
 let bondingMinAccount: Signer;
+let bondingMaxAccount: Signer;
 let adminAddress: string;
 let secondAddress: string;
 let ubiquityFormulas: UbiquityFormulas;
@@ -241,8 +242,9 @@ async function bondingSetupV2(): Promise<{
   fourthAccount: Signer;
   fifthAccount: Signer;
   treasury: Signer;
-  bondingMaxAccount: Signer;
+  bondingZeroAccount: Signer;
   bondingMinAccount: Signer;
+  bondingMaxAccount: Signer;
   bondingFormulas: BondingFormulas;
   curvePoolFactory: ICurveFactory;
   uAD: UbiquityAlgorithmicDollar;
@@ -285,6 +287,7 @@ async function bondingSetupV2(): Promise<{
     thirdAccount,
     treasury,
     fourthAccount,
+    bondingZeroAccount,
     bondingMaxAccount,
     bondingMinAccount,
     fifthAccount
@@ -296,8 +299,9 @@ async function bondingSetupV2(): Promise<{
   adminAddress = await admin.getAddress();
   secondAddress = await secondAccount.getAddress();
   const fourthAddress = await fourthAccount.getAddress();
-  const bondingMaxAccountAddress = await bondingMaxAccount.getAddress();
+  const bondingZeroAccountAddress = await bondingZeroAccount.getAddress();
   const bondingMinAccountAddress = await bondingMinAccount.getAddress();
+  const bondingMaxAccountAddress = await bondingMaxAccount.getAddress();
 
   const UBQ_MINTER_ROLE = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
@@ -366,8 +370,9 @@ async function bondingSetupV2(): Promise<{
     secondAddress,
     manager.address,
     fourthAddress,
-    bondingMaxAccountAddress,
-    bondingMinAccountAddress
+    bondingZeroAccountAddress,
+    bondingMinAccountAddress,
+    bondingMaxAccountAddress
   ].map(
     async (signer: string): Promise<ContractTransaction> =>
       uAD.mint(signer, ethers.utils.parseEther("10000"))
@@ -628,9 +633,14 @@ async function bondingSetupV2(): Promise<{
   ).deploy(
     manager.address,
     bondingFormulas.address,
-    [bondingMinAccountAddress, bondingMaxAccountAddress],
-    [bondingMinBalance, bondingMaxBalance],
-    [1, 208]
+    bonding.address,
+    [
+      bondingZeroAccountAddress,
+      bondingMinAccountAddress,
+      bondingMaxAccountAddress
+    ],
+    [0, bondingMinBalance, bondingMaxBalance],
+    [1, 208, 1]
   )) as BondingV2;
   // send the LP token from bonding V1 to V2 to prepare the migration
   await bonding.sendDust(
@@ -666,8 +676,9 @@ async function bondingSetupV2(): Promise<{
     secondAccount,
     thirdAccount,
     fourthAccount,
-    bondingMaxAccount,
+    bondingZeroAccount,
     bondingMinAccount,
+    bondingMaxAccount,
     fifthAccount,
     treasury,
     curvePoolFactory,

@@ -1,27 +1,33 @@
 import { expect } from "chai";
-import { ethers, Signer, BigNumber } from "ethers";
+import { Signer } from "ethers";
 import { BondingV2 } from "../artifacts/types/BondingV2";
-import { BondingShare } from "../artifacts/types/BondingShare";
-import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { bondingSetupV2, deposit } from "./BondingSetupV2";
-import { mineNBlock } from "./utils/hardhatNode";
+import { bondingSetupV2 } from "./BondingSetupV2";
 
 describe("bondingV2 migration", () => {
-  let idBlock: number;
-  const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
-
-  let uAD: UbiquityAlgorithmicDollar;
   let bondingV2: BondingV2;
-  let bondingShare: BondingShare;
-  let blockCountInAWeek: BigNumber;
   let secondAccount: Signer;
+  let bondingZeroAccount: Signer;
+  let bondingMinAccount: Signer;
+  let bondingMaxAccount: Signer;
   let secondAddress: string;
+  let bondingZeroAddress: string;
+  let bondingMinAddress: string;
+  let bondingMaxAddress: string;
   let admin: Signer;
 
   beforeEach(async () => {
-    ({ admin, secondAccount, uAD, bondingV2, bondingShare, blockCountInAWeek } =
-      await bondingSetupV2());
+    ({
+      admin,
+      secondAccount,
+      bondingV2,
+      bondingZeroAccount,
+      bondingMaxAccount,
+      bondingMinAccount
+    } = await bondingSetupV2());
     secondAddress = await secondAccount.getAddress();
+    bondingZeroAddress = await bondingZeroAccount.getAddress();
+    bondingMinAddress = await bondingMinAccount.getAddress();
+    bondingMaxAddress = await bondingMaxAccount.getAddress();
   });
 
   it("onlyMigrator can call setMigrator  ", async () => {
@@ -44,24 +50,56 @@ describe("bondingV2 migration", () => {
       .not.be.reverted;
   });
 
-  it("onlyMigrator can call addUserToMigrate", async () => {
-    // second account not migrator => addUserToMigrate should revert
-    await expect(
-      bondingV2.connect(secondAccount).addUserToMigrate(secondAddress, 1, 1)
-    ).to.to.be.revertedWith("not migrator");
+  it("onlyOwnerOrMigrator can call migrate", async () => {
+    await bondingV2.connect(admin).setMigrating(true);
 
-    // admin is migrator at init => setMigrator to second account
-    await bondingV2.connect(admin).setMigrator(secondAddress);
-
-    // now second account is migrator => addUSerMigrate should not revert
+    // second account not migrator or owner => migrate should revert
     await expect(
-      bondingV2.connect(secondAccount).addUserToMigrate(secondAddress, 1, 1)
+      bondingV2.connect(secondAccount).migrate(bondingMinAddress)
+    ).to.be.revertedWith("only owner or migrator can migrate");
+
+    // admin is migrator at init, migrator can call migrate => should not revert
+    await expect(bondingV2.connect(admin).migrate(bondingMaxAddress)).to.not.be
+      .reverted;
+
+    // owner can call migrate => should not revert
+    await expect(
+      bondingV2.connect(bondingMinAccount).migrate(bondingMinAddress)
     ).to.not.be.reverted;
   });
 
-  // it("migrate should fail if msg.sender is not a user to migrate", async () => {});
-  // it("migrate should fail user migration is done", async () => {});
-  // it("migrate should fail user LP amount to migrate is 0", async () => {});
+  it("migrate should fail if msg.sender is not a user to migrate", async () => {
+    await bondingV2.connect(admin).setMigrating(true);
+
+    // second account not v1 => migrate should revert
+    await expect(
+      bondingV2.connect(admin).migrate(secondAddress)
+    ).to.be.revertedWith("not v1 address");
+  });
+
+  it("migrate should fail before and after migration", async () => {
+    // before migration => should revert
+    await expect(
+      bondingV2.connect(admin).migrate(bondingMaxAddress)
+    ).to.be.revertedWith("not in migration");
+
+    await bondingV2.connect(admin).setMigrating(true);
+    await expect(bondingV2.connect(admin).migrate(bondingMinAddress)).to.not.be
+      .reverted;
+
+    // after migration => should revert
+    await bondingV2.connect(admin).setMigrating(false);
+    await expect(
+      bondingV2.connect(admin).migrate(bondingMaxAddress)
+    ).to.be.revertedWith("not in migration");
+  });
+  it("migrate should fail user LP amount to migrate is 0", async () => {
+    await bondingV2.connect(admin).setMigrating(true);
+
+    await expect(
+      bondingV2.connect(admin).migrate(bondingZeroAddress)
+    ).to.be.revertedWith("LP amount is zero");
+  });
   // it("migrate should work", async () => {
   // check that a bonding share V2 is minted with an incremental ID
   // check that  bonding share V2 attributes for
