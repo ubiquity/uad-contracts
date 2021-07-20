@@ -56,6 +56,113 @@ type ParsedTransaction = {
   transaction: Transaction;
 };
 
+async function fetchEtherscanApi<T>(query: Record<string, string>): Promise<T> {
+  const response = await fetch(
+    `${API_URL}?${new URLSearchParams(query).toString()}`
+  );
+  return response.json() as Promise<T>;
+}
+
+async function fetchLatestBlockNumber(): Promise<number> {
+  console.log("Fetching latest block number...");
+  const response = await fetchEtherscanApi<{ result: string }>({
+    module: "proxy",
+    action: "eth_blockNumber",
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
+  });
+  const latestBlockNumber = parseInt(response.result, 16);
+  console.log("Latest block number: ", latestBlockNumber);
+  return latestBlockNumber;
+}
+
+function generateEtherscanQuery(
+  address: string,
+  startblock: number,
+  endblock: number
+): Record<string, string> {
+  return {
+    module: "account",
+    action: "txlist",
+    address, // This is the bonding smart contract right?
+    startblock: startblock.toString(),
+    endblock: endblock.toString(),
+    sort: "asc",
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
+  };
+}
+
+async function fetchEtherscanBondingContract(
+  filter: CliArgs
+): Promise<EtherscanResponse> {
+  const { startBlock } = filter;
+  const endBlock = filter.endBlock || (await fetchLatestBlockNumber());
+  return fetchEtherscanApi(
+    generateEtherscanQuery(BONDING_CONTRACT_ADDRESS, startBlock, endBlock)
+  );
+}
+
+function parseTransactions(transactions: Transaction[]): ParsedTransaction[] {
+  return transactions.map((t) => {
+    const parsedTransaction: ParsedTransaction = {
+      name: "",
+      inputs: {},
+      from: t.from,
+      blockNumber: t.blockNumber,
+      isError: t.isError === "1",
+      timestamp: new Date(parseInt(t.timeStamp, 10) * 1000).toISOString(),
+      transaction: t,
+    };
+    if (t.to) {
+      const input = inter.parseTransaction({ data: t.input });
+      parsedTransaction.name = input.name;
+
+      console.log(input);
+      parsedTransaction.inputs = Object.fromEntries(
+        Object.keys(input.args)
+          .filter((k) => !/^[0-9]+$/.exec(k))
+          .map((k) => {
+            return [k, (input.args[k] as ethers.BigNumber).toString()];
+          })
+      );
+    } else {
+      parsedTransaction.name = "Contract creation";
+    }
+    return parsedTransaction;
+  });
+}
+
+function filterTransactions(
+  transactions: ParsedTransaction[],
+  args: CliArgs
+): ParsedTransaction[] {
+  return transactions.filter((t) => {
+    return (!args.name || t.name === args.name) && args.isError === t.isError;
+  });
+}
+
+function writeToDisk(transactions: ParsedTransaction[], directory: string) {
+  fs.writeFileSync(
+    directory,
+    JSON.stringify(
+      transactions.map((t) => t.transaction),
+      null,
+      2
+    )
+  );
+}
+
+function printInGroups(items: string[], groups: number) {
+  const pad = Math.max(...items.map((f) => f.length)) + 1;
+  contractFunctions
+    .reduce<string[][]>((r, e, i) => {
+      i % groups ? r[r.length - 1].push(e) : r.push([e]);
+      return r;
+    }, [])
+    .forEach((funs) =>
+      console.log("   ", ...funs.map((f) => f.padEnd(pad, " ")))
+    );
+}
+
 task(
   "getBondingTransactions",
   "Extract the bonding contract transactions from Etherscan API and save them to a file"
@@ -102,13 +209,13 @@ task(
     console.log("Contract functions:");
     printInGroups(contractFunctions, 4);
 
-    if (taskArgs.name && !~contractFunctions.indexOf(taskArgs.name)) {
+    if (taskArgs.name && contractFunctions.indexOf(taskArgs.name) === -1) {
       throw new Error(`Function does not exists of the contract`);
     }
 
     try {
       const response = await fetchEtherscanBondingContract(taskArgs);
-      const transactions = parseTransactions(response.result as Transaction[]);
+      const transactions = parseTransactions(response.result);
       console.log("Total results: ", transactions.length);
       const filteredTransactions = filterTransactions(transactions, taskArgs);
       console.log("Filtered results: ", filteredTransactions.length);
@@ -126,109 +233,3 @@ task(
       console.error("There was an issue with the task", e);
     }
   });
-
-async function fetchEtherscanBondingContract(
-  filter: CliArgs
-): Promise<EtherscanResponse> {
-  const startBlock = filter.startBlock;
-  const endBlock = filter.endBlock || (await fetchLatestBlockNumber());
-  return fetchEtherscanApi(
-    generateEtherscanQuery(BONDING_CONTRACT_ADDRESS, startBlock, endBlock)
-  );
-}
-
-async function fetchLatestBlockNumber(): Promise<number> {
-  console.log("Fetching latest block number...");
-  const response = await fetchEtherscanApi({
-    module: "proxy",
-    action: "eth_blockNumber",
-    apiKey: process.env.ETHERSCAN_API_KEY || "",
-  });
-  const latestBlockNumber = parseInt(response.result, 16);
-  console.log("Latest block number: ", latestBlockNumber);
-  return latestBlockNumber;
-}
-
-async function fetchEtherscanApi(query: Record<string, string>) {
-  const response = await fetch(
-    `${API_URL}?${new URLSearchParams(query).toString()}`
-  );
-  return await response.json();
-}
-
-function generateEtherscanQuery(
-  address: string,
-  startblock: number,
-  endblock: number
-): Record<string, string> {
-  return {
-    module: "account",
-    action: "txlist",
-    address: address, // This is the bonding smart contract right?
-    startblock: startblock.toString(),
-    endblock: endblock.toString(),
-    sort: "asc",
-    apiKey: process.env.ETHERSCAN_API_KEY || "",
-  };
-}
-
-function parseTransactions(transactions: Transaction[]): ParsedTransaction[] {
-  return transactions.map((t) => {
-    let parsedTransaction: ParsedTransaction = {
-      name: "",
-      inputs: {},
-      from: t.from,
-      blockNumber: t.blockNumber,
-      isError: t.isError === "1",
-      timestamp: new Date(parseInt(t.timeStamp) * 1000).toISOString(),
-      transaction: t,
-    };
-    if (t.to) {
-      const input = inter.parseTransaction({ data: t.input });
-      parsedTransaction.name = input.name;
-
-      parsedTransaction.inputs = Object.fromEntries(
-        Object.keys(input.args)
-          .filter((k) => !k.match(/[0-9]+/))
-          .map((k) => {
-            return [k, input.args[k].toString()];
-          })
-      );
-    } else {
-      parsedTransaction.name = "Contract creation";
-    }
-    return parsedTransaction;
-  });
-}
-
-function filterTransactions(
-  transactions: ParsedTransaction[],
-  args: CliArgs
-): ParsedTransaction[] {
-  return transactions.filter((t) => {
-    return (!args.name || t.name === args.name) && args.isError === t.isError;
-  });
-}
-
-function writeToDisk(transactions: ParsedTransaction[], path: string) {
-  fs.writeFileSync(
-    path,
-    JSON.stringify(
-      transactions.map((t) => t.transaction),
-      null,
-      2
-    )
-  );
-}
-
-function printInGroups(items: string[], groups: number) {
-  const pad = Math.max(...items.map((f) => f.length)) + 1;
-  contractFunctions
-    .reduce<string[][]>((r, e, i) => {
-      i % groups ? r[r.length - 1].push(e) : r.push([e]);
-      return r;
-    }, [])
-    .forEach((funs) =>
-      console.log("   ", ...funs.map((f) => f.padEnd(pad, " ")))
-    );
-}
