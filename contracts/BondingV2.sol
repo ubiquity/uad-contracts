@@ -34,6 +34,12 @@ contract BondingV2 is CollectableDust, Pausable {
     uint256[] private _toMigrateLpBalances;
     uint256[] private _toMigrateWeeks;
 
+    // _toMigrateId1[address] > 0 when address is to migrate, or 0 in all other cases                
+    mapping(address => uint256) private _toMigrateId1;
+
+    // array 0: lp deposited,  1: weeks, 2: migrated (0=false 1 =true)
+    // mapping(address => uint256[]) private _v1Holders;
+
     event PriceReset(
         address _tokenWithdrawn,
         uint256 _amountWithdrawn,
@@ -95,9 +101,22 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256[] memory _lpBalances,
         uint256[] memory _weeks
     ) CollectableDust() Pausable() {
-        blockCountInAWeek = 45361;
         manager = UbiquityAlgorithmicDollarManager(_manager);
         bondingFormulasAddress = _bondingFormulasAddress;
+        bondingShareV1Address = _bondingShareV1Address;
+        migrator = msg.sender;
+
+        uint256 l = _toMigrateOriginals.length;
+        require(l > 0, "address array empty");
+        require(
+            l == _toMigrateLpBalances.length,
+            "balances array not same length"
+        );
+        require(l == _toMigrateWeeks.length, "weeks array not same length");
+
+        for (uint256 i = 0; i < l; ++i) {
+            _toMigrateId1[_toMigrateOriginals[i]] = i + 1;
+        }
         _toMigrateOriginals = _originals;
         _toMigrateLpBalances = _lpBalances;
         _toMigrateWeeks = _weeks;
@@ -106,27 +125,26 @@ contract BondingV2 is CollectableDust, Pausable {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    /// @dev addUserToMigrate add a user to migrate from V1
+    /// @dev migrate a user from V1
     /// @param _original address of v1 user
-    /// @param _lpBalance LP Balance of v1 user
-    /// @param _weeks weeks lockup of v1 user
-    /// @notice user will then be able to migrate
-    function addUserToMigrate(
-        address _original,
-        uint256 _lpBalance,
-        uint256 _weeks
-    ) external onlyMigrator {
-        _migrate(_original, _lpBalance, _weeks);
-    }
+    function migrate(address _original) external {
+        require(
+            msg.sender == _original || msg.sender == migrator,
+            "only owner or admin can migrate"
+        );
 
-    function migrateAll() external onlyMigrator {
-        for (uint256 index = 0; index < _toMigrateOriginals.length; index++) {
-            _migrate(
-                _toMigrateOriginals[index],
-                _toMigrateLpBalances[index],
-                _toMigrateWeeks[index]
-            );
-        }
+        // id1 of address
+        uint256 id1 = _toMigrateId1[_original];
+        require(id1 > 0, "not v1 address");
+
+        // unregister address
+        _toMigrateId1[_original] = 0;
+
+        _migrate(
+            _toMigrateOriginals[id1 - 1],
+            _toMigrateLpBalances[id1 - 1],
+            _toMigrateWeeks[id1 - 1]
+        );
     }
 
     function setMigrator(address _migrator) external onlyMigrator {
@@ -563,6 +581,7 @@ contract BondingV2 is CollectableDust, Pausable {
     ) internal returns (uint256 _id) {
         // update the accumulated lp rewards per shares
         _updateLpPerShare();
+
         // calculate the amount of share based on the amount of lp deposited and the duration
         uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
             .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
@@ -577,6 +596,7 @@ contract BondingV2 is CollectableDust, Pausable {
             _sharesAmount,
             _id
         );
+
         // _v1Holders[msg.sender] = [0, 0, 1];
         emit Migrated(user, _id, _lpsAmount, _sharesAmount, _weeks);
     }
