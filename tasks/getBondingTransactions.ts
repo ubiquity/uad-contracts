@@ -25,6 +25,7 @@ type Transaction = {
   isError: "0" | "1";
   input: string;
   hash: string;
+  from: string;
   to: string;
   blockNumber: string;
   contractAddress: string;
@@ -48,6 +49,7 @@ type CliArgs = {
 type ParsedTransaction = {
   name: string;
   inputs: Record<string, string>;
+  from: string;
   blockNumber: string;
   isError: boolean;
   timestamp: string;
@@ -113,6 +115,7 @@ task(
       console.table(filteredTransactions, [
         "name",
         "inputs",
+        "from",
         "blockNumber",
         "isError",
         "timestamp",
@@ -174,6 +177,7 @@ function parseTransactions(transactions: Transaction[]): ParsedTransaction[] {
     let parsedTransaction: ParsedTransaction = {
       name: "",
       inputs: {},
+      from: t.from,
       blockNumber: t.blockNumber,
       isError: t.isError === "1",
       timestamp: new Date(parseInt(t.timeStamp) * 1000).toISOString(),
