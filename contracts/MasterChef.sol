@@ -92,8 +92,8 @@ contract MasterChef {
         UserInfo storage user = userInfo[sender];
         _updatePool();
         if (user.amount > 0) {
-            uint256 pending =
-                ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
+            uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
+                user.rewardDebt;
             _safeUGOVTransfer(sender, pending);
         }
         user.amount = user.amount + _amount;
@@ -109,8 +109,8 @@ contract MasterChef {
         UserInfo storage user = userInfo[sender];
         require(user.amount >= _amount, "MC: amount too high");
         _updatePool();
-        uint256 pending =
-            ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
+        uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
+            user.rewardDebt;
         _safeUGOVTransfer(sender, pending);
         user.amount = user.amount - _amount;
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
@@ -123,8 +123,8 @@ contract MasterChef {
     function getRewards() external returns (uint256) {
         UserInfo storage user = userInfo[msg.sender];
         _updatePool();
-        uint256 pending =
-            ((user.amount * pool.accuGOVPerShare) / 1e12) - user.rewardDebt;
+        uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
+            user.rewardDebt;
         _safeUGOVTransfer(msg.sender, pending);
         user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
         return pending;
@@ -134,8 +134,8 @@ contract MasterChef {
     function pendingUGOV(address _user) external view returns (uint256) {
         UserInfo storage user = userInfo[_user];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
-        uint256 lpSupply =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
+            .totalSupply();
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = _getMultiplier();
@@ -177,8 +177,8 @@ contract MasterChef {
             return;
         }
         _updateUGOVMultiplier();
-        uint256 lpSupply =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
+            .totalSupply();
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;

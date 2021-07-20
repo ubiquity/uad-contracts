@@ -26,7 +26,7 @@ contract BondingV2 is CollectableDust, Pausable {
     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
     uint256 public blockCountInAWeek = 45361;
     uint256 public accLpRewardPerShare = 0;
-    //uint256 public lpToMigrate; // LP that are inside the bondign contract but need to be migrated
+
     uint256 public lpRewards;
     address public bondingShareV1Address;
     address public bondingFormulasAddress;
@@ -34,9 +34,6 @@ contract BondingV2 is CollectableDust, Pausable {
     address[] private _toMigrateOriginals;
     uint256[] private _toMigrateLpBalances;
     uint256[] private _toMigrateWeeks;
-
-    // array 0: lp deposited,  1: weeks, 2: migrated (0=false 1 =true)
-    // mapping(address => uint256[]) private _v1Holders;
 
     event PriceReset(
         address _tokenWithdrawn,
@@ -104,7 +101,6 @@ contract BondingV2 is CollectableDust, Pausable {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         bondingShareV1Address = _bondingShareV1Address;
         bondingFormulasAddress = _bondingFormulasAddress;
-        migrator = msg.sender;
         _toMigrateOriginals = _originals;
         _toMigrateLpBalances = _lpBalances;
         _toMigrateWeeks = _weeks;
@@ -158,14 +154,18 @@ contract BondingV2 is CollectableDust, Pausable {
             amount
         );
         // remove one coin
-        uint256 coinWithdrawn =
-            metaPool.remove_liquidity_one_coin(amount, 0, 0);
+        uint256 coinWithdrawn = metaPool.remove_liquidity_one_coin(
+            amount,
+            0,
+            0
+        );
         /*      _updateLpPerShare;
         if (amount < lpRewards)
         lpRewards -= amount; */
         ITWAPOracle(manager.twapOracleAddress()).update();
-        uint256 toTransfer =
-            IERC20(manager.dollarTokenAddress()).balanceOf(address(this));
+        uint256 toTransfer = IERC20(manager.dollarTokenAddress()).balanceOf(
+            address(this)
+        );
         IERC20(manager.dollarTokenAddress()).safeTransfer(
             manager.treasuryAddress(),
             toTransfer
@@ -197,12 +197,16 @@ contract BondingV2 is CollectableDust, Pausable {
         );
         // remove one coin
         // update twap
-        uint256 coinWithdrawn =
-            metaPool.remove_liquidity_one_coin(amount, 1, 0);
+        uint256 coinWithdrawn = metaPool.remove_liquidity_one_coin(
+            amount,
+            1,
+            0
+        );
         /*   lpRewards -= amount; */
         ITWAPOracle(manager.twapOracleAddress()).update();
-        uint256 toTransfer =
-            IERC20(manager.curve3PoolTokenAddress()).balanceOf(address(this));
+        uint256 toTransfer = IERC20(manager.curve3PoolTokenAddress()).balanceOf(
+            address(this)
+        );
         IERC20(manager.curve3PoolTokenAddress()).safeTransfer(
             manager.treasuryAddress(),
             toTransfer
@@ -287,12 +291,8 @@ contract BondingV2 is CollectableDust, Pausable {
         );
 
         // calculate the amount of share based on the amount of lp deposited and the duration
-        uint256 _sharesAmount =
-            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
-                _lpsAmount,
-                _weeks,
-                bondingDiscountMultiplier
-            );
+        uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
+        .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
         // calculate end locking period block number
         uint256 _endBlock = block.number + _weeks * blockCountInAWeek;
         _id = _mint(msg.sender, _lpsAmount, _sharesAmount, _endBlock);
@@ -340,16 +340,18 @@ contract BondingV2 is CollectableDust, Pausable {
         ITWAPOracle(manager.twapOracleAddress()).update();
 
         // calculate pending LP rewards
-        uint256[2] memory bs =
-            IMasterChefV2(manager.masterChefAddress()).getBondingShareInfo(_id);
+        uint256[2] memory bs = IMasterChefV2(manager.masterChefAddress())
+        .getBondingShareInfo(_id);
         uint256 sharesToRemove = bs[0];
         _updateLpPerShare();
-        uint256 pendingLpReward =
-            lpRewardForShares(sharesToRemove, bond.lpRewardDebt);
+        uint256 pendingLpReward = lpRewardForShares(
+            sharesToRemove,
+            bond.lpRewardDebt
+        );
 
         // add an extra step to be able to decrease rewards if locking end is near
         pendingLpReward = BondingFormulas(this.bondingFormulasAddress())
-            .lpRewardsAddLiquidityNormalization(bond, bs, pendingLpReward);
+        .lpRewardsAddLiquidityNormalization(bond, bs, pendingLpReward);
         // add these LP Rewards to the deposited amount of LP token
         bond.lpAmount += pendingLpReward;
         lpRewards -= pendingLpReward;
@@ -368,12 +370,8 @@ contract BondingV2 is CollectableDust, Pausable {
         );
 
         // calculate the amount of share based on the new amount of lp deposited and the duration
-        uint256 _sharesAmount =
-            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
-                bond.lpAmount,
-                _weeks,
-                bondingDiscountMultiplier
-            );
+        uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
+        .durationMultiply(bond.lpAmount, _weeks, bondingDiscountMultiplier);
 
         // deposit new shares
         IMasterChefV2(manager.masterChefAddress()).deposit(
@@ -433,17 +431,13 @@ contract BondingV2 is CollectableDust, Pausable {
 
         require(bond.lpAmount >= _amount, "Bonding: amount too big");
         ITWAPOracle(manager.twapOracleAddress()).update();
-        uint256[2] memory bs =
-            IMasterChefV2(manager.masterChefAddress()).getBondingShareInfo(_id);
+        uint256[2] memory bs = IMasterChefV2(manager.masterChefAddress())
+        .getBondingShareInfo(_id);
 
         // we should decrease the UBQ rewards proportionally to the LP removed
         // sharesToRemove = (bonding shares * _amount )  / bond.lpAmount ;
-        uint256 sharesToRemove =
-            BondingFormulas(this.bondingFormulasAddress()).sharesForLP(
-                bond,
-                bs,
-                _amount
-            );
+        uint256 sharesToRemove = BondingFormulas(this.bondingFormulasAddress())
+        .sharesForLP(bond, bs, _amount);
 
         //get all its pending LP Rewards
         _updateLpPerShare();
@@ -464,15 +458,14 @@ contract BondingV2 is CollectableDust, Pausable {
 
         // add an extra step to be able to decrease rewards if locking end is near
         pendingLpReward = BondingFormulas(this.bondingFormulasAddress())
-            .lpRewardsRemoveLiquidityNormalization(bond, bs, pendingLpReward);
+        .lpRewardsRemoveLiquidityNormalization(bond, bs, pendingLpReward);
 
-        uint256 correctedAmount =
-            BondingFormulas(this.bondingFormulasAddress())
-                .correctedAmountToWithdraw(
-                BondingShareV2(manager.bondingShareAddress()).totalLP(),
-                metapool.balanceOf(address(this)) - lpRewards,
-                _amount
-            );
+        uint256 correctedAmount = BondingFormulas(this.bondingFormulasAddress())
+        .correctedAmountToWithdraw(
+            BondingShareV2(manager.bondingShareAddress()).totalLP(),
+            metapool.balanceOf(address(this)) - lpRewards,
+            _amount
+        );
 
         lpRewards -= pendingLpReward;
         bond.lpAmount -= _amount;
@@ -509,13 +502,11 @@ contract BondingV2 is CollectableDust, Pausable {
     function pendingLpRewards(uint256 _id) external view returns (uint256) {
         BondingShareV2 bonding = BondingShareV2(manager.bondingShareAddress());
         BondingShareV2.Bond memory bond = bonding.getBond(_id);
-        uint256[2] memory bs =
-            IMasterChefV2(manager.masterChefAddress()).getBondingShareInfo(_id);
+        uint256[2] memory bs = IMasterChefV2(manager.masterChefAddress())
+        .getBondingShareInfo(_id);
 
-        uint256 lpBalance =
-            IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
-                address(this)
-            );
+        uint256 lpBalance = IERC20(manager.stableSwapMetaPoolAddress())
+        .balanceOf(address(this));
         // the excess LP is the current balance minus the total deposited LP
         if (lpBalance >= bonding.totalLP()) {
             uint256 currentLpRewards = lpBalance - bonding.totalLP();
@@ -527,7 +518,7 @@ contract BondingV2 is CollectableDust, Pausable {
                     accLpRewardPerShare +
                     ((newLpRewards * 1e12) /
                         IMasterChefV2(manager.masterChefAddress())
-                            .totalShares());
+                        .totalShares());
             }
             // we multiply the shares amount by the accumulated lpRewards per share
             // and remove the lp Reward Debt
@@ -556,8 +547,8 @@ contract BondingV2 is CollectableDust, Pausable {
     }
 
     function currentShareValue() public view returns (uint256 priceShare) {
-        uint256 totalShares =
-            IMasterChefV2(manager.masterChefAddress()).totalShares();
+        uint256 totalShares = IMasterChefV2(manager.masterChefAddress())
+        .totalShares();
         // priceShare = totalLP / totalShares
         priceShare = IUbiquityFormulas(manager.formulasAddress()).bondPrice(
             BondingShareV2(manager.bondingShareAddress()).totalLP(),
@@ -576,12 +567,8 @@ contract BondingV2 is CollectableDust, Pausable {
         // update the accumulated lp rewards per shares
         _updateLpPerShare();
         // calculate the amount of share based on the amount of lp deposited and the duration
-        uint256 _sharesAmount =
-            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
-                _lpsAmount,
-                _weeks,
-                bondingDiscountMultiplier
-            );
+        uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
+        .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
 
         // calculate end locking period block number
         uint256 endBlock = block.number + _weeks * blockCountInAWeek;
@@ -600,14 +587,12 @@ contract BondingV2 is CollectableDust, Pausable {
     /// @dev update the accumulated excess LP per share
     function _updateLpPerShare() internal {
         BondingShareV2 bond = BondingShareV2(manager.bondingShareAddress());
-        uint256 lpBalance =
-            IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
-                address(this)
-            );
+        uint256 lpBalance = IERC20(manager.stableSwapMetaPoolAddress())
+        .balanceOf(address(this));
         // the excess LP is the current balance
         // minus the total deposited LP + LP that needs to be migrated
-        uint256 totalShares =
-            IMasterChefV2(manager.masterChefAddress()).totalShares();
+        uint256 totalShares = IMasterChefV2(manager.masterChefAddress())
+        .totalShares();
         if (lpBalance >= bond.totalLP() && totalShares > 0) {
             uint256 currentLpRewards = lpBalance - bond.totalLP();
             uint256 newLpRewards = currentLpRewards - lpRewards;

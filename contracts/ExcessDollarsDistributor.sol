@@ -31,18 +31,20 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
 
     function distributeDollars() external override {
         //the excess dollars which were sent to this contract by the coupon manager
-        uint256 excessDollars =
-            IERC20Ubiquity(manager.dollarTokenAddress()).balanceOf(
-                address(this)
-            );
+        uint256 excessDollars = IERC20Ubiquity(manager.dollarTokenAddress())
+            .balanceOf(address(this));
         if (excessDollars > _minAmountToDistribute) {
             address treasuryAddress = manager.treasuryAddress();
 
             // curve uAD-3CRV liquidity pool
-            uint256 tenPercent =
-                excessDollars.fromUInt().div(uint256(10).fromUInt()).toUInt();
-            uint256 fiftyPercent =
-                excessDollars.fromUInt().div(uint256(2).fromUInt()).toUInt();
+            uint256 tenPercent = excessDollars
+                .fromUInt()
+                .div(uint256(10).fromUInt())
+                .toUInt();
+            uint256 fiftyPercent = excessDollars
+                .fromUInt()
+                .div(uint256(2).fromUInt())
+                .toUInt();
             IERC20Ubiquity(manager.dollarTokenAddress()).safeTransfer(
                 treasuryAddress,
                 fiftyPercent
@@ -65,14 +67,13 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         address[] memory path = new address[](2);
         path[0] = manager.dollarTokenAddress();
         path[1] = manager.governanceTokenAddress();
-        uint256[] memory amounts =
-            _router.swapExactTokensForTokens(
-                amountIn.toUInt(),
-                0,
-                path,
-                address(this),
-                block.timestamp + 100
-            );
+        uint256[] memory amounts = _router.swapExactTokensForTokens(
+            amountIn.toUInt(),
+            0,
+            path,
+            address(this),
+            block.timestamp + 100
+        );
 
         return amounts[1];
     }
@@ -133,13 +134,9 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         );
 
         // swap  amount of uAD => 3CRV
-        uint256 amount3CRVReceived =
-            IMetaPool(manager.stableSwapMetaPoolAddress()).exchange(
-                0,
-                1,
-                amount,
-                0
-            );
+        uint256 amount3CRVReceived = IMetaPool(
+            manager.stableSwapMetaPoolAddress()
+        ).exchange(0, 1, amount, 0);
 
         // approve metapool to transfer our 3CRV
         IERC20(manager.curve3PoolTokenAddress()).safeApprove(
@@ -152,12 +149,12 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         );
 
         // deposit liquidity
-        uint256 res =
-            IMetaPool(manager.stableSwapMetaPoolAddress()).add_liquidity(
-                [0, amount3CRVReceived],
-                0,
-                manager.bondingContractAddress()
-            );
+        uint256 res = IMetaPool(manager.stableSwapMetaPoolAddress())
+            .add_liquidity(
+            [0, amount3CRVReceived],
+            0,
+            manager.bondingContractAddress()
+        );
         // update TWAP price
         return res;
     }

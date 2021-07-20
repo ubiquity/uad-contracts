@@ -218,22 +218,23 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
         uint256 _fee
     ) external onlyAdmin {
         // Create new StableSwap meta pool (uAD <-> 3Crv)
-        address metaPool =
-            ICurveFactory(_curveFactory).deploy_metapool(
-                _crvBasePool,
-                ERC20(dollarTokenAddress).name(),
-                ERC20(dollarTokenAddress).symbol(),
-                dollarTokenAddress,
-                _amplificationCoefficient,
-                _fee
-            );
+        address metaPool = ICurveFactory(_curveFactory).deploy_metapool(
+            _crvBasePool,
+            ERC20(dollarTokenAddress).name(),
+            ERC20(dollarTokenAddress).symbol(),
+            dollarTokenAddress,
+            _amplificationCoefficient,
+            _fee
+        );
         stableSwapMetaPoolAddress = metaPool;
 
         // Approve the newly-deployed meta pool to transfer this contract's funds
-        uint256 crv3PoolTokenAmount =
-            IERC20(_crv3PoolTokenAddress).balanceOf(address(this));
-        uint256 uADTokenAmount =
-            IERC20(dollarTokenAddress).balanceOf(address(this));
+        uint256 crv3PoolTokenAmount = IERC20(_crv3PoolTokenAddress).balanceOf(
+            address(this)
+        );
+        uint256 uADTokenAmount = IERC20(dollarTokenAddress).balanceOf(
+            address(this)
+        );
 
         // safe approve revert if approve from non-zero to non-zero allowance
         IERC20(_crv3PoolTokenAddress).safeApprove(metaPool, 0);
@@ -252,11 +253,10 @@ contract UbiquityAlgorithmicDollarManager is AccessControl {
             "uADMGR: COIN_ORDER_MISMATCH"
         );
         // Add the initial liquidity to the StableSwap meta pool
-        uint256[2] memory amounts =
-            [
-                IERC20(dollarTokenAddress).balanceOf(address(this)),
-                IERC20(_crv3PoolTokenAddress).balanceOf(address(this))
-            ];
+        uint256[2] memory amounts = [
+            IERC20(dollarTokenAddress).balanceOf(address(this)),
+            IERC20(_crv3PoolTokenAddress).balanceOf(address(this))
+        ];
 
         // set curve 3Pool address
         curve3PoolTokenAddress = _crv3PoolTokenAddress;

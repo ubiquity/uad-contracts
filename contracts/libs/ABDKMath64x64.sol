@@ -46,7 +46,9 @@ library ABDKMath64x64 {
      * @return signed 64-bit integer number
      */
     function toInt(int128 x) internal pure returns (int64) {
-        unchecked {return int64(x >> 64);}
+        unchecked {
+            return int64(x >> 64);
+        }
     }
 
     /**
@@ -100,7 +102,9 @@ library ABDKMath64x64 {
      * @return signed 128.128 fixed point number
      */
     function to128x128(int128 x) internal pure returns (int256) {
-        unchecked {return int256(x) << 64;}
+        unchecked {
+            return int256(x) << 64;
+        }
     }
 
     /**
@@ -206,9 +210,8 @@ library ABDKMath64x64 {
 
             require(x >= 0);
 
-            uint256 lo =
-                (uint256(int256(x)) *
-                    (y & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) >> 64;
+            uint256 lo = (uint256(int256(x)) *
+                (y & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) >> 64;
             uint256 hi = uint256(int256(x)) * (y >> 128);
 
             require(hi <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
@@ -339,7 +342,9 @@ library ABDKMath64x64 {
      * @return signed 64.64-bit fixed point number
      */
     function avg(int128 x, int128 y) internal pure returns (int128) {
-        unchecked {return int128((int256(x) + int256(y)) >> 1);}
+        unchecked {
+            return int128((int256(x) + int256(y)) >> 1);
+        }
     }
 
     /**

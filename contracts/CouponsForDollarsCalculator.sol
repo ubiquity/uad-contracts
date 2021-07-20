@@ -33,14 +33,12 @@ contract CouponsForDollarsCalculator is ICouponsForDollarsCalculator {
             "Coupon to dollar: DEBT_TOO_HIGH"
         );
         bytes16 one = uint256(1).fromUInt();
-        bytes16 totalDebt =
-            DebtCoupon(manager.debtCouponAddress())
-                .getTotalOutstandingDebt()
-                .fromUInt();
-        bytes16 r =
-            totalDebt.div(
-                IERC20(manager.dollarTokenAddress()).totalSupply().fromUInt()
-            );
+        bytes16 totalDebt = DebtCoupon(manager.debtCouponAddress())
+            .getTotalOutstandingDebt()
+            .fromUInt();
+        bytes16 r = totalDebt.div(
+            IERC20(manager.dollarTokenAddress()).totalSupply().fromUInt()
+        );
 
         bytes16 oneMinusRAllSquared = (one.sub(r)).mul(one.sub(r));
 

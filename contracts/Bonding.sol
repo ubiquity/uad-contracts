@@ -65,8 +65,8 @@ contract Bonding is CollectableDust {
             amount
         );
         // remove one coin
-        uint256 expected =
-            (metaPool.calc_withdraw_one_coin(amount, 0) * 99) / 100;
+        uint256 expected = (metaPool.calc_withdraw_one_coin(amount, 0) * 99) /
+            100;
         // update twap
         metaPool.remove_liquidity_one_coin(amount, 0, expected);
         ITWAPOracle(manager.twapOracleAddress()).update();
@@ -89,8 +89,8 @@ contract Bonding is CollectableDust {
             amount
         );
         // remove one coin
-        uint256 expected =
-            (metaPool.calc_withdraw_one_coin(amount, 1) * 99) / 100;
+        uint256 expected = (metaPool.calc_withdraw_one_coin(amount, 1) * 99) /
+            100;
         // update twap
         metaPool.remove_liquidity_one_coin(amount, 1, expected);
         ITWAPOracle(manager.twapOracleAddress()).update();
@@ -190,12 +190,8 @@ contract Bonding is CollectableDust {
             _lpsAmount
         );
 
-        uint256 _sharesAmount =
-            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
-                _lpsAmount,
-                _weeks,
-                bondingDiscountMultiplier
-            );
+        uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
+            .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
 
         // 1 week = 45361 blocks = 2371753*7/366
         // n = (block + duration * 45361)
@@ -257,13 +253,12 @@ contract Bonding is CollectableDust {
     }
 
     function currentShareValue() public view returns (uint256 priceShare) {
-        uint256 totalLP =
-            IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
-                address(this)
-            );
+        uint256 totalLP = IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
+            address(this)
+        );
 
-        uint256 totalShares =
-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+        uint256 totalShares = IERC1155Ubiquity(manager.bondingShareAddress())
+            .totalSupply();
 
         priceShare = IUbiquityFormulas(manager.formulasAddress()).bondPrice(
             totalLP,

@@ -71,6 +71,15 @@ const config: HardhatUserConfig = {
       url: `http://127.0.0.1:8545`,
       accounts,
     },
+    acceptance: {
+      forking: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${
+          process.env.ALCHEMY_API_KEY || ""
+        }`,
+        blockNumber: 12863876,
+      },
+      accounts,
+    },
     hardhat: {
       forking: {
         url: `https://eth-mainnet.alchemyapi.io/v2/${
