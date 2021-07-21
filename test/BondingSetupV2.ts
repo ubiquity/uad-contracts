@@ -648,6 +648,8 @@ async function bondingSetupV2(): Promise<{
     metaPool.address,
     bondingMinBalance.add(bondingMaxBalance)
   );
+  // set migrating state
+  await bondingV2.setMigrating(true);
   // bondingV2 should have the UBQ_MINTER_ROLE to mint bonding shares
   await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, bondingV2.address);
   await bondingV2.setBlockCountInAWeek(420);

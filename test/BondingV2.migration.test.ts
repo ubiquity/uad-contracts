@@ -51,8 +51,6 @@ describe("bondingV2 migration", () => {
   });
 
   it("onlyOwnerOrMigrator can call migrate", async () => {
-    await bondingV2.connect(admin).setMigrating(true);
-
     // second account not migrator or owner => migrate should revert
     await expect(
       bondingV2.connect(secondAccount).migrate(bondingMinAddress)
@@ -69,8 +67,6 @@ describe("bondingV2 migration", () => {
   });
 
   it("migrate should fail if msg.sender is not a user to migrate", async () => {
-    await bondingV2.connect(admin).setMigrating(true);
-
     // second account not v1 => migrate should revert
     await expect(
       bondingV2.connect(admin).migrate(secondAddress)
@@ -78,6 +74,8 @@ describe("bondingV2 migration", () => {
   });
 
   it("migrate should fail before and after migration", async () => {
+    await bondingV2.connect(admin).setMigrating(false);
+
     // before migration => should revert
     await expect(
       bondingV2.connect(admin).migrate(bondingMaxAddress)
@@ -94,12 +92,23 @@ describe("bondingV2 migration", () => {
     ).to.be.revertedWith("not in migration");
   });
   it("migrate should fail user LP amount to migrate is 0", async () => {
-    await bondingV2.connect(admin).setMigrating(true);
-
     await expect(
       bondingV2.connect(admin).migrate(bondingZeroAddress)
     ).to.be.revertedWith("LP amount is zero");
   });
+
+  it("migrate should work", async () => {
+    await expect(bondingV2.connect(admin).migrate(bondingMinAddress)).to.not.be
+      .reverted;
+  });
+
+  it("migrate should raise event", async () => {
+    await expect(bondingV2.connect(admin).migrate(bondingMinAddress)).to.emit(
+      bondingV2,
+      "Migrated"
+    );
+  });
+
   // it("migrate should work", async () => {
   // check that a bonding share V2 is minted with an incremental ID
   // check that  bonding share V2 attributes for
