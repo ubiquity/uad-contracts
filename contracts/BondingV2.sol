@@ -28,7 +28,6 @@ contract BondingV2 is CollectableDust, Pausable {
     uint256 public accLpRewardPerShare = 0;
 
     uint256 public lpRewards;
-    address public bondingShareV1Address;
     address public bondingFormulasAddress;
     address public migrator; // temporary address to handle migration
     address[] private _toMigrateOriginals;
@@ -92,14 +91,12 @@ contract BondingV2 is CollectableDust, Pausable {
     constructor(
         address _manager,
         address _bondingFormulasAddress,
-        address _bondingShareV1Address,
         address[] memory _originals,
         uint256[] memory _lpBalances,
         uint256[] memory _weeks
     ) CollectableDust() Pausable() {
         blockCountInAWeek = 45361;
         manager = UbiquityAlgorithmicDollarManager(_manager);
-        bondingShareV1Address = _bondingShareV1Address;
         bondingFormulasAddress = _bondingFormulasAddress;
         _toMigrateOriginals = _originals;
         _toMigrateLpBalances = _lpBalances;

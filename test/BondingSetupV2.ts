@@ -628,7 +628,6 @@ async function bondingSetupV2(): Promise<{
   ).deploy(
     manager.address,
     bondingFormulas.address,
-    bonding.address,
     [bondingMinAccountAddress, bondingMaxAccountAddress],
     [bondingMinBalance, bondingMaxBalance],
     [1, 208]
@@ -644,6 +643,17 @@ async function bondingSetupV2(): Promise<{
   await bondingV2.setBlockCountInAWeek(420);
   blockCountInAWeek = await bondingV2.blockCountInAWeek();
   await manager.setBondingContractAddress(bondingV2.address);
+
+  await manager.connect(admin).revokeRole(UBQ_MINTER_ROLE, masterChef.address);
+  await manager.connect(admin).revokeRole(UBQ_MINTER_ROLE, bonding.address);
+  // bonding should have the UBQ_BURNER_ROLE to burn bonding shares
+  await manager.connect(admin).revokeRole(UBQ_BURNER_ROLE, bonding.address);
+  expect(await manager.connect(admin).hasRole(UBQ_MINTER_ROLE, bonding.address))
+    .to.be.false;
+  expect(
+    await manager.connect(admin).hasRole(UBQ_MINTER_ROLE, masterChef.address)
+  ).to.be.false;
+
   return {
     curveWhale,
     masterChef,
