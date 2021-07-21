@@ -29,18 +29,15 @@ contract BondingV2 is CollectableDust, Pausable {
 
     uint256 public lpRewards;
     address public bondingFormulasAddress;
-    
+
     address public migrator; // temporary address to handle migration
     address[] private _toMigrateOriginals;
     uint256[] private _toMigrateLpBalances;
     uint256[] private _toMigrateWeeks;
 
-    // _toMigrateId1[address] > 0 when address is to migrate, or 0 in all other cases
-    mapping(address => uint256) private _toMigrateId1;
+    // _toMigrateId[address] > 0 when address is to migrate, or 0 in all other cases
+    mapping(address => uint256) private _toMigrateId;
     bool migrating = false;
-
-    // array 0: lp deposited,  1: weeks, 2: migrated (0=false 1 =true)
-    // mapping(address => uint256[]) private _v1Holders;
 
     event PriceReset(
         address _tokenWithdrawn,
@@ -100,7 +97,7 @@ contract BondingV2 is CollectableDust, Pausable {
         require(migrating, "not in migration");
         _;
     }
-    
+
     constructor(
         address _manager,
         address _bondingFormulasAddress,
@@ -118,37 +115,41 @@ contract BondingV2 is CollectableDust, Pausable {
         require(l == _lpBalances.length, "balances array not same length");
         require(l == _weeks.length, "weeks array not same length");
 
-        for (uint256 i = 0; i < l; ++i) {
-            _toMigrateId1[_originals[i]] = i + 1;
-        }
         _toMigrateOriginals = _originals;
         _toMigrateLpBalances = _lpBalances;
         _toMigrateWeeks = _weeks;
+        for (uint256 i = 0; i < l; ++i) {
+            _toMigrateId[_originals[i]] = i + 1;
+        }
     }
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    /// @dev migrate a user from V1
+    /// @dev addUserToMigrate add a user to migrate from V1
     /// @param _original address of v1 user
-    function migrate(address _original) external whenMigrating() {
-        require(
-            msg.sender == _original || msg.sender == migrator,
-            "only owner or migrator can migrate"
-        );
-
-        // id1 of address
-        uint256 id1 = _toMigrateId1[_original];
-        require(id1 > 0, "not v1 address");
-
-        // unregister address
-        _toMigrateId1[_original] = 0;
-
-        _migrate(
-            _toMigrateOriginals[id1 - 1],
-            _toMigrateLpBalances[id1 - 1],
-            _toMigrateWeeks[id1 - 1]
-        );
+    /// @param _lpBalance LP Balance of v1 user
+    /// @param _weeks weeks lockup of v1 user
+    /// @notice user will then be able to migrate
+    function addUserToMigrate(
+        address _original,
+        uint256 _lpBalance,
+        uint256 _weeks
+    ) external onlyMigrator {
+        _toMigrateOriginals.push(_original);
+        _toMigrateLpBalances.push(_lpBalance);
+        _toMigrateWeeks.push(_weeks);
+        _toMigrateId[_original] = _toMigrateOriginals.length;
+    }
+    
+    /// @dev migrate let a user migrate from V1
+    /// @notice user will then be able to migrate
+    function migrate() public returns (uint256 _id) {
+      
+      _id = _toMigrateId[msg.sender];
+      require(_id > 0, "not v1 address");
+      
+      _migrate(_toMigrateOriginals[_id-1],_toMigrateLpBalances[_id-1],_toMigrateWeeks[_id-1]);
     }
 
     function setMigrator(address _migrator) external onlyMigrator {
@@ -586,9 +587,16 @@ contract BondingV2 is CollectableDust, Pausable {
         address user,
         uint256 _lpsAmount,
         uint256 _weeks
-    ) internal returns (uint256 _id) {
+    ) internal whenMigrating() returns (uint256 _id) {
+        require(_toMigrateId[user] > 0, "not v1 address");
+        require(_lpsAmount > 0, "LP amount is zero");
+        require(
+            1 <= _weeks && _weeks <= 208,
+            "Duration must be between 1 and 208 weeks"
+        );
 
-      require(_lpsAmount>0, "LP amount is zero");
+        // unregister address
+        _toMigrateId[user] = 0;
 
         // update the accumulated lp rewards per shares
         _updateLpPerShare();
@@ -608,7 +616,6 @@ contract BondingV2 is CollectableDust, Pausable {
             _id
         );
 
-        // _v1Holders[msg.sender] = [0, 0, 1];
         emit Migrated(user, _id, _lpsAmount, _sharesAmount, _weeks);
     }
 
