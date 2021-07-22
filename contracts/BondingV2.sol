@@ -35,9 +35,9 @@ contract BondingV2 is CollectableDust, Pausable {
     uint256[] private _toMigrateLpBalances;
     uint256[] private _toMigrateWeeks;
 
-    // _toMigrateId[address] > 0 when address is to migrate, or 0 in all other cases
-    mapping(address => uint256) private _toMigrateId;
-    bool migrating = false;
+    // toMigrateId[address] > 0 when address is to migrate, or 0 in all other cases
+    mapping(address => uint256) public toMigrateId;
+    bool public migrating = false;
 
     event PriceReset(
         address _tokenWithdrawn,
@@ -119,7 +119,7 @@ contract BondingV2 is CollectableDust, Pausable {
         _toMigrateLpBalances = _lpBalances;
         _toMigrateWeeks = _weeks;
         for (uint256 i = 0; i < l; ++i) {
-            _toMigrateId[_originals[i]] = i + 1;
+            toMigrateId[_originals[i]] = i + 1;
         }
     }
 
@@ -139,19 +139,19 @@ contract BondingV2 is CollectableDust, Pausable {
         _toMigrateOriginals.push(_original);
         _toMigrateLpBalances.push(_lpBalance);
         _toMigrateWeeks.push(_weeks);
-        _toMigrateId[_original] = _toMigrateOriginals.length;
+        toMigrateId[_original] = _toMigrateOriginals.length;
     }
     
     /// @dev migrate let a user migrate from V1
     /// @notice user will then be able to migrate
     function migrate() public returns (uint256 _id) {
       
-      _id = _toMigrateId[msg.sender];
+      _id = toMigrateId[msg.sender];
       require(_id > 0, "not v1 address");
       
       _migrate(_toMigrateOriginals[_id-1],_toMigrateLpBalances[_id-1],_toMigrateWeeks[_id-1]);
     }
-
+    
     function setMigrator(address _migrator) external onlyMigrator {
         migrator = _migrator;
     }
@@ -588,7 +588,7 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 _lpsAmount,
         uint256 _weeks
     ) internal whenMigrating() returns (uint256 _id) {
-        require(_toMigrateId[user] > 0, "not v1 address");
+        require(toMigrateId[user] > 0, "not v1 address");
         require(_lpsAmount > 0, "LP amount is zero");
         require(
             1 <= _weeks && _weeks <= 208,
@@ -596,7 +596,7 @@ contract BondingV2 is CollectableDust, Pausable {
         );
 
         // unregister address
-        _toMigrateId[user] = 0;
+        toMigrateId[user] = 0;
 
         // update the accumulated lp rewards per shares
         _updateLpPerShare();
