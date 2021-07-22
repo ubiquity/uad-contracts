@@ -47,6 +47,7 @@ contract MasterChefV2 {
     uint256 public uGOVmultiplier = 1e18;
     uint256 public minPriceDiffToUpdateMultiplier = 1000000000000000;
     uint256 public lastPrice = 1 ether;
+    uint256 public uGOVDivider;
     // Info of each pool.
     PoolInfo public pool;
     // Info of each user that stakes LP tokens.
@@ -84,11 +85,20 @@ contract MasterChefV2 {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         pool.lastRewardBlock = block.number;
         pool.accuGOVPerShare = 0; // uint256(1e12);
+        uGOVDivider = 5; // 100 / 5 = 20% extra minted ugov for treasury
         _updateUGOVMultiplier();
     }
 
     function setUGOVPerBlock(uint256 _uGOVPerBlock) external onlyTokenManager {
         uGOVPerBlock = _uGOVPerBlock;
+    }
+
+    // the bigger uGOVDivider is the less extra Ugov will be minted for the treasury
+    function setUGOVShareForTreasury(uint256 _uGOVDivider)
+        external
+        onlyTokenManager
+    {
+        uGOVDivider = _uGOVDivider;
     }
 
     function setMinPriceDiffToUpdateMultiplier(
@@ -239,10 +249,10 @@ contract MasterChefV2 {
             address(this),
             uGOVReward
         );
-        // mint another 20% for the treasury
+        // mint another x% for the treasury
         IERC20Ubiquity(manager.governanceTokenAddress()).mint(
             manager.treasuryAddress(),
-            uGOVReward / 5
+            uGOVReward / uGOVDivider
         );
         pool.accuGOVPerShare =
             pool.accuGOVPerShare +
