@@ -107,18 +107,17 @@ contract BondingV2 is CollectableDust, Pausable {
     ) CollectableDust() Pausable() {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         bondingFormulasAddress = _bondingFormulasAddress;
-        bondingShareV1Address = _bondingShareV1Address;
         migrator = msg.sender;
 
-        uint256 l = _originals.length;
-        require(l > 0, "address array empty");
-        require(l == _lpBalances.length, "balances array not same length");
-        require(l == _weeks.length, "weeks array not same length");
+        uint256 lgt = _originals.length;
+        require(lgt > 0, "address array empty");
+        require(lgt == _lpBalances.length, "balances array not same length");
+        require(lgt == _weeks.length, "weeks array not same length");
 
         _toMigrateOriginals = _originals;
         _toMigrateLpBalances = _lpBalances;
         _toMigrateWeeks = _weeks;
-        for (uint256 i = 0; i < l; ++i) {
+        for (uint256 i = 0; i < lgt; ++i) {
             toMigrateId[_originals[i]] = i + 1;
         }
     }
@@ -141,17 +140,7 @@ contract BondingV2 is CollectableDust, Pausable {
         _toMigrateWeeks.push(_weeks);
         toMigrateId[_original] = _toMigrateOriginals.length;
     }
-    
-    /// @dev migrate let a user migrate from V1
-    /// @notice user will then be able to migrate
-    function migrate() public returns (uint256 _id) {
-      
-      _id = toMigrateId[msg.sender];
-      require(_id > 0, "not v1 address");
-      
-      _migrate(_toMigrateOriginals[_id-1],_toMigrateLpBalances[_id-1],_toMigrateWeeks[_id-1]);
-    }
-    
+
     function setMigrator(address _migrator) external onlyMigrator {
         migrator = _migrator;
     }
@@ -554,6 +543,19 @@ contract BondingV2 is CollectableDust, Pausable {
         return 0;
     }
 
+    /// @dev migrate let a user migrate from V1
+    /// @notice user will then be able to migrate
+    function migrate() public returns (uint256 _id) {
+        _id = toMigrateId[msg.sender];
+        require(_id > 0, "not v1 address");
+
+        _migrate(
+            _toMigrateOriginals[_id - 1],
+            _toMigrateLpBalances[_id - 1],
+            _toMigrateWeeks[_id - 1]
+        );
+    }
+
     /// @dev return the amount of Lp token rewards an amount of shares entitled
     /// @param amount of bonding shares
     /// @param lpRewardDebt lp rewards that has already been distributed
@@ -587,7 +589,7 @@ contract BondingV2 is CollectableDust, Pausable {
         address user,
         uint256 _lpsAmount,
         uint256 _weeks
-    ) internal whenMigrating() returns (uint256 _id) {
+    ) internal whenMigrating returns (uint256 _id) {
         require(toMigrateId[user] > 0, "not v1 address");
         require(_lpsAmount > 0, "LP amount is zero");
         require(

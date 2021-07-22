@@ -633,7 +633,6 @@ async function bondingSetupV2(): Promise<{
   ).deploy(
     manager.address,
     bondingFormulas.address,
-    bonding.address,
     [
       bondingZeroAccountAddress,
       bondingMinAccountAddress,

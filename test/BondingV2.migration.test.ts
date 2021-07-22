@@ -2,7 +2,6 @@ import { expect } from "chai";
 import { Signer, BigNumber } from "ethers";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
-import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { bondingSetupV2 } from "./BondingSetupV2";
 
 type Bond = [string, BigNumber, BigNumber, BigNumber, BigNumber, BigNumber] & {
@@ -23,7 +22,6 @@ let bondingMaxAccount: Signer;
 let bondingMinAddress: string;
 let bondingMaxAddress: string;
 let secondAddress: string;
-let masterChefV2: MasterChefV2;
 let admin: Signer;
 
 beforeEach(async () => {
@@ -32,7 +30,6 @@ beforeEach(async () => {
     secondAccount,
     bondingV2,
     bondingShareV2,
-    masterChefV2,
     bondingZeroAccount,
     bondingMinAccount,
     bondingMaxAccount
@@ -122,7 +119,7 @@ describe("bondingV2 migration", () => {
   });
 
   describe("migrating", () => {
-    it("migrating should be true if  in migration", async () => {
+    it("migrating should be true if in migration", async () => {
       expect(await bondingV2.migrating()).to.be.true;
     });
 
@@ -135,10 +132,6 @@ describe("bondingV2 migration", () => {
   describe("toMigrateId", () => {
     it("toMigrateId should be not null if not migrated", async () => {
       expect(await bondingV2.toMigrateId(bondingMaxAddress)).to.be.gt(1);
-    });
-
-    it("toMigrateId should give back ", async () => {
-      expect(await bondingV2.toMigrateId(secondAddress)).to.be.equal(0);
     });
 
     it("toMigrateId should be null if migrated", async () => {
