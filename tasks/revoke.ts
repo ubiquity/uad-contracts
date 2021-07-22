@@ -1,6 +1,5 @@
 import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
-import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 // This file is only here to make interacting with the Dapp easier,
 // feel free to ignore it if you don't need it.
@@ -9,10 +8,7 @@ task("revoke", "revoke Minter Burner role of an address")
   .addParam("receiver", "The address that will be revoked")
   .addParam("manager", "The address of uAD Manager")
   .setAction(
-    async (
-      taskArgs: { receiver: string; manager: string },
-      { ethers, getNamedAccounts }
-    ) => {
+    async (taskArgs: { receiver: string; manager: string }, { ethers }) => {
       const net = await ethers.provider.getNetwork();
 
       if (net.name === "hardhat") {
@@ -40,13 +36,17 @@ task("revoke", "revoke Minter Burner role of an address")
         UBQ_MINTER_ROLE,
         taskArgs.receiver
       );
-      console.log(`${taskArgs.receiver} is minter ?:${isMinter}`);
+      console.log(
+        `${taskArgs.receiver} is minter ?:${isMinter ? "true" : "false"}`
+      );
 
       const isBurner = await manager.hasRole(
         UBQ_BURNER_ROLE,
         taskArgs.receiver
       );
-      console.log(`${taskArgs.receiver} is burner ?:${isBurner}`);
+      console.log(
+        `${taskArgs.receiver} is burner ?:${isBurner ? "true" : "false"}`
+      );
 
       if (isMinter) {
         const tx = await manager.revokeRole(UBQ_MINTER_ROLE, taskArgs.receiver);

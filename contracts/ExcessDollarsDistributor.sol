@@ -151,10 +151,10 @@ contract ExcessDollarsDistributor is IExcessDollarsDistributor {
         // deposit liquidity
         uint256 res = IMetaPool(manager.stableSwapMetaPoolAddress())
             .add_liquidity(
-            [0, amount3CRVReceived],
-            0,
-            manager.bondingContractAddress()
-        );
+                [0, amount3CRVReceived],
+                0,
+                manager.bondingContractAddress()
+            );
         // update TWAP price
         return res;
     }

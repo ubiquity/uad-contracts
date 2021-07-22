@@ -459,10 +459,10 @@ contract BondingV2 is CollectableDust, Pausable {
 
         uint256 correctedAmount = BondingFormulas(this.bondingFormulasAddress())
             .correctedAmountToWithdraw(
-            BondingShareV2(manager.bondingShareAddress()).totalLP(),
-            metapool.balanceOf(address(this)) - lpRewards,
-            _amount
-        );
+                BondingShareV2(manager.bondingShareAddress()).totalLP(),
+                metapool.balanceOf(address(this)) - lpRewards,
+                _amount
+            );
 
         lpRewards -= pendingLpReward;
         bond.lpAmount -= _amount;

@@ -97,9 +97,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             dollarsMintedThisCycle = 0;
         }
 
-
-            ICouponsForDollarsCalculator couponCalculator
-         = ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
+        ICouponsForDollarsCalculator couponCalculator = ICouponsForDollarsCalculator(
+                manager.couponCalculatorAddress()
+            );
         uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
 
         // we burn user's dollars.
@@ -162,9 +162,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         view
         returns (uint256)
     {
-
-            ICouponsForDollarsCalculator couponCalculator
-         = ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
+        ICouponsForDollarsCalculator couponCalculator = ICouponsForDollarsCalculator(
+                manager.couponCalculatorAddress()
+            );
         return couponCalculator.getCouponAmount(amount);
     }
 
@@ -394,11 +394,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             uint256 excessDollars = currentRedeemableBalance -
                 (totalOutstandingDebt);
 
-
-                IExcessDollarsDistributor dollarsDistributor
-             = IExcessDollarsDistributor(
-                manager.getExcessDollarsDistributor(address(this))
-            );
+            IExcessDollarsDistributor dollarsDistributor = IExcessDollarsDistributor(
+                    manager.getExcessDollarsDistributor(address(this))
+                );
             //transfer excess dollars to the distributor and tell it to distribute
             uAD.transfer(
                 manager.getExcessDollarsDistributor(address(this)),
