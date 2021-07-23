@@ -35,7 +35,8 @@ contract MasterChefOriginal is Ownable {
     // Info of each pool.
     struct PoolInfo {
         IERC20 lpToken; // Address of LP token contract.
-        uint256 allocPoint; // How many allocation points assigned to this pool. UBQ to distribute per block.
+        // How many allocation points assigned to this pool. UBQ to distribute per block.
+        uint256 allocPoint;
         uint256 lastRewardBlock; // Last block number that UBQs distribution occurs.
         uint256 accUbqPerShare; // Accumulated UBQs per share, times 1e12. See below.
     }
@@ -102,6 +103,32 @@ contract MasterChefOriginal is Ownable {
         return poolInfo.length;
     }
 
+    // View function to see pending UBQs on frontend.
+    function pendingUBQ(uint256 _pid, address _user)
+        external
+        view
+        returns (uint256)
+    {
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][_user];
+        uint256 accUbqPerShare = pool.accUbqPerShare;
+        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
+        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+            uint256 multiplier = getMultiplier(
+                pool.lastRewardBlock,
+                block.number
+            );
+
+            uint256 ubqReward = (multiplier *
+                (ubqPerBlock) *
+                (pool.allocPoint)) / (totalAllocPoint);
+            accUbqPerShare =
+                accUbqPerShare +
+                ((ubqReward * (1e12)) / (lpSupply));
+        }
+        return ((user.amount * accUbqPerShare) / 1e12) - user.rewardDebt;
+    }
+
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
     function add(
@@ -140,49 +167,6 @@ contract MasterChefOriginal is Ownable {
             poolInfo[_pid].allocPoint +
             _allocPoint;
         poolInfo[_pid].allocPoint = _allocPoint;
-    }
-
-    // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to)
-        public
-        view
-        returns (uint256)
-    {
-        if (_to <= bonusEndBlock) {
-            return (_to - _from) * BONUS_MULTIPLIER;
-        } else if (_from >= bonusEndBlock) {
-            return _to - _from;
-        } else {
-            return
-                ((bonusEndBlock - _from) * BONUS_MULTIPLIER) +
-                (_to - bonusEndBlock);
-        }
-    }
-
-    // View function to see pending UBQs on frontend.
-    function pendingUBQ(uint256 _pid, address _user)
-        external
-        view
-        returns (uint256)
-    {
-        PoolInfo storage pool = poolInfo[_pid];
-        UserInfo storage user = userInfo[_pid][_user];
-        uint256 accUbqPerShare = pool.accUbqPerShare;
-        uint256 lpSupply = pool.lpToken.balanceOf(address(this));
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(
-                pool.lastRewardBlock,
-                block.number
-            );
-
-            uint256 ubqReward = (multiplier *
-                (ubqPerBlock) *
-                (pool.allocPoint)) / (totalAllocPoint);
-            accUbqPerShare =
-                accUbqPerShare +
-                ((ubqReward * (1e12)) / (lpSupply));
-        }
-        return ((user.amount * accUbqPerShare) / 1e12) - user.rewardDebt;
     }
 
     // Update reward vairables for all pools. Be careful of gas spending!
@@ -267,6 +251,23 @@ contract MasterChefOriginal is Ownable {
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
         user.amount = 0;
         user.rewardDebt = 0;
+    }
+
+    // Return reward multiplier over the given _from to _to block.
+    function getMultiplier(uint256 _from, uint256 _to)
+        public
+        view
+        returns (uint256)
+    {
+        if (_to <= bonusEndBlock) {
+            return (_to - _from) * BONUS_MULTIPLIER;
+        } else if (_from >= bonusEndBlock) {
+            return _to - _from;
+        } else {
+            return
+                ((bonusEndBlock - _from) * BONUS_MULTIPLIER) +
+                (_to - bonusEndBlock);
+        }
     }
 
     // Safe uGOV transfer function, just in case if rounding

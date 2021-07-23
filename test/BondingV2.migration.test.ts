@@ -32,7 +32,7 @@ beforeEach(async () => {
     bondingShareV2,
     bondingZeroAccount,
     bondingMinAccount,
-    bondingMaxAccount
+    bondingMaxAccount,
   } = await bondingSetupV2());
   secondAddress = await secondAccount.getAddress();
   bondingMinAddress = await bondingMinAccount.getAddress();

@@ -42,7 +42,7 @@ describe("bondingV2 price reset", () => {
       masterChefV2,
       twapOracle,
       bondingFormulas,
-      treasury
+      treasury,
     } = await bondingSetupV2());
     secondAddress = await secondAccount.getAddress();
   });
