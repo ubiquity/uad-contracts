@@ -34,7 +34,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyMinter() {
         require(
             manager.hasRole(manager.UBQ_MINTER_ROLE(), msg.sender),
-            "Governance token: not minter"
+            "not minter"
         );
         _;
     }
@@ -42,15 +42,15 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
     modifier onlyBurner() {
         require(
             manager.hasRole(manager.UBQ_BURNER_ROLE(), msg.sender),
-            "Governance token: not burner"
+            "not burner"
         );
         _;
     }
 
-    modifier onlyPauser() {
+    modifier onlyBondingManager() {
         require(
-            manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
-            "Governance token: not pauser"
+            manager.hasRole(manager.BONDING_MANAGER_ROLE(), msg.sender),
+            "not manager"
         );
         _;
     }
@@ -118,7 +118,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
      * See {ERC1155Pausable} and {Pausable-_pause}.
      *
      */
-    function pause() public virtual onlyPauser {
+    function pause() public virtual onlyBondingManager {
         _pause();
     }
 
@@ -128,7 +128,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
      * See {ERC1155Pausable} and {Pausable-_unpause}.
      *
      */
-    function unpause() public virtual onlyPauser {
+    function unpause() public virtual onlyBondingManager {
         _unpause();
     }
 

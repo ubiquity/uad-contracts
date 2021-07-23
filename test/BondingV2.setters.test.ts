@@ -1,8 +1,9 @@
-import { ethers, Signer } from "ethers";
+import { ethers, Signer, BigNumber } from "ethers";
 import { describe, it } from "mocha";
 import { expect } from "./setup";
 import { BondingV2 } from "../artifacts/types/BondingV2";
-import { bondingSetupV2 } from "./BondingSetupV2";
+import { bondingSetupV2, deposit } from "./BondingSetupV2";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
 describe("bondingV2 Setters", () => {
   let bondingV2: BondingV2;
@@ -10,9 +11,11 @@ describe("bondingV2 Setters", () => {
   let secondAccount: Signer;
   let DAI: string;
   let USDC: string;
+  let manager: UbiquityAlgorithmicDollarManager;
 
   before(async () => {
-    ({ admin, secondAccount, bondingV2, DAI, USDC } = await bondingSetupV2());
+    ({ admin, manager, secondAccount, bondingV2, DAI, USDC } =
+      await bondingSetupV2());
   });
   describe("CollectableDust", () => {
     it("Admin should be able to add protocol token (CollectableDust)", async () => {
@@ -105,7 +108,43 @@ describe("bondingV2 Setters", () => {
         .withArgs(DAI);
     });
   });
+  describe("pausable", () => {
+    it("admin should be token manager", async () => {
+      const hasRole = await manager.hasRole(
+        await manager.BONDING_MANAGER_ROLE(),
+        await admin.getAddress()
+      );
+      expect(hasRole).to.be.true;
+    });
+    it("should revert if non manager pause", async () => {
+      await expect(bondingV2.connect(secondAccount).pause()).to.be.revertedWith(
+        "not manager"
+      );
+    });
+    it("Bonding Manager shouldn't be able to unpause if not paused", async () => {
+      await expect(bondingV2.connect(admin).unpause()).to.be.revertedWith(
+        "Pausable: not paused"
+      );
+    });
+    it("Bonding Manager should be able to pause", async () => {
+      await expect(bondingV2.connect(admin).pause()).to.emit(
+        bondingV2,
+        "Paused"
+      );
+      await expect(
+        bondingV2.connect(secondAccount).deposit(42, 42)
+      ).to.be.revertedWith("Pausable: paused");
+    });
+    it("Bonding Manager should be able to unpause", async () => {
+      await expect(bondingV2.connect(admin).unpause()).to.emit(
+        bondingV2,
+        "Unpaused"
+      );
 
+      const amount = BigNumber.from(10).pow(18).mul(100);
+      await deposit(secondAccount, amount, 1);
+    });
+  });
   describe("blockCountInAWeek", () => {
     it("Admin should be able to update the blockCountInAWeek", async () => {
       await bondingV2

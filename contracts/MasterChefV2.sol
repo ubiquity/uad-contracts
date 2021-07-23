@@ -4,13 +4,14 @@ pragma solidity 0.8.3;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC20Ubiquity.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./interfaces/ITWAPOracle.sol";
 import "./BondingShareV2.sol";
 import "./interfaces/IUbiquityFormulas.sol";
 
 import "./interfaces/IERC1155Ubiquity.sol";
 
-contract MasterChefV2 {
+contract MasterChefV2 is Pausable {
     using SafeERC20 for IERC20Ubiquity;
     using SafeERC20 for IERC20;
 
@@ -66,10 +67,10 @@ contract MasterChefV2 {
     );
 
     // ----------- Modifiers -----------
-    modifier onlyTokenManager() {
+    modifier onlyBondingManager() {
         require(
-            manager.hasRole(manager.UBQ_TOKEN_MANAGER_ROLE(), msg.sender),
-            "MasterChef: not UBQ manager"
+            manager.hasRole(manager.BONDING_MANAGER_ROLE(), msg.sender),
+            "MasterChef: not manager"
         );
         _;
     }
@@ -89,21 +90,24 @@ contract MasterChefV2 {
         _updateUGOVMultiplier();
     }
 
-    function setUGOVPerBlock(uint256 _uGOVPerBlock) external onlyTokenManager {
+    function setUGOVPerBlock(uint256 _uGOVPerBlock)
+        external
+        onlyBondingManager
+    {
         uGOVPerBlock = _uGOVPerBlock;
     }
 
     // the bigger uGOVDivider is the less extra Ugov will be minted for the treasury
     function setUGOVShareForTreasury(uint256 _uGOVDivider)
         external
-        onlyTokenManager
+        onlyBondingManager
     {
         uGOVDivider = _uGOVDivider;
     }
 
     function setMinPriceDiffToUpdateMultiplier(
         uint256 _minPriceDiffToUpdateMultiplier
-    ) external onlyTokenManager {
+    ) external onlyBondingManager {
         minPriceDiffToUpdateMultiplier = _minPriceDiffToUpdateMultiplier;
     }
 
@@ -177,7 +181,7 @@ contract MasterChefV2 {
         BondingShareInfo storage user = _bsInfo[bondingShareID];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
         uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-            .totalSupply();
+        .totalSupply();
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = _getMultiplier();
@@ -209,6 +213,30 @@ contract MasterChefV2 {
         return _totalShares;
     }
 
+    /**
+     * @dev Pauses all token transfers.
+     *
+     *
+     * Requirements:
+     *
+     * - the caller must have the `PAUSER_ROLE`.
+     */
+    function pause() public virtual onlyBondingManager {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses all token transfers.
+     *
+     *
+     * Requirements:
+     *
+     * - the caller must have the `PAUSER_ROLE`.
+     */
+    function unpause() public virtual onlyBondingManager {
+        _unpause();
+    }
+
     // UPDATE uGOV multiplier
     function _updateUGOVMultiplier() internal {
         // (1.05/(1+abs(1-TWAP_PRICE)))
@@ -226,7 +254,7 @@ contract MasterChefV2 {
 
         if (isPriceDiffEnough) {
             uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
-                .ugovMultiply(uGOVmultiplier, currentPrice);
+            .ugovMultiply(uGOVmultiplier, currentPrice);
             lastPrice = currentPrice;
         }
     }
@@ -238,7 +266,7 @@ contract MasterChefV2 {
         }
         _updateUGOVMultiplier();
         uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-            .totalSupply();
+        .totalSupply();
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;

@@ -3,6 +3,7 @@ pragma solidity 0.8.3;
 
 import "./interfaces/IERC20Ubiquity.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 
@@ -13,7 +14,7 @@ import "./UbiquityAlgorithmicDollarManager.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract MasterChefOriginal is Ownable {
+contract MasterChefOriginal is Pausable {
     using SafeERC20 for IERC20Ubiquity;
     using SafeERC20 for IERC20;
     // Info of each user.
@@ -68,7 +69,7 @@ contract MasterChefOriginal is Ownable {
     modifier onlyTokenManager() {
         require(
             manager.hasRole(manager.UBQ_TOKEN_MANAGER_ROLE(), msg.sender),
-            "MasterChef: not UBQ manager"
+            "not manager"
         );
         _;
     }
@@ -78,7 +79,7 @@ contract MasterChefOriginal is Ownable {
         uint256 _ubqPerBlock,
         uint256 _startBlock,
         uint256 _bonusEndBlock
-    ) public {
+    ) public Pausable() {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         ubqPerBlock = _ubqPerBlock;
         bonusEndBlock = _bonusEndBlock;
@@ -108,7 +109,7 @@ contract MasterChefOriginal is Ownable {
         uint256 _allocPoint,
         IERC20 _lpToken,
         bool _withUpdate
-    ) public onlyOwner {
+    ) public onlyTokenManager {
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -131,7 +132,7 @@ contract MasterChefOriginal is Ownable {
         uint256 _pid,
         uint256 _allocPoint,
         bool _withUpdate
-    ) public onlyOwner {
+    ) public onlyTokenManager {
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -225,7 +226,7 @@ contract MasterChefOriginal is Ownable {
     }
 
     // Deposit LP tokens to MasterChef for UBQ allocation.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public whenNotPaused {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
@@ -245,7 +246,7 @@ contract MasterChefOriginal is Ownable {
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public whenNotPaused {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -267,6 +268,30 @@ contract MasterChefOriginal is Ownable {
         emit EmergencyWithdraw(msg.sender, _pid, user.amount);
         user.amount = 0;
         user.rewardDebt = 0;
+    }
+
+    /**
+     * @dev Pauses all token transfers.
+     *
+     *
+     * Requirements:
+     *
+     * - the caller must have the `PAUSER_ROLE`.
+     */
+    function pause() public virtual onlyTokenManager {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses all token transfers.
+     *
+     *
+     * Requirements:
+     *
+     * - the caller must have the `PAUSER_ROLE`.
+     */
+    function unpause() public virtual onlyTokenManager {
+        _unpause();
     }
 
     // Safe uGOV transfer function, just in case if rounding
