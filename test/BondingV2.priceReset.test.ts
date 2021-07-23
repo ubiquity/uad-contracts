@@ -3,7 +3,6 @@ import { ethers, Signer, BigNumber } from "ethers";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-
 import { latestBlockNumber, mineNBlock } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { ERC20 } from "../artifacts/types/ERC20";
@@ -43,7 +42,7 @@ describe("bondingV2 price reset", () => {
       masterChefV2,
       twapOracle,
       bondingFormulas,
-      treasury,
+      treasury
     } = await bondingSetupV2());
     secondAddress = await secondAccount.getAddress();
   });

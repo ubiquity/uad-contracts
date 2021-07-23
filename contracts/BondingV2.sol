@@ -29,10 +29,15 @@ contract BondingV2 is CollectableDust, Pausable {
 
     uint256 public lpRewards;
     address public bondingFormulasAddress;
+
     address public migrator; // temporary address to handle migration
     address[] private _toMigrateOriginals;
     uint256[] private _toMigrateLpBalances;
     uint256[] private _toMigrateWeeks;
+
+    // toMigrateId[address] > 0 when address is to migrate, or 0 in all other cases
+    mapping(address => uint256) public toMigrateId;
+    bool public migrating = false;
 
     event PriceReset(
         address _tokenWithdrawn,
@@ -88,6 +93,11 @@ contract BondingV2 is CollectableDust, Pausable {
         _;
     }
 
+    modifier whenMigrating() {
+        require(migrating, "not in migration");
+        _;
+    }
+
     constructor(
         address _manager,
         address _bondingFormulasAddress,
@@ -95,12 +105,21 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256[] memory _lpBalances,
         uint256[] memory _weeks
     ) CollectableDust() Pausable() {
-        blockCountInAWeek = 45361;
         manager = UbiquityAlgorithmicDollarManager(_manager);
         bondingFormulasAddress = _bondingFormulasAddress;
+        migrator = msg.sender;
+
+        uint256 lgt = _originals.length;
+        require(lgt > 0, "address array empty");
+        require(lgt == _lpBalances.length, "balances array not same length");
+        require(lgt == _weeks.length, "weeks array not same length");
+
         _toMigrateOriginals = _originals;
         _toMigrateLpBalances = _lpBalances;
         _toMigrateWeeks = _weeks;
+        for (uint256 i = 0; i < lgt; ++i) {
+            toMigrateId[_originals[i]] = i + 1;
+        }
     }
 
     // solhint-disable-next-line no-empty-blocks
@@ -116,21 +135,18 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 _lpBalance,
         uint256 _weeks
     ) external onlyMigrator {
-        _migrate(_original, _lpBalance, _weeks);
-    }
-
-    function migrateAll() external onlyMigrator {
-        for (uint256 index = 0; index < _toMigrateOriginals.length; index++) {
-            _migrate(
-                _toMigrateOriginals[index],
-                _toMigrateLpBalances[index],
-                _toMigrateWeeks[index]
-            );
-        }
+        _toMigrateOriginals.push(_original);
+        _toMigrateLpBalances.push(_lpBalance);
+        _toMigrateWeeks.push(_weeks);
+        toMigrateId[_original] = _toMigrateOriginals.length;
     }
 
     function setMigrator(address _migrator) external onlyMigrator {
         migrator = _migrator;
+    }
+
+    function setMigrating(bool _migrating) external onlyMigrator {
+        migrating = _migrating;
     }
 
     /// @dev uADPriceReset remove uAD unilateraly from the curve LP share sitting inside
@@ -527,6 +543,19 @@ contract BondingV2 is CollectableDust, Pausable {
         return 0;
     }
 
+    /// @dev migrate let a user migrate from V1
+    /// @notice user will then be able to migrate
+    function migrate() public returns (uint256 _id) {
+        _id = toMigrateId[msg.sender];
+        require(_id > 0, "not v1 address");
+
+        _migrate(
+            _toMigrateOriginals[_id - 1],
+            _toMigrateLpBalances[_id - 1],
+            _toMigrateWeeks[_id - 1]
+        );
+    }
+
     /// @dev return the amount of Lp token rewards an amount of shares entitled
     /// @param amount of bonding shares
     /// @param lpRewardDebt lp rewards that has already been distributed
@@ -560,9 +589,20 @@ contract BondingV2 is CollectableDust, Pausable {
         address user,
         uint256 _lpsAmount,
         uint256 _weeks
-    ) internal returns (uint256 _id) {
+    ) internal whenMigrating returns (uint256 _id) {
+        require(toMigrateId[user] > 0, "not v1 address");
+        require(_lpsAmount > 0, "LP amount is zero");
+        require(
+            1 <= _weeks && _weeks <= 208,
+            "Duration must be between 1 and 208 weeks"
+        );
+
+        // unregister address
+        toMigrateId[user] = 0;
+
         // update the accumulated lp rewards per shares
         _updateLpPerShare();
+
         // calculate the amount of share based on the amount of lp deposited and the duration
         uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
             .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
@@ -577,7 +617,7 @@ contract BondingV2 is CollectableDust, Pausable {
             _sharesAmount,
             _id
         );
-        // _v1Holders[msg.sender] = [0, 0, 1];
+
         emit Migrated(user, _id, _lpsAmount, _sharesAmount, _weeks);
     }
 
