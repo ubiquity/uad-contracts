@@ -181,7 +181,7 @@ contract MasterChefV2 is Pausable {
         BondingShareInfo storage user = _bsInfo[bondingShareID];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
         uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-        .totalSupply();
+            .totalSupply();
 
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = _getMultiplier();
@@ -254,7 +254,7 @@ contract MasterChefV2 is Pausable {
 
         if (isPriceDiffEnough) {
             uGOVmultiplier = IUbiquityFormulas(manager.formulasAddress())
-            .ugovMultiply(uGOVmultiplier, currentPrice);
+                .ugovMultiply(uGOVmultiplier, currentPrice);
             lastPrice = currentPrice;
         }
     }
@@ -266,7 +266,7 @@ contract MasterChefV2 is Pausable {
         }
         _updateUGOVMultiplier();
         uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-        .totalSupply();
+            .totalSupply();
         if (lpSupply == 0) {
             pool.lastRewardBlock = block.number;
             return;
