@@ -28,6 +28,7 @@ contract BondingV2 is CollectableDust, Pausable {
     uint256 public accLpRewardPerShare = 0;
 
     uint256 public lpRewards;
+    uint256 public totalLpToMigrate;
     address public bondingFormulasAddress;
 
     address public migrator; // temporary address to handle migration
@@ -119,17 +120,20 @@ contract BondingV2 is CollectableDust, Pausable {
         _toMigrateWeeks = _weeks;
         for (uint256 i = 0; i < lgt; ++i) {
             toMigrateId[_originals[i]] = i + 1;
+            totalLpToMigrate += _lpBalances[i];
         }
     }
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    /// @dev addUserToMigrate add a user to migrate from V1
+    /// @dev addUserToMigrate add a user to migrate from V1.
+    ///      IMPORTANT execute that function BEFORE sending the corresponding LP token
+    ///      otherwise they will have extra LP rewards
     /// @param _original address of v1 user
     /// @param _lpBalance LP Balance of v1 user
     /// @param _weeks weeks lockup of v1 user
-    /// @notice user will then be able to migrate
+    /// @notice user will then be able to migrate.
     function addUserToMigrate(
         address _original,
         uint256 _lpBalance,
@@ -137,6 +141,7 @@ contract BondingV2 is CollectableDust, Pausable {
     ) external onlyMigrator {
         _toMigrateOriginals.push(_original);
         _toMigrateLpBalances.push(_lpBalance);
+        totalLpToMigrate += _lpBalance;
         _toMigrateWeeks.push(_weeks);
         toMigrateId[_original] = _toMigrateOriginals.length;
     }
@@ -293,9 +298,9 @@ contract BondingV2 is CollectableDust, Pausable {
             "Bonding: duration must be between 1 and 208 weeks"
         );
         ITWAPOracle(manager.twapOracleAddress()).update();
+
         // update the accumulated lp rewards per shares
         _updateLpPerShare();
-
         // transfer lp token to the bonding contract
         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
             msg.sender,
@@ -399,8 +404,6 @@ contract BondingV2 is CollectableDust, Pausable {
         // blockRonding = 100 => 2 ending zeros
         bond.endBlock = block.number + _weeks * blockCountInAWeek;
 
-        // bond.lpRewardDebt = (bonding shares * accLpRewardPerShare) /  1e18;
-        // user.amount.mul(pool.accSushiPerShare).div(1e12);
         // should be done after masterchef withdraw
         _updateLpPerShare();
         bond.lpRewardDebt =
@@ -521,8 +524,9 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 lpBalance = IERC20(manager.stableSwapMetaPoolAddress())
             .balanceOf(address(this));
         // the excess LP is the current balance minus the total deposited LP
-        if (lpBalance >= bonding.totalLP()) {
-            uint256 currentLpRewards = lpBalance - bonding.totalLP();
+        if (lpBalance >= (bonding.totalLP() + totalLpToMigrate)) {
+            uint256 currentLpRewards = lpBalance -
+                (bonding.totalLP() + totalLpToMigrate);
             uint256 curAccLpRewardPerShare = accLpRewardPerShare;
             // if new rewards we should calculate the new curAccLpRewardPerShare
             if (currentLpRewards > lpRewards) {
@@ -600,17 +604,18 @@ contract BondingV2 is CollectableDust, Pausable {
         // unregister address
         toMigrateId[user] = 0;
 
-        // update the accumulated lp rewards per shares
-        _updateLpPerShare();
-
         // calculate the amount of share based on the amount of lp deposited and the duration
         uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
             .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
 
+        // update the accumulated lp rewards per shares
+        _updateLpPerShare();
         // calculate end locking period block number
         uint256 endBlock = block.number + _weeks * blockCountInAWeek;
         _id = _mint(user, _lpsAmount, _sharesAmount, endBlock);
-
+        // reduce the total LP to migrate after the minting
+        // to keep the _updateLpPerShare calculation consistent
+        totalLpToMigrate -= _lpsAmount;
         // set masterchef for uGOV rewards
         IMasterChefV2(manager.masterChefAddress()).deposit(
             user,
@@ -630,8 +635,11 @@ contract BondingV2 is CollectableDust, Pausable {
         // minus the total deposited LP + LP that needs to be migrated
         uint256 totalShares = IMasterChefV2(manager.masterChefAddress())
             .totalShares();
-        if (lpBalance >= bond.totalLP() && totalShares > 0) {
-            uint256 currentLpRewards = lpBalance - bond.totalLP();
+        if (
+            lpBalance >= (bond.totalLP() + totalLpToMigrate) && totalShares > 0
+        ) {
+            uint256 currentLpRewards = lpBalance -
+                (bond.totalLP() + totalLpToMigrate);
             uint256 newLpRewards = currentLpRewards - lpRewards;
             // is there new LP rewards to be distributed ?
             if (newLpRewards >= 0) {
@@ -656,8 +664,6 @@ contract BondingV2 is CollectableDust, Pausable {
             _currentShareValue != 0,
             "Bonding: share value should not be null"
         );
-        /* // update the accumulated lp rewards per shares
-        _updateLpPerShare(); */
         // set the lp rewards debts so that this bonding share only get lp rewards from this day
         uint256 lpRewardDebt = (shares * accLpRewardPerShare) / 1e12;
         return

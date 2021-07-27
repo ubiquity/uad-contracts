@@ -198,7 +198,8 @@ describe("bondingV2 liquidity", () => {
       const bondBefore = await bondingShareV2.getBond(bond.id);
       await mineNBlock(endOfLockingInBlock);
       secondAccountAdr = await secondAccount.getAddress();
-
+      // simulate distribution of lp token to assess the update of lpRewardDebt
+      await metaPool.transfer(bondingV2.address, one.mul(10));
       const bondAfter = await removeLiquidity(
         secondAccount,
         bond.id,

@@ -79,7 +79,7 @@ contract MasterChefOriginal is Ownable {
         uint256 _ubqPerBlock,
         uint256 _startBlock,
         uint256 _bonusEndBlock
-    ) public {
+    ) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         ubqPerBlock = _ubqPerBlock;
         bonusEndBlock = _bonusEndBlock;

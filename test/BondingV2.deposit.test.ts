@@ -28,7 +28,6 @@ describe("bondingV2 deposit", () => {
   let bondingV2: BondingV2;
   let bondingShareV2: BondingShareV2;
   let masterChefV2: MasterChefV2;
-
   let blockCountInAWeek: BigNumber;
   beforeEach(async () => {
     ({
@@ -157,9 +156,6 @@ describe("bondingV2 deposit", () => {
         "0.0000000001"
       );
       expect(isPrecise).to.be.true;
-      // expect(toMint).not.to.equal(calculatedToMint);
-
-      // expect(pendingLpRewards1).to.equal(lpRewardsAfter2ndDeposit);
 
       const pendingLpRewards2 = await bondingV2.pendingLpRewards(ibond2.id);
       // second user should get none of the previous rewards
@@ -245,9 +241,6 @@ describe("bondingV2 deposit", () => {
         "0.0000000001"
       );
       expect(isPrecise).to.be.true;
-      // expect(toMint).not.to.equal(calculatedToMint);
-
-      // expect(pendingLpRewards1).to.equal(lpRewardsAfter2ndDeposit);
 
       const pendingLpRewards2 = await bondingV2.pendingLpRewards(ibond2.id);
       // second user should get none of the previous rewards
@@ -307,11 +300,12 @@ describe("bondingV2 deposit", () => {
       expect(pendingLpRewards1After2ndExcessDollarDistrib).to.be.gt(
         pendingLpRewards2After2ndExcessDollarDistrib
       );
-      // total share + pending lp rewards should be almost equal to lp tokens inside the bonding contract
-
+      // total share + pending lp rewards + lp to migrate should be almost equal to lp tokens inside the bonding contract
+      const totalLPToMigrate = await bondingV2.totalLpToMigrate();
       const isPendingLPPrecise = isAmountEquivalent(
         bondingV2Bal2After.toString(),
         totalLPAfter2ndDeposit
+          .add(totalLPToMigrate)
           .add(pendingLpRewards1After2ndExcessDollarDistrib)
           .add(pendingLpRewards2After2ndExcessDollarDistrib)
           .toString(),

@@ -241,6 +241,9 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     bondingV2deployAddress
   ) as BondingV2;
   deployments.log("bondingV2 deployed at:", bondingV2.address);
+  const tx = await bondingV2.setMigrating(true);
+  await tx.wait();
+  deployments.log("setMigrating to true");
   // send the LP token from bonding V1 to V2 to prepare the migration
   const bondingFactory = await ethers.getContractFactory("Bonding");
   const metaPoolAddr = await manager.connect(admin).stableSwapMetaPoolAddress();

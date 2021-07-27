@@ -43,6 +43,8 @@ let bondingShareV2: BondingShareV2;
 let masterChef: MasterChef;
 let masterChefV2: MasterChefV2;
 let manager: UbiquityAlgorithmicDollarManager;
+let bondingMaxBalance: BigNumber;
+let bondingMinBalance: BigNumber;
 let uAD: UbiquityAlgorithmicDollar;
 let bondingFormulas: BondingFormulas;
 let uGOV: UbiquityGovernance;
@@ -245,6 +247,8 @@ async function bondingSetupV2(): Promise<{
   bondingZeroAccount: Signer;
   bondingMinAccount: Signer;
   bondingMaxAccount: Signer;
+  bondingMinBalance: BigNumber;
+  bondingMaxBalance: BigNumber;
   bondingFormulas: BondingFormulas;
   curvePoolFactory: ICurveFactory;
   uAD: UbiquityAlgorithmicDollar;
@@ -573,12 +577,12 @@ async function bondingSetupV2(): Promise<{
       [ethers.utils.parseEther("100"), ethers.utils.parseEther("100")],
       dyuAD2LP.mul(99).div(100)
     );
-  const bondingMinBalance = await metaPool.balanceOf(bondingMinAccountAddress);
+  bondingMinBalance = await metaPool.balanceOf(bondingMinAccountAddress);
   await metaPool
     .connect(bondingMinAccount)
     .approve(bonding.address, bondingMinBalance);
   await bonding.connect(bondingMinAccount).deposit(bondingMinBalance, 1);
-  const bondingMaxBalance = await metaPool.balanceOf(bondingMaxAccountAddress);
+  bondingMaxBalance = await metaPool.balanceOf(bondingMaxAccountAddress);
   await metaPool
     .connect(bondingMaxAccount)
     .approve(bonding.address, bondingMaxBalance);
@@ -639,7 +643,7 @@ async function bondingSetupV2(): Promise<{
       bondingMaxAccountAddress,
     ],
     [0, bondingMinBalance, bondingMaxBalance],
-    [1, 208, 1]
+    [1, 1, 208]
   )) as BondingV2;
   // send the LP token from bonding V1 to V2 to prepare the migration
   await bonding.sendDust(
@@ -671,6 +675,8 @@ async function bondingSetupV2(): Promise<{
     masterChefV2,
     bondingShareV2,
     bondingFormulas,
+    bondingMaxBalance,
+    bondingMinBalance,
     bondingV2,
     admin,
     crvToken,

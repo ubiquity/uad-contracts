@@ -3,6 +3,10 @@ import { Signer, BigNumber } from "ethers";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { bondingSetupV2 } from "./BondingSetupV2";
+import { IMetaPool } from "../artifacts/types/IMetaPool";
+import { isAmountEquivalent } from "./utils/calc";
+import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
+import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 
 type Bond = [string, BigNumber, BigNumber, BigNumber, BigNumber, BigNumber] & {
   minter: string;
@@ -12,10 +16,15 @@ type Bond = [string, BigNumber, BigNumber, BigNumber, BigNumber, BigNumber] & {
   endBlock: BigNumber;
   lpAmount: BigNumber;
 };
-
+const one: BigNumber = BigNumber.from(10).pow(18); // one = 1 ether = 10^18
 let bondingV2: BondingV2;
 let bondingShareV2: BondingShareV2;
+let masterChefV2: MasterChefV2;
 let secondAccount: Signer;
+let ubiquityFormulas: UbiquityFormulas;
+let metaPool: IMetaPool;
+let bondingMinBalance: BigNumber;
+let bondingMaxBalance: BigNumber;
 let bondingZeroAccount: Signer;
 let bondingMinAccount: Signer;
 let bondingMaxAccount: Signer;
@@ -24,22 +33,26 @@ let bondingMaxAddress: string;
 let secondAddress: string;
 let admin: Signer;
 
-beforeEach(async () => {
-  ({
-    admin,
-    secondAccount,
-    bondingV2,
-    bondingShareV2,
-    bondingZeroAccount,
-    bondingMinAccount,
-    bondingMaxAccount,
-  } = await bondingSetupV2());
-  secondAddress = await secondAccount.getAddress();
-  bondingMinAddress = await bondingMinAccount.getAddress();
-  bondingMaxAddress = await bondingMaxAccount.getAddress();
-});
-
 describe("bondingV2 migration", () => {
+  beforeEach(async () => {
+    ({
+      admin,
+      secondAccount,
+      masterChefV2,
+      ubiquityFormulas,
+      metaPool,
+      bondingV2,
+      bondingShareV2,
+      bondingZeroAccount,
+      bondingMinAccount,
+      bondingMinBalance,
+      bondingMaxAccount,
+      bondingMaxBalance,
+    } = await bondingSetupV2());
+    secondAddress = await secondAccount.getAddress();
+    bondingMinAddress = await bondingMinAccount.getAddress();
+    bondingMaxAddress = await bondingMaxAccount.getAddress();
+  });
   describe("migrate", () => {
     it("migrate should work", async () => {
       await expect(bondingV2.connect(bondingMaxAccount).migrate()).to.not.be
@@ -228,9 +241,93 @@ describe("bondingV2 migration", () => {
 
       expect(bond.minter).to.be.equal(secondAddress);
     });
+    it("bonding share V2 should have appropriate lpRewardDebt and shares", async () => {
+      const totalLpToMigrateBeforeMinMigrate =
+        await bondingV2.totalLpToMigrate();
+      await bondingV2.connect(bondingMinAccount).migrate();
+      const totalLpToMigrateAfterMinMigrate =
+        await bondingV2.totalLpToMigrate();
+      const idsMin = await bondingShareV2.holderTokens(bondingMinAddress);
+      expect(idsMin.length).to.equal(1);
 
-    // TODO : check lpRewardDebt and shares are correct
-    // it("bonding share V2 should have lpRewardDebt amount according to lpRewardDebt param", async () => {});
-    // it("bonding share V2 should have shares amount according to shares param", async () => {});
+      let pendingLpRewardsMin = await bondingV2.pendingLpRewards(idsMin[0]);
+
+      const bondingV2Bal = await metaPool.balanceOf(bondingV2.address);
+      expect(bondingV2Bal).to.equal(bondingMaxBalance.add(bondingMinBalance));
+      let totalLP = await bondingShareV2.totalLP();
+      expect(totalLP).to.equal(bondingMinBalance);
+      const bondMin = await bondingShareV2.getBond(idsMin[0]);
+      const zz1 = await bondingV2.bondingDiscountMultiplier(); // zz1 = zerozero1 = 0.001 ether = 10^16
+      const calculatedSharesForMin = BigNumber.from(
+        await ubiquityFormulas.durationMultiply(bondMin.lpAmount, 1, zz1)
+      );
+      const shareMinDetail = await masterChefV2.getBondingShareInfo(idsMin[0]);
+
+      expect(shareMinDetail[0]).to.equal(calculatedSharesForMin);
+
+      expect(totalLpToMigrateBeforeMinMigrate).to.equal(
+        totalLpToMigrateAfterMinMigrate.add(bondMin.lpAmount)
+      );
+      expect(bondMin.lpRewardDebt).to.be.equal(0);
+      // simulate distribution of lp token to assess the update of lpRewardDebt
+      const extraLPAmount = one.mul(10);
+      await metaPool.transfer(bondingV2.address, extraLPAmount);
+      const totalLpToMigrateBeforeMaxMigrate =
+        await bondingV2.totalLpToMigrate();
+      await bondingV2.connect(bondingMaxAccount).migrate();
+      const totalLpToMigrateAfterMaxMigrate =
+        await bondingV2.totalLpToMigrate();
+
+      const idsMax = await bondingShareV2.holderTokens(bondingMaxAddress);
+      const bondMax = await bondingShareV2.getBond(idsMax[0]);
+      const calculatedSharesForMax = BigNumber.from(
+        await ubiquityFormulas.durationMultiply(bondMax.lpAmount, 208, zz1)
+      );
+      const shareMaxDetail = await masterChefV2.getBondingShareInfo(idsMax[0]);
+      expect(shareMaxDetail[0]).to.equal(calculatedSharesForMax);
+
+      expect(totalLpToMigrateBeforeMaxMigrate).to.equal(
+        totalLpToMigrateAfterMaxMigrate.add(bondMax.lpAmount)
+      );
+      expect(bondMax.lpRewardDebt).to.be.equal("39958228383176416936");
+      const pendingLpRewardsMax = await bondingV2.pendingLpRewards(idsMax[0]);
+      expect(pendingLpRewardsMax).to.equal(0);
+      const bondingV2BalAfter = await metaPool.balanceOf(bondingV2.address);
+      expect(bondingV2BalAfter).to.equal(
+        bondMin.lpAmount.add(bondMax.lpAmount).add(extraLPAmount)
+      );
+      totalLP = await bondingShareV2.totalLP();
+      expect(totalLP).to.equal(bondingMaxBalance.add(bondingMinBalance));
+      // bondingMin account should be entitled to some rewards as the extraLPAmount
+      // occurs after his migration
+      pendingLpRewardsMin = await bondingV2.pendingLpRewards(idsMin[0]);
+
+      const isPrecise = isAmountEquivalent(
+        pendingLpRewardsMin.toString(),
+        extraLPAmount.toString(),
+        "0.0000000001"
+      );
+      expect(isPrecise).to.be.true;
+
+      expect(idsMax.length).to.equal(1);
+      // send the LP token from bonding V1 to V2 to prepare the migration
+      // simulate distribution of lp token to assess the update of lpRewardDebt
+      const extraLPSecondAmount = one.mul(42);
+      await metaPool.transfer(bondingV2.address, extraLPSecondAmount);
+      const pendingLpRewardsMinSecond = await bondingV2.pendingLpRewards(
+        idsMin[0]
+      );
+      expect(pendingLpRewardsMinSecond).to.be.gt(pendingLpRewardsMin);
+      const pendingLpRewardsMaxSecond = await bondingV2.pendingLpRewards(
+        idsMax[0]
+      );
+      expect(pendingLpRewardsMaxSecond).to.be.gt(pendingLpRewardsMax);
+      const isRewardPrecise = isAmountEquivalent(
+        pendingLpRewardsMaxSecond.add(pendingLpRewardsMinSecond).toString(),
+        extraLPAmount.add(extraLPSecondAmount).toString(),
+        "0.0000000001"
+      );
+      expect(isRewardPrecise).to.be.true;
+    });
   });
 });
