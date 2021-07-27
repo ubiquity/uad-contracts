@@ -5,15 +5,18 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IERC20Ubiquity.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ITWAPOracle.sol";
-import "./interfaces/IERC1155Ubiquity.sol";
+import "./BondingShareV2.sol";
 import "./interfaces/IUbiquityFormulas.sol";
 
-contract MasterChef {
+import "./interfaces/IERC1155Ubiquity.sol";
+
+contract MasterChefV2 {
     using SafeERC20 for IERC20Ubiquity;
     using SafeERC20 for IERC20;
+
     // Info of each user.
-    struct UserInfo {
-        uint256 amount; // How many uAD-3CRV LP tokens the user has provided.
+    struct BondingShareInfo {
+        uint256 amount; // bonding rights.
         uint256 rewardDebt; // Reward debt. See explanation below.
         //
         // We do some fancy math here. Basically, any point in time, the amount of uGOVs
@@ -33,6 +36,8 @@ contract MasterChef {
         uint256 accuGOVPerShare; // Accumulated uGOVs per share, times 1e12. See below.
     }
 
+    uint256 private _totalShares;
+
     // Ubiquity Manager
     UbiquityAlgorithmicDollarManager public manager;
 
@@ -42,14 +47,23 @@ contract MasterChef {
     uint256 public uGOVmultiplier = 1e18;
     uint256 public minPriceDiffToUpdateMultiplier = 1000000000000000;
     uint256 public lastPrice = 1 ether;
+    uint256 public uGOVDivider;
     // Info of each pool.
     PoolInfo public pool;
     // Info of each user that stakes LP tokens.
-    mapping(address => UserInfo) public userInfo;
+    mapping(uint256 => BondingShareInfo) private _bsInfo;
 
-    event Deposit(address indexed user, uint256 amount);
+    event Deposit(
+        address indexed user,
+        uint256 amount,
+        uint256 indexed bondingShareId
+    );
 
-    event Withdraw(address indexed user, uint256 amount);
+    event Withdraw(
+        address indexed user,
+        uint256 amount,
+        uint256 indexed bondingShareId
+    );
 
     // ----------- Modifiers -----------
     modifier onlyTokenManager() {
@@ -71,11 +85,20 @@ contract MasterChef {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         pool.lastRewardBlock = block.number;
         pool.accuGOVPerShare = 0; // uint256(1e12);
+        uGOVDivider = 5; // 100 / 5 = 20% extra minted ugov for treasury
         _updateUGOVMultiplier();
     }
 
     function setUGOVPerBlock(uint256 _uGOVPerBlock) external onlyTokenManager {
         uGOVPerBlock = _uGOVPerBlock;
+    }
+
+    // the bigger uGOVDivider is the less extra Ugov will be minted for the treasury
+    function setUGOVShareForTreasury(uint256 _uGOVDivider)
+        external
+        onlyTokenManager
+    {
+        uGOVDivider = _uGOVDivider;
     }
 
     function setMinPriceDiffToUpdateMultiplier(
@@ -85,43 +108,58 @@ contract MasterChef {
     }
 
     // Deposit LP tokens to MasterChef for uGOV allocation.
-    function deposit(uint256 _amount, address sender)
-        external
-        onlyBondingContract
-    {
-        UserInfo storage user = userInfo[sender];
+    function deposit(
+        address to,
+        uint256 _amount,
+        uint256 _bondingShareID
+    ) external onlyBondingContract {
+        BondingShareInfo storage bs = _bsInfo[_bondingShareID];
         _updatePool();
-        if (user.amount > 0) {
-            uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
-                user.rewardDebt;
-            _safeUGOVTransfer(sender, pending);
+        if (bs.amount > 0) {
+            uint256 pending = ((bs.amount * pool.accuGOVPerShare) / 1e12) -
+                bs.rewardDebt;
+            _safeUGOVTransfer(to, pending);
         }
-        user.amount = user.amount + _amount;
-        user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
-        emit Deposit(sender, _amount);
+        bs.amount += _amount;
+        bs.rewardDebt = (bs.amount * pool.accuGOVPerShare) / 1e12;
+        _totalShares += _amount;
+        emit Deposit(to, _amount, _bondingShareID);
     }
 
     // Withdraw LP tokens from MasterChef.
-    function withdraw(uint256 _amount, address sender)
-        external
-        onlyBondingContract
-    {
-        UserInfo storage user = userInfo[sender];
-        require(user.amount >= _amount, "MC: amount too high");
+    function withdraw(
+        address to,
+        uint256 _amount,
+        uint256 _bondingShareID
+    ) external onlyBondingContract {
+        BondingShareInfo storage bs = _bsInfo[_bondingShareID];
+        require(bs.amount >= _amount, "MC: amount too high");
         _updatePool();
-        uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
-            user.rewardDebt;
-        _safeUGOVTransfer(sender, pending);
-        user.amount = user.amount - _amount;
-        user.rewardDebt = (user.amount * pool.accuGOVPerShare) / 1e12;
-        emit Withdraw(sender, _amount);
+        uint256 pending = ((bs.amount * pool.accuGOVPerShare) / 1e12) -
+            bs.rewardDebt;
+        // send UGOV to Bonding Share holder
+
+        _safeUGOVTransfer(to, pending);
+        bs.amount -= _amount;
+        bs.rewardDebt = (bs.amount * pool.accuGOVPerShare) / 1e12;
+        _totalShares -= _amount;
+        emit Withdraw(to, _amount, _bondingShareID);
     }
 
     /// @dev get pending uGOV rewards from MasterChef.
     /// @return amount of pending rewards transfered to msg.sender
     /// @notice only send pending rewards
-    function getRewards() external returns (uint256) {
-        UserInfo storage user = userInfo[msg.sender];
+    function getRewards(uint256 bondingShareID) external returns (uint256) {
+        require(
+            IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
+                msg.sender,
+                bondingShareID
+            ) == 1,
+            "MS: caller is not owner"
+        );
+
+        // calculate user reward
+        BondingShareInfo storage user = _bsInfo[bondingShareID];
         _updatePool();
         uint256 pending = ((user.amount * pool.accuGOVPerShare) / 1e12) -
             user.rewardDebt;
@@ -131,8 +169,12 @@ contract MasterChef {
     }
 
     // View function to see pending uGOVs on frontend.
-    function pendingUGOV(address _user) external view returns (uint256) {
-        UserInfo storage user = userInfo[_user];
+    function pendingUGOV(uint256 bondingShareID)
+        external
+        view
+        returns (uint256)
+    {
+        BondingShareInfo storage user = _bsInfo[bondingShareID];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
         uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
             .totalSupply();
@@ -147,6 +189,24 @@ contract MasterChef {
         }
 
         return (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
+    }
+
+    /**
+     * @dev get the amount of shares and the reward debt of a bonding share .
+     */
+    function getBondingShareInfo(uint256 _id)
+        external
+        view
+        returns (uint256[2] memory)
+    {
+        return [_bsInfo[_id].amount, _bsInfo[_id].rewardDebt];
+    }
+
+    /**
+     * @dev Total amount of shares .
+     */
+    function totalShares() external view virtual returns (uint256) {
+        return _totalShares;
     }
 
     // UPDATE uGOV multiplier
@@ -189,10 +249,10 @@ contract MasterChef {
             address(this),
             uGOVReward
         );
-        // mint another 20% for the treasury
+        // mint another x% for the treasury
         IERC20Ubiquity(manager.governanceTokenAddress()).mint(
             manager.treasuryAddress(),
-            uGOVReward / 5
+            uGOVReward / uGOVDivider
         );
         pool.accuGOVPerShare =
             pool.accuGOVPerShare +

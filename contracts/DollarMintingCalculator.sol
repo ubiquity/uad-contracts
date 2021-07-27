@@ -30,13 +30,13 @@ contract DollarMintingCalculator is IDollarMintingCalculator {
                 .fromUInt()
                 .sub(_one)
                 .mul(
-                (
-                    IERC20(manager.dollarTokenAddress())
-                        .totalSupply()
-                        .fromUInt()
-                        .div(_one)
+                    (
+                        IERC20(manager.dollarTokenAddress())
+                            .totalSupply()
+                            .fromUInt()
+                            .div(_one)
+                    )
                 )
-            )
                 .toUInt();
     }
 }

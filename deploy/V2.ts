@@ -2,47 +2,91 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
-import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
+import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
 import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
-import { UbiquityAutoRedeem } from "../artifacts/types/UbiquityAutoRedeem";
-import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
+import { BondingFormulas } from "../artifacts/types/BondingFormulas";
+import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
-import { SushiSwapPool } from "../artifacts/types/SushiSwapPool";
+import { BondingV2 } from "../artifacts/types/BondingV2";
 import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
 import pressAnyKey from "../utils/flow";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts, ethers, network } = hre;
 
+  // MIGRATION
+  const toMigrateOriginals = [
+    "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
+    "0x10693e86f2e7151b3010469e33b6c1c2da8887d6",
+    "0xa53a6fe2d8ad977ad926c485343ba39f32d3a3f6",
+    "0x7c76f4db70b7e2177de10de3e2f668dadcd11108",
+    "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d",
+    "0x0709b103d46d71458a71e5d81230dd688809a53d",
+    "0xf6501068a54f3eab46c1f145cb9d3fb91658b220",
+    "0xd028babbdc15949aaa35587f95f9e96c7d49417d",
+    "0xa1c7bd2e48f7f3922e201705f3491c841135f483",
+    "0x9968efe1424d802e1f79fd8af8da67b0f08c814d",
+  ];
+  const toMigrateLpBalances = [
+    "44739174270101943975392",
+    "74603879373206473097231",
+    "618000000000000000000",
+    "374850000000000000000",
+    "1878674425540571814543",
+    "44739174270101943975392",
+    "74603879373206473097231",
+    "618000000000000000000",
+    "374850000000000000000",
+    "1878674425540571814543",
+  ];
+  const toMigrateWeeks = [
+    "208",
+    "100",
+    "100",
+    "11",
+    "1",
+    "100",
+    "208",
+    "208",
+    "208",
+    "4",
+  ];
+
   // hardhat local
 
-  /* const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
-  const admin = ethers.provider.getSigner(ubqAdmin);
-  const adminAdr = await admin.getAddress();
+  const ubqAdmin = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
   await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [ubqAdmin],
-  }); */
-
+  });
+  const ubq = ethers.provider.getSigner(ubqAdmin);
+  const ubqAdr = await ubq.getAddress();
+  deployments.log(
+    `*****
+    ubqAdr address :`,
+    ubqAdr,
+    `
+  `
+  );
   const [admin] = await ethers.getSigners();
   const adminAdr = admin.address;
+  const opts = {
+    from: adminAdr,
+    log: true,
+  };
 
-  /*   let mgrAdr = "0xf1df21D46921Ca23906c2689b9DA25e63e686934";
-  let uADdeployAddress = "0xf967DB57518fd2270b309c256db32596527F8709";
-  let uGovdeployAddress = "0x8b2403Ec6470194c789736571E2AA1C91B5B568F";
-  let UARForDollarsCalculatorAddress = "";
-  let couponsForDollarsCalculatorAddress = "";
-  let dollarMintingCalculatorAddress =
-    "0x552b513d1aAed6a1CF37eA6bAe3ffCaDBc8D5ca5"; */
-  let mgrAdr = "";
-  let uADdeployAddress = "";
-  let uGovdeployAddress = "";
-  let UARForDollarsCalculatorAddress = "";
-  let couponsForDollarsCalculatorAddress = "";
-  let dollarMintingCalculatorAddress = "";
+  let mgrAdr = "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
+  let bondingV2deployAddress = "";
+  let bondingFormulasdeployAddress = "";
+  let bondingShareV2deployAddress = "";
+  let masterchefV2deployAddress = "";
+
+  // calculate end locking period block number
+  // 1 week = 45361 blocks = 2371753*7/366
+  // blockRonding = 100 => 2 ending zeros
   const couponLengthBlocks = 1110857;
   let curve3CrvToken = "";
   let curveFactory = "";
@@ -51,18 +95,14 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   // let ubq = "ubq.eth";
   ({ curve3CrvToken, curveFactory, curve3CrvBasePool, curveWhaleAddress } =
     await getNamedAccounts());
-  deployments.log(
-    `*****
-  admin address :`,
-    adminAdr,
-    `
-  `
+
+  const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
+  );
+  const UBQ_BURNER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
   );
 
-  const opts = {
-    from: adminAdr,
-    log: true,
-  };
   if (mgrAdr.length === 0) {
     const mgr = await deployments.deploy("UbiquityAlgorithmicDollarManager", {
       args: [adminAdr],
@@ -83,152 +123,167 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     `UbiquityAlgorithmicDollarManager deployed at:`,
     manager.address
   );
-  // uAD
-  if (uADdeployAddress.length === 0) {
-    const uADdeploy = await deployments.deploy("UbiquityAlgorithmicDollar", {
-      args: [manager.address],
+  const currentBondingAdr = await manager.bondingContractAddress();
+  deployments.log("current Bonding Adr :", currentBondingAdr);
+  const currentMSAdr = await manager.masterChefAddress();
+  deployments.log("current Masterchef Adr :", currentMSAdr);
+  await manager.connect(ubq).revokeRole(UBQ_MINTER_ROLE, currentMSAdr);
+  await manager.connect(ubq).revokeRole(UBQ_MINTER_ROLE, currentBondingAdr);
+  await manager.connect(ubq).revokeRole(UBQ_BURNER_ROLE, currentBondingAdr);
+
+  const isMSMinter = await manager
+    .connect(ubq)
+    .hasRole(UBQ_MINTER_ROLE, currentMSAdr);
+  deployments.log("Master Chef Is minter ?:", isMSMinter);
+  const isBSMinter = await manager
+    .connect(ubq)
+    .hasRole(UBQ_MINTER_ROLE, currentBondingAdr);
+  deployments.log("Bonding Is minter ?:", isBSMinter);
+
+  // BondingShareV2
+  const uri = `{
+    "name": "Bonding Share",
+    "description": "Ubiquity Bonding Share V2",
+    "image": "https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg"
+  }`;
+  if (bondingShareV2deployAddress.length === 0) {
+    const bondingShareV2deploy = await deployments.deploy("BondingShareV2", {
+      args: [manager.address, uri],
       ...opts,
     });
 
-    uADdeployAddress = uADdeploy.address;
+    bondingShareV2deployAddress = bondingShareV2deploy.address;
   }
   /* */
-  const uadFactory = await ethers.getContractFactory(
-    "UbiquityAlgorithmicDollar"
+  const bondingShareV2Factory = await ethers.getContractFactory(
+    "BondingShareV2"
   );
 
-  const uAD: UbiquityAlgorithmicDollar = uadFactory.attach(
-    uADdeployAddress
-  ) as UbiquityAlgorithmicDollar;
+  const bsV2: BondingShareV2 = bondingShareV2Factory.attach(
+    bondingShareV2deployAddress
+  ) as BondingShareV2;
+  deployments.log("BondingShareV2 deployed at:", bsV2.address);
+  await manager.connect(ubq).setBondingShareAddress(bsV2.address);
+  const managerBondingShareAddress = await manager.bondingShareAddress();
+  deployments.log(
+    "BondingShareV2 in Manager is set to:",
+    managerBondingShareAddress
+  );
+  // MasterchefV2
 
-  const dollarTokenAdrFromMgr = await manager.dollarTokenAddress();
-  if (dollarTokenAdrFromMgr !== uAD.address) {
-    deployments.log("dollarTokenAddress will be set to:", uAD.address);
-    await manager.connect(admin).setDollarTokenAddress(uAD.address);
-  }
-
-  deployments.log("UbiquityAlgorithmicDollar deployed at:", uAD.address);
-
-  // uGov
-
-  if (uGovdeployAddress.length === 0) {
-    const uGov = await deployments.deploy("UbiquityGovernance", {
+  if (masterchefV2deployAddress.length === 0) {
+    const masterchefV2deploy = await deployments.deploy("MasterChefV2", {
       args: [manager.address],
       ...opts,
     });
 
-    uGovdeployAddress = uGov.address;
+    masterchefV2deployAddress = masterchefV2deploy.address;
   }
-  const uGOVFactory = await ethers.getContractFactory("UbiquityGovernance");
-  const uGOV: UbiquityGovernance = uGOVFactory.attach(
-    uGovdeployAddress
-  ) as UbiquityGovernance;
+  /* */
+  const masterChefV2Factory = await ethers.getContractFactory("MasterChefV2");
 
-  const govTokenAdrFromMgr = await manager.governanceTokenAddress();
-  if (govTokenAdrFromMgr !== uGovdeployAddress) {
-    deployments.log("UbiquityGovernance will be set to:", uGovdeployAddress);
-    await manager.connect(admin).setGovernanceTokenAddress(uGovdeployAddress);
+  const msV2: MasterChefV2 = masterChefV2Factory.attach(
+    masterchefV2deployAddress
+  ) as MasterChefV2;
+  deployments.log("MasterChefV2 deployed at:", msV2.address);
+  await manager.connect(ubq).setMasterChefAddress(msV2.address);
+  await manager.connect(ubq).grantRole(UBQ_MINTER_ROLE, msV2.address);
+
+  const managerMasterChefV2Address = await manager.masterChefAddress();
+  deployments.log(
+    "masterChefAddress in Manager is set to:",
+    managerMasterChefV2Address
+  );
+  // Bonding Formula
+
+  if (bondingFormulasdeployAddress.length === 0) {
+    const bondingFormulas = await deployments.deploy("BondingFormulas", {
+      args: [],
+      ...opts,
+    });
+    bondingFormulasdeployAddress = bondingFormulas.address;
   }
 
-  deployments.log("UbiquityGovernance deployed at:", uGovdeployAddress);
-  // set twap Oracle Address
+  const bondingFormulasFactory = await ethers.getContractFactory(
+    "BondingFormulas"
+  );
 
-  const crvToken = (await ethers.getContractAt(
-    "ERC20",
-    curve3CrvToken
-  )) as ERC20;
-  deployments.log("crvToken deployed at:", crvToken.address);
+  const bf: BondingFormulas = bondingFormulasFactory.attach(
+    bondingFormulasdeployAddress
+  ) as BondingFormulas;
+  deployments.log("BondingFormulas deployed at:", bf.address);
+  // BondingV2
 
-  // set uAR for dollar Calculator
-
-  if (UARForDollarsCalculatorAddress.length === 0) {
-    const uARCalc = await deployments.deploy("UARForDollarsCalculator", {
-      args: [manager.address],
+  deployments.log(
+    "bondingFormulasdeployAddress :",
+    bondingFormulasdeployAddress
+  );
+  deployments.log("manager.address :", manager.address);
+  if (bondingV2deployAddress.length === 0) {
+    const bondingV2deploy = await deployments.deploy("BondingV2", {
+      args: [
+        manager.address,
+        bondingFormulasdeployAddress,
+        toMigrateOriginals,
+        toMigrateLpBalances,
+        toMigrateWeeks,
+      ],
       ...opts,
     });
 
-    UARForDollarsCalculatorAddress = uARCalc.address;
+    bondingV2deployAddress = bondingV2deploy.address;
   }
-  const uarCalcAdrFromMgr = await manager.uarCalculatorAddress();
-  if (uarCalcAdrFromMgr !== UARForDollarsCalculatorAddress) {
-    deployments.log(
-      "uarCalculator will be set to:",
-      UARForDollarsCalculatorAddress
-    );
-    await manager
-      .connect(admin)
-      .setUARCalculatorAddress(UARForDollarsCalculatorAddress);
-  }
+  deployments.log("bondingV2deployAddress :", bondingV2deployAddress);
+  /* */
+  const bondingV2Factory = await ethers.getContractFactory("BondingV2");
 
+  const bondingV2: BondingV2 = bondingV2Factory.attach(
+    bondingV2deployAddress
+  ) as BondingV2;
+  deployments.log("bondingV2 deployed at:", bondingV2.address);
+  const tx = await bondingV2.setMigrating(true);
+  await tx.wait();
+  deployments.log("setMigrating to true");
+  // send the LP token from bonding V1 to V2 to prepare the migration
+  const bondingFactory = await ethers.getContractFactory("Bonding");
+  const metaPoolAddr = await manager.connect(admin).stableSwapMetaPoolAddress();
+  const metaPool = (await ethers.getContractAt(
+    "IMetaPool",
+    metaPoolAddr
+  )) as IMetaPool;
+
+  const bondingLPBal = await metaPool.balanceOf(currentBondingAdr);
+  deployments.log("bondingLPBal :", ethers.utils.formatEther(bondingLPBal));
+  const bonding: Bonding = bondingFactory.attach(currentBondingAdr) as Bonding;
+  await bonding
+    .connect(ubq)
+    .sendDust(bondingV2.address, metaPool.address, bondingLPBal);
+  const bondingV2LPBal = await metaPool.balanceOf(bondingV2.address);
   deployments.log(
-    "uAR for dollar Calculator deployed at:",
-    UARForDollarsCalculatorAddress
+    "all bondingLPBal sent to bondingV2... bondingV2LPBal:",
+    ethers.utils.formatEther(bondingV2LPBal)
   );
+  // bondingV2 should have the UBQ_MINTER_ROLE to mint bonding shares
 
-  // set coupon for dollar Calculator
-  if (couponsForDollarsCalculatorAddress.length === 0) {
-    const couponsForDollarsCalculator = await deployments.deploy(
-      "CouponsForDollarsCalculator",
-      {
-        args: [manager.address],
-        ...opts,
-      }
-    );
+  await manager.connect(ubq).grantRole(UBQ_MINTER_ROLE, bondingV2.address);
+  await bondingV2.connect(ubq).setBlockCountInAWeek(46550);
+  const blockCountInAWeek = await bondingV2.blockCountInAWeek();
+  deployments.log("bondingV2 blockCountInAWeek:", blockCountInAWeek);
+  await manager.connect(ubq).setBondingContractAddress(bondingV2.address);
+  const managerBondingV2Address = await manager.bondingContractAddress();
+  deployments.log("BondingV2 in Manager is set to:", managerBondingV2Address);
 
-    couponsForDollarsCalculatorAddress = couponsForDollarsCalculator.address;
-  }
-  const couponCalcAdrFromMgr = await manager.couponCalculatorAddress();
-  if (couponCalcAdrFromMgr !== couponsForDollarsCalculatorAddress) {
-    deployments.log(
-      "coupons For Dollars Calculator will be set to:",
-      couponsForDollarsCalculatorAddress
-    );
-    await manager
-      .connect(admin)
-      .setCouponCalculatorAddress(couponsForDollarsCalculatorAddress);
-  }
+  const isMSV2Minter = await manager
+    .connect(ubq)
+    .hasRole(UBQ_MINTER_ROLE, msV2.address);
+  deployments.log("MasterChef V2 Is minter ?:", isMSV2Minter);
+  const isBSV2Minter = await manager
+    .connect(ubq)
+    .hasRole(UBQ_MINTER_ROLE, bondingV2.address);
+  deployments.log("Bonding V2 Is minter ?:", isBSV2Minter);
 
-  deployments.log(
-    "coupons for dollar Calculator deployed at:",
-    couponsForDollarsCalculatorAddress
-  );
+  /* // set debt coupon token
 
-  // set Dollar Minting Calculator
-
-  if (dollarMintingCalculatorAddress.length === 0) {
-    const dollarMintingCalculator = await deployments.deploy(
-      "DollarMintingCalculator",
-      {
-        args: [manager.address],
-        ...opts,
-      }
-    );
-
-    dollarMintingCalculatorAddress = dollarMintingCalculator.address;
-  }
-  const dollarMintingCalcAdrFromMgr =
-    await manager.dollarMintingCalculatorAddress();
-  if (dollarMintingCalcAdrFromMgr !== dollarMintingCalculatorAddress) {
-    deployments.log(
-      "Dollars Minting Calculator will be set to:",
-      dollarMintingCalculatorAddress
-    );
-    await manager
-      .connect(admin)
-      .setDollarMintingCalculatorAddress(dollarMintingCalculatorAddress);
-  }
-
-  deployments.log(
-    "dollar minting Calculator deployed at:",
-    dollarMintingCalculatorAddress
-  );
-
-  // set debt coupon token
-
-  const debtCoupon = await deployments.deploy("DebtCoupon", {
-    args: [manager.address],
-    ...opts,
-  });
   await manager.connect(admin).setDebtCouponAddress(debtCoupon.address);
   deployments.log("debt coupon deployed at:", debtCoupon.address);
   const debtCouponMgr = await deployments.deploy("DebtCouponManager", {
@@ -462,7 +517,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   const balMgrUAD = await uAD.balanceOf(manager.address);
   deployments.log(`-- manager: ${ethers.utils.formatEther(balMgrUAD)} uAD`);
-  /** TO BE REMOVED FOR MAINNET */
+
   // we should transfer 3CRV manually to the manager contract
   // kindly ask a whale to give us some 3CRV
   if (net.chainId === 31337) {
@@ -542,9 +597,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     metaPoolAddr
   )) as IMetaPool;
 
-  /* await crvToken
-    .connect(curveWhale)
-    .transfer(admin.address, ethers.utils.parseEther("20000")); */
+
 
   const uADBal = await uAD.balanceOf(adminAdr);
   const crvBal = await crvToken.balanceOf(adminAdr);
@@ -726,10 +779,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log(`
     liquidity Added to the metapool current LP balance:
       ${ethers.utils.formatEther(await metaPool.balanceOf(adminAdr))}
-    `);
+    `); */
   deployments.log(`
     That's all folks !
     `);
 };
 export default func;
-func.tags = ["UbiquityAlgorithmicDollarManager"];
+func.tags = ["V2"];

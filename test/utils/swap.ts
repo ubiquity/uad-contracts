@@ -9,20 +9,20 @@ export async function swap3CRVtoUAD(
   amount: BigNumber,
   signer: Signer
 ): Promise<BigNumber> {
-  const dy3CRVtouAD = await curveMetaPool["get_dy(int128,int128,uint256)"](
+  const dy3CRVtoUAD = await curveMetaPool["get_dy(int128,int128,uint256)"](
     1,
     0,
     amount
   );
-  const expectedMinuAD = dy3CRVtouAD.div(100).mul(99);
-
+  const expectedMinUAD = dy3CRVtoUAD.div(100).mul(99);
   // signer need to approve metaPool for sending its coin
+  await crvToken.connect(signer).approve(curveMetaPool.address, 0);
   await crvToken.connect(signer).approve(curveMetaPool.address, amount);
   // secondAccount swap   3CRV=> x uAD
   await curveMetaPool
     .connect(signer)
-    ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinuAD);
-  return dy3CRVtouAD;
+    ["exchange(int128,int128,uint256,uint256)"](1, 0, amount, expectedMinUAD);
+  return dy3CRVtoUAD;
 }
 export async function swapUADto3CRV(
   curveMetaPool: IMetaPool,

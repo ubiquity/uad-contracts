@@ -23,11 +23,10 @@ contract SushiSwapPool {
             "uGOV Address not set"
         );
         // check if pair already exist
-        address pool =
-            factory.getPair(
-                manager.dollarTokenAddress(),
-                manager.governanceTokenAddress()
-            );
+        address pool = factory.getPair(
+            manager.dollarTokenAddress(),
+            manager.governanceTokenAddress()
+        );
         if (pool == address(0)) {
             pool = factory.createPair(
                 manager.dollarTokenAddress(),

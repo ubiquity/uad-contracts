@@ -117,11 +117,10 @@ contract CurveUADIncentive is IIncentive {
             return 0;
         }
 
-        uint256 res =
-            _one
-                .sub(curPrice.fromUInt())
-                .mul((amount.fromUInt().div(_one)))
-                .toUInt();
+        uint256 res = _one
+            .sub(curPrice.fromUInt())
+            .mul((amount.fromUInt().div(_one)))
+            .toUInt();
         // returns (1- TWAP_Price) * amount.
         return res;
     }

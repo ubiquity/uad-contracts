@@ -4,7 +4,7 @@ module.exports = {
   rules: {
     "prettier/prettier": "error",
     "code-complexity": ["error", 10],
-    "function-max-lines": ["error", 60],
+    "function-max-lines": ["error", 100],
     "max-line-length": ["error", 100],
     "max-states-count": ["error", 20],
     "no-empty-blocks": "error",

@@ -97,8 +97,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             dollarsMintedThisCycle = 0;
         }
 
-        ICouponsForDollarsCalculator couponCalculator =
-            ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
+        ICouponsForDollarsCalculator couponCalculator = ICouponsForDollarsCalculator(
+                manager.couponCalculatorAddress()
+            );
         uint256 couponsToMint = couponCalculator.getCouponAmount(amount);
 
         // we burn user's dollars.
@@ -134,8 +135,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             dollarsMintedThisCycle = 0;
         }
 
-        IUARForDollarsCalculator uarCalculator =
-            IUARForDollarsCalculator(manager.uarCalculatorAddress());
+        IUARForDollarsCalculator uarCalculator = IUARForDollarsCalculator(
+            manager.uarCalculatorAddress()
+        );
         uint256 uarToMint = uarCalculator.getUARAmount(amount, blockHeightDebt);
 
         // we burn user's dollars.
@@ -144,8 +146,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
             amount
         );
         // mint uAR
-        UbiquityAutoRedeem autoRedeemToken =
-            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
+        UbiquityAutoRedeem autoRedeemToken = UbiquityAutoRedeem(
+            manager.autoRedeemTokenAddress()
+        );
         autoRedeemToken.mint(msg.sender, uarToMint);
 
         //give minted uAR amount
@@ -159,8 +162,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         view
         returns (uint256)
     {
-        ICouponsForDollarsCalculator couponCalculator =
-            ICouponsForDollarsCalculator(manager.couponCalculatorAddress());
+        ICouponsForDollarsCalculator couponCalculator = ICouponsForDollarsCalculator(
+                manager.couponCalculatorAddress()
+            );
         return couponCalculator.getCouponAmount(amount);
     }
 
@@ -171,8 +175,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         view
         returns (uint256)
     {
-        IUARForDollarsCalculator uarCalculator =
-            IUARForDollarsCalculator(manager.uarCalculatorAddress());
+        IUARForDollarsCalculator uarCalculator = IUARForDollarsCalculator(
+            manager.uarCalculatorAddress()
+        );
         return uarCalculator.getUARAmount(amount, blockHeightDebt);
     }
 
@@ -231,8 +236,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         debtCoupon.burnCoupons(msg.sender, amount, id);
 
         // Mint UGOV tokens to this contract. Transfer UGOV tokens to msg.sender i.e. debt holder
-        IERC20Ubiquity uGOVToken =
-            IERC20Ubiquity(manager.governanceTokenAddress());
+        IERC20Ubiquity uGOVToken = IERC20Ubiquity(
+            manager.governanceTokenAddress()
+        );
         uGovAmount = amount / expiredCouponConvertionRate;
         uGOVToken.mint(msg.sender, uGovAmount);
     }
@@ -258,8 +264,9 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         debtCoupon.burnCoupons(msg.sender, amount, id);
 
         // Mint LP tokens to this contract. Transfer LP tokens to msg.sender i.e. debt holder
-        UbiquityAutoRedeem autoRedeemToken =
-            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
+        UbiquityAutoRedeem autoRedeemToken = UbiquityAutoRedeem(
+            manager.autoRedeemTokenAddress()
+        );
         autoRedeemToken.mint(address(this), amount);
         autoRedeemToken.transfer(msg.sender, amount);
 
@@ -278,15 +285,17 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         if (debtCycle) {
             debtCycle = false;
         }
-        UbiquityAutoRedeem autoRedeemToken =
-            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
+        UbiquityAutoRedeem autoRedeemToken = UbiquityAutoRedeem(
+            manager.autoRedeemTokenAddress()
+        );
         require(
             autoRedeemToken.balanceOf(msg.sender) >= amount,
             "User doesn't have enough auto redeem pool tokens."
         );
 
-        UbiquityAlgorithmicDollar uAD =
-            UbiquityAlgorithmicDollar(manager.dollarTokenAddress());
+        UbiquityAlgorithmicDollar uAD = UbiquityAlgorithmicDollar(
+            manager.dollarTokenAddress()
+        );
         uint256 maxRedeemableUAR = uAD.balanceOf(address(this));
 
         if (maxRedeemableUAR <= 0) {
@@ -326,17 +335,19 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         );
 
         mintClaimableDollars();
-        UbiquityAlgorithmicDollar uAD =
-            UbiquityAlgorithmicDollar(manager.dollarTokenAddress());
-        UbiquityAutoRedeem autoRedeemToken =
-            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
+        UbiquityAlgorithmicDollar uAD = UbiquityAlgorithmicDollar(
+            manager.dollarTokenAddress()
+        );
+        UbiquityAutoRedeem autoRedeemToken = UbiquityAutoRedeem(
+            manager.autoRedeemTokenAddress()
+        );
         // uAR have a priority on uDEBT coupon holder
         require(
             autoRedeemToken.totalSupply() <= uAD.balanceOf(address(this)),
             "There aren't enough uAD to redeem currently"
         );
-        uint256 maxRedeemableCoupons =
-            uAD.balanceOf(address(this)) - autoRedeemToken.totalSupply();
+        uint256 maxRedeemableCoupons = uAD.balanceOf(address(this)) -
+            autoRedeemToken.totalSupply();
         uint256 couponsToRedeem = amount;
 
         if (amount > maxRedeemableCoupons) {
@@ -359,31 +370,31 @@ contract DebtCouponManager is ERC165, IERC1155Receiver {
         debtCoupon.updateTotalDebt();
 
         // uint256 twapPrice = _getTwapPrice(); //unused variable. Why here?
-        uint256 totalMintableDollars =
-            IDollarMintingCalculator(manager.dollarMintingCalculatorAddress())
-                .getDollarsToMint();
+        uint256 totalMintableDollars = IDollarMintingCalculator(
+            manager.dollarMintingCalculatorAddress()
+        ).getDollarsToMint();
         uint256 dollarsToMint = totalMintableDollars - (dollarsMintedThisCycle);
         //update the dollars for this cycle
         dollarsMintedThisCycle = totalMintableDollars;
 
-        UbiquityAlgorithmicDollar uAD =
-            UbiquityAlgorithmicDollar(manager.dollarTokenAddress());
+        UbiquityAlgorithmicDollar uAD = UbiquityAlgorithmicDollar(
+            manager.dollarTokenAddress()
+        );
         // uAD  dollars should  be minted to address(this)
         uAD.mint(address(this), dollarsToMint);
-        UbiquityAutoRedeem autoRedeemToken =
-            UbiquityAutoRedeem(manager.autoRedeemTokenAddress());
+        UbiquityAutoRedeem autoRedeemToken = UbiquityAutoRedeem(
+            manager.autoRedeemTokenAddress()
+        );
 
         uint256 currentRedeemableBalance = uAD.balanceOf(address(this));
-        uint256 totalOutstandingDebt =
-            debtCoupon.getTotalOutstandingDebt() +
-                autoRedeemToken.totalSupply();
+        uint256 totalOutstandingDebt = debtCoupon.getTotalOutstandingDebt() +
+            autoRedeemToken.totalSupply();
 
         if (currentRedeemableBalance > totalOutstandingDebt) {
-            uint256 excessDollars =
-                currentRedeemableBalance - (totalOutstandingDebt);
+            uint256 excessDollars = currentRedeemableBalance -
+                (totalOutstandingDebt);
 
-            IExcessDollarsDistributor dollarsDistributor =
-                IExcessDollarsDistributor(
+            IExcessDollarsDistributor dollarsDistributor = IExcessDollarsDistributor(
                     manager.getExcessDollarsDistributor(address(this))
                 );
             //transfer excess dollars to the distributor and tell it to distribute

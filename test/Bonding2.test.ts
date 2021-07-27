@@ -92,7 +92,7 @@ describe("Bonding2", () => {
       expect(bal).to.equal(0);
       await expect(
         deposit(thirdAccount, BigNumber.from(1), 1)
-      ).to.be.revertedWith("revert SafeERC20: low-level call failed");
+      ).to.be.revertedWith("SafeERC20: low-level call failed");
     });
 
     it("total uLP should be 300", async () => {
