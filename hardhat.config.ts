@@ -57,6 +57,11 @@ const config: HardhatUserConfig = {
     daiWhaleAddress: "0x16463c0fdB6BA9618909F5b120ea1581618C1b9E",
     sushiMultiSig: "0x9a8541Ddf3a932a9A922B607e9CF7301f1d47bD1",
     ubq: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd",
+    adminAddress: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd",
+    ubqWhaleAddress: "0xa53A6fE2d8Ad977aD926C485343Ba39f32D3A3F6",
+    masterChefAddress: "0x8fFCf9899738e4633A721904609ffCa0a2C44f3D",
+    UbiquityAlgorithmicDollarManagerAddress:
+      "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98",
   },
 
   /*   paths: {
@@ -77,7 +82,7 @@ const config: HardhatUserConfig = {
         url: `https://eth-mainnet.alchemyapi.io/v2/${
           process.env.ALCHEMY_API_KEY || ""
         }`,
-        blockNumber: 12592661,
+        blockNumber: 12909314,
       },
       accounts,
       /*  accounts: [
