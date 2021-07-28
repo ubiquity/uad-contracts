@@ -1,38 +1,80 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
-import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
-import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { BondingFormulas } from "../artifacts/types/BondingFormulas";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
-import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { BondingV2 } from "../artifacts/types/BondingV2";
-import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
-import pressAnyKey from "../utils/flow";
 import { mineNBlock, resetFork } from "../test/utils/hardhatNode";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
-  const { deployments, ethers } = hre;
+  const { deployments, getNamedAccounts, ethers, network } = hre;
 
   // MIGRATION
-  const toMigrateOriginals = [""];
-  const toMigrateLpBalances = [""];
-  const toMigrateWeeks = [""];
+  const toMigrateOriginals = [
+    "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
+    "0x10693e86f2e7151b3010469e33b6c1c2da8887d6",
+    "0xa53a6fe2d8ad977ad926c485343ba39f32d3a3f6",
+    "0x7c76f4db70b7e2177de10de3e2f668dadcd11108",
+    "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d",
+    "0x0709b103d46d71458a71e5d81230dd688809a53d",
+    "0xf6501068a54f3eab46c1f145cb9d3fb91658b220",
+    "0xd028babbdc15949aaa35587f95f9e96c7d49417d",
+    "0xa1c7bd2e48f7f3922e201705f3491c841135f483",
+    "0x9968efe1424d802e1f79fd8af8da67b0f08c814d",
+  ];
+  const toMigrateLpBalances = [
+    "1000000000000000",
+    "74603879373206473097231",
+    "618000000000000000000",
+    "374850000000000000000",
+    "1878674425540571814543",
+    "44739174270101943975392",
+    "74603879373206473097231",
+    "618000000000000000000",
+    "374850000000000000000",
+    "1878674425540571814543",
+  ];
+  const toMigrateWeeks = [
+    "1",
+    "100",
+    "100",
+    "11",
+    "1",
+    "100",
+    "208",
+    "208",
+    "208",
+    "4",
+  ];
 
-  const [ubqAccount] = await ethers.getSigners();
-  const adminAdr = ubqAccount.address;
+  let ubq = "";
+  let tester = "";
+  ({ ubq, tester } = await getNamedAccounts());
+  /**
+   *  hardhat local
+   *  */
+  await resetFork(12903140);
+
+  await network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [ubq],
+  });
+
+  const ubqAccount = ethers.provider.getSigner(ubq);
+  const ubqAdr = await ubqAccount.getAddress();
   deployments.log(
     `*****
-    adminAdr address :`,
-    adminAdr,
+    ubqAdr address :`,
+    ubqAdr,
     `
   `
   );
+  const [admin] = await ethers.getSigners();
+  const adminAdr = admin.address;
   const opts = {
     from: adminAdr,
     log: true,
@@ -52,6 +94,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   );
   const UBQ_BURNER_ROLE = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
+  );
+
+  const PAUSER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("PAUSER_ROLE")
   );
 
   if (mgrAdr.length === 0) {
@@ -84,11 +130,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   deployments.log("current Bonding Adr :", currentBondingAdr);
   const currentMSAdr = await manager.masterChefAddress();
   deployments.log("current Masterchef Adr :", currentMSAdr);
-  const ubqBalMS = await ubiquityGovernance.balanceOf(currentMSAdr);
-  deployments.log(`
-  current Masterchef UGOV Balance :${ethers.utils.formatEther(ubqBalMS)}
-`);
-
   let tx = await manager
     .connect(ubqAccount)
     .revokeRole(UBQ_MINTER_ROLE, currentMSAdr);
@@ -133,7 +174,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const bondingShareV2: BondingShareV2 = bondingShareV2Factory.attach(
     bondingShareV2deployAddress
   ) as BondingShareV2;
-
   deployments.log("BondingShareV2 deployed at:", bondingShareV2.address);
   tx = await manager
     .connect(ubqAccount)
@@ -144,8 +184,8 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     "BondingShareV2 in Manager is set to:",
     managerBondingShareAddress
   );
-
   // MasterchefV2
+
   if (masterchefV2deployAddress.length === 0) {
     const masterchefV2deploy = await deployments.deploy("MasterChefV2", {
       args: [manager.address],
@@ -154,7 +194,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
     masterchefV2deployAddress = masterchefV2deploy.address;
   }
-
+  /* */
   const masterChefV2Factory = await ethers.getContractFactory("MasterChefV2");
 
   const masterChefV2: MasterChefV2 = masterChefV2Factory.attach(
@@ -225,8 +265,8 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   await tx.wait();
   deployments.log("setMigrating to true");
   // send the LP token from bonding V1 to V2 to prepare the migration
-
-  const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
+  const bondingFactory = await ethers.getContractFactory("Bonding");
+  const metaPoolAddr = await manager.connect(admin).stableSwapMetaPoolAddress();
   const metaPool = (await ethers.getContractAt(
     "IMetaPool",
     metaPoolAddr
@@ -234,8 +274,6 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   const bondingLPBal = await metaPool.balanceOf(currentBondingAdr);
   deployments.log("bondingLPBal :", ethers.utils.formatEther(bondingLPBal));
-
-  const bondingFactory = await ethers.getContractFactory("Bonding");
   const bonding: Bonding = bondingFactory.attach(currentBondingAdr) as Bonding;
   await bonding
     .connect(ubqAccount)
@@ -246,6 +284,10 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     ethers.utils.formatEther(bondingV2LPBal)
   );
   // bondingV2 should have the UBQ_MINTER_ROLE to mint bonding shares
+  const isUBQPauser = await manager
+    .connect(ubqAccount)
+    .hasRole(PAUSER_ROLE, ubqAdr);
+  deployments.log("UBQ Is pauser ?:", isUBQPauser);
 
   tx = await manager
     .connect(ubqAccount)
@@ -273,9 +315,86 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   // try to migrate test
 
+  await network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [tester],
+  });
+  const testAccount = ethers.provider.getSigner(tester);
+  const idsBefore = await bondingShareV2.holderTokens(tester);
+  deployments.log("idsBefore:", idsBefore);
+  const testerLPBalBeforeMigrate = await metaPool.balanceOf(tester);
+  const totalLpToMigrateBeforeMigrate = await bondingV2.totalLpToMigrate();
+  tx = await bondingV2.connect(testAccount).migrate();
+  await tx.wait();
+  const totalLpToMigrateAfterMigrate = await bondingV2.totalLpToMigrate();
+  const idsAfter = await bondingShareV2.holderTokens(tester);
+  const testerLPRewardsAfterMigrate = await bondingV2.pendingLpRewards(
+    idsAfter[0]
+  );
+  deployments.log("idsAfter:", idsAfter[0].toNumber());
+  const bond = await bondingShareV2.getBond(idsAfter[0]);
+  deployments.log(`bond id:${idsAfter[0].toNumber()}
+           minter:${bond.minter}
+           lpAmount:${ethers.utils.formatEther(bond.lpAmount)}
+           lpFirstDeposited:${ethers.utils.formatEther(bond.lpFirstDeposited)}
+           endBlock:${bond.endBlock.toNumber()}
+           tx:${tx.blockNumber.toString()}
+  `);
+
+  const pendingUGOV = await masterChefV2.pendingUGOV(idsAfter[0]);
+  const bondingShareInfo = await masterChefV2.getBondingShareInfo(idsAfter[0]);
+  deployments.log(`pendingUGOV :${ethers.utils.formatEther(pendingUGOV)}
+  bondingShareInfo-0 :${ethers.utils.formatEther(bondingShareInfo[0])}
+  bondingShareInfo-1 :${ethers.utils.formatEther(bondingShareInfo[1])}
+`);
+  const ubqBalBefore = await ubiquityGovernance.balanceOf(tester);
+  await mineNBlock(blockCountInAWeek.toNumber());
+
+  const pendingUGOV2 = await masterChefV2.pendingUGOV(idsAfter[0]);
+  const bondingShareInfo2 = await masterChefV2.getBondingShareInfo(idsAfter[0]);
+  deployments.log(`pendingUGOV2 :${ethers.utils.formatEther(pendingUGOV2)}
+  bondingShareInfo2-0 :${ethers.utils.formatEther(bondingShareInfo2[0])}
+  bondingShareInfo2-1 :${ethers.utils.formatEther(bondingShareInfo2[1])}
+`);
+  tx = await masterChefV2.connect(testAccount).getRewards(idsAfter[0]);
+  await tx.wait();
+  const ubqBalAfter = await ubiquityGovernance.balanceOf(tester);
+  deployments.log(`
+  ubqBalBefore  :${ethers.utils.formatEther(ubqBalBefore)}
+  ubqBalAfter  :${ethers.utils.formatEther(ubqBalAfter)}
+`);
+  tx = await bondingV2
+    .connect(testAccount)
+    .removeLiquidity(bond.lpAmount, idsAfter[0]);
+  await tx.wait();
+  const testerLPRewardsAfterRemove = await bondingV2.pendingLpRewards(
+    idsAfter[0]
+  );
+  deployments.log(`
+  testerLPRewardsAfterMigrate  :${ethers.utils.formatEther(
+    testerLPRewardsAfterMigrate
+  )}
+  testerLPRewardsAfterRemove  :${ethers.utils.formatEther(
+    testerLPRewardsAfterRemove
+  )}
+`);
+  const testerLPBalAfterMigrate = await metaPool.balanceOf(tester);
+  deployments.log(`
+  LPBalBefore  :${ethers.utils.formatEther(testerLPBalBeforeMigrate)}
+  LPBalAfter  :${ethers.utils.formatEther(testerLPBalAfterMigrate)}
+`);
+  deployments.log(`
+totalLpToMigrateBeforeMigrate  :${ethers.utils.formatEther(
+    totalLpToMigrateBeforeMigrate
+  )}
+totalLpToMigrateAfterMigrate  :${ethers.utils.formatEther(
+    totalLpToMigrateAfterMigrate
+  )}
+`);
+
   deployments.log(`
     That's all folks !
     `);
 };
 export default func;
-func.tags = ["V2"];
+func.tags = ["V2Test"];

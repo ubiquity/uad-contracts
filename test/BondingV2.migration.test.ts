@@ -206,7 +206,7 @@ describe("bondingV2 migration", () => {
       const idsMin = await bondingShareV2.holderTokens(bondingMinAddress);
       const idsMax = await bondingShareV2.holderTokens(bondingMaxAddress);
       expect(idsMax[0].sub(idsMin[0])).to.be.equal(1);
-      expect(idsMax[0]).to.be.equal(1);
+      expect(idsMax[0]).to.be.equal(2);
     });
 
     it("bonding share V2 with Zero LP should not increment ID", async () => {
@@ -216,7 +216,7 @@ describe("bondingV2 migration", () => {
 
       expect(
         (await bondingShareV2.holderTokens(bondingMaxAddress))[0]
-      ).to.be.equal(0);
+      ).to.be.equal(1);
     });
 
     it("bonding share V2 should have endblock according to weeks param", async () => {

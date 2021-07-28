@@ -61,7 +61,7 @@ describe("bondingV2 deposit", () => {
     expect(balanceBondingAfterAdd).to.equal(
       balanceBondingBeforeAdd.add(amount)
     );
-    expect(id).to.equal(0);
+    expect(id).to.equal(1);
     expect(bsAmount).to.equal(1);
     const detail = await bondingShareV2.getBond(id);
     expect(detail.lpAmount).to.equal(amount);
@@ -81,7 +81,7 @@ describe("bondingV2 deposit", () => {
         one.mul(100),
         1
       );
-      expect(id).to.equal(0);
+      expect(id).to.equal(1);
       expect(bsAmount).to.equal(1);
       const detail = await bondingShareV2.getBond(id);
       expect(detail.lpAmount).to.equal(one.mul(100));
@@ -142,7 +142,7 @@ describe("bondingV2 deposit", () => {
 
       // another deposit should not get some lp rewards
       const ibond2 = await deposit(fourthAccount, one.mul(100), 1);
-      expect(ibond2.id).to.equal(1);
+      expect(ibond2.id).to.equal(2);
       expect(ibond2.bsAmount).to.equal(1);
       const pendingLpRewards1 = await bondingV2.pendingLpRewards(id);
       // now lprewards should have been updated
@@ -226,7 +226,7 @@ describe("bondingV2 deposit", () => {
 
       // another deposit should not get some lp rewards
       const ibond2 = await deposit(fourthAccount, one.mul(100), 1);
-      expect(ibond2.id).to.equal(1);
+      expect(ibond2.id).to.equal(2);
       expect(ibond2.bsAmount).to.equal(1);
 
       const pendingLpRewards1 = await bondingV2.pendingLpRewards(id);
