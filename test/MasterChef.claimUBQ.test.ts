@@ -140,7 +140,7 @@ describe("MasterChef UBQ rewards", () => {
     });
 
     describe("Without LP tokens", () => {
-      it("Should work", async () => {
+      it("Should work without LP tokens", async () => {
         const totalLP = await metaPool.balanceOf(BondingAddress);
         expect(totalLP).to.be.gt(0);
 
@@ -156,8 +156,8 @@ describe("MasterChef UBQ rewards", () => {
       });
     });
 
-    it("Without LP, without MasterChef and Bonding BURNER_ROLE, without Bonding MINTER_ROLE", () => {
-      it("Should work", async () => {
+    describe("Without LP, without MasterChef and Bonding BURNER_ROLE, without Bonding MINTER_ROLE", () => {
+      it("Should work in real conditions", async () => {
         await manager.connect(ubqAdmin).grantRole(BONDING_MANAGER, ubq);
         await bonding
           .connect(ubqAdmin)
