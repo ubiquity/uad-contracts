@@ -147,7 +147,7 @@ const deposit: IbondTokens = async function (
   const shares = BigNumber.from(
     await ubiquityFormulas.durationMultiply(amount, duration, zz1)
   );
-  const id = await bondingShareV2.totalSupply();
+  const id = (await bondingShareV2.totalSupply()).add(1);
   const creationBlock = (await ethers.provider.getBlockNumber()) + 1;
   await expect(bondingV2.connect(signer).deposit(amount, duration))
     .to.emit(bondingShareV2, "TransferSingle")

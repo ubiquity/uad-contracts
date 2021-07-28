@@ -63,7 +63,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
     }
 
     /// @dev update bond LP amount , LP rewards debt and end block.
-    /// @param _bondId bonding sahre id
+    /// @param _bondId bonding share id
     /// @param _lpAmount amount of LP token deposited
     /// @param _lpRewardDebt amount of excess LP token inside the bonding contract
     /// @param _endBlock end locking period block number
@@ -98,7 +98,7 @@ contract BondingShareV2 is ERC1155, ERC1155Burnable, ERC1155Pausable {
         uint256 lpRewardDebt,
         uint256 endBlock
     ) public virtual onlyMinter whenNotPaused returns (uint256 id) {
-        id = _totalSupply;
+        id = _totalSupply + 1;
         _mint(to, id, 1, bytes(""));
         _totalSupply += 1;
         _holderBalances[to].add(id);

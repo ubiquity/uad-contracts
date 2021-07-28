@@ -68,7 +68,7 @@ describe("bondingV2 liquidity", () => {
 
     expect(bondAmount).to.equal(1);
     expect(holderTokens.length).to.equal(1);
-    expect(holderTokens[0]).to.equal(0);
+    expect(holderTokens[0]).to.equal(1);
 
     bondDetail = await bondingShareV2.getBond(bond.id);
 
@@ -87,7 +87,7 @@ describe("bondingV2 liquidity", () => {
 
     expect(bondfAmount).to.equal(1);
     expect(holderTokensFourth.length).to.equal(1);
-    expect(holderTokensFourth[0]).to.equal(1);
+    expect(holderTokensFourth[0]).to.equal(2);
 
     bondFourthDetail = await bondingShareV2.getBond(bondFourth.id);
     const accLpRewardPerShare = await bondingV2.accLpRewardPerShare();
@@ -121,7 +121,7 @@ describe("bondingV2 liquidity", () => {
       ).to.be.revertedWith("Bonding: Redeem not allowed before bonding time");
     });
     it("add should work", async () => {
-      expect(bond.id).to.equal(0);
+      expect(bond.id).to.equal(1);
       expect(bond.bsAmount).to.equal(1);
       expect(bondDetail.lpAmount).to.equal(one.mul(100));
       expect(bondDetail.lpFirstDeposited).to.equal(one.mul(100));
@@ -129,7 +129,7 @@ describe("bondingV2 liquidity", () => {
       expect(bondDetail.lpRewardDebt).to.equal(0);
       expect(bondDetail.creationBlock).to.equal(bond.creationBlock);
       expect(bondDetail.endBlock).to.equal(bond.endBlock);
-      expect(bondFourth.id).to.equal(1);
+      expect(bondFourth.id).to.equal(2);
       expect(bondFourth.bsAmount).to.equal(1);
       expect(bondFourthDetail.lpAmount).to.equal(amountFourth);
       expect(bondFourthDetail.lpFirstDeposited).to.equal(amountFourth);
@@ -177,7 +177,7 @@ describe("bondingV2 liquidity", () => {
       );
     });
     it("remove should work", async () => {
-      expect(bond.id).to.equal(0);
+      expect(bond.id).to.equal(1);
       expect(bond.bsAmount).to.equal(1);
       expect(bondDetail.lpAmount).to.equal(one.mul(100));
       expect(bondDetail.lpFirstDeposited).to.equal(one.mul(100));
@@ -185,7 +185,7 @@ describe("bondingV2 liquidity", () => {
       expect(bondDetail.lpRewardDebt).to.equal(0);
       expect(bondDetail.creationBlock).to.equal(bond.creationBlock);
       expect(bondDetail.endBlock).to.equal(bond.endBlock);
-      expect(bondFourth.id).to.equal(1);
+      expect(bondFourth.id).to.equal(2);
       expect(bondFourth.bsAmount).to.equal(1);
       expect(bondFourthDetail.lpAmount).to.equal(amountFourth);
       expect(bondFourthDetail.lpFirstDeposited).to.equal(amountFourth);
@@ -212,7 +212,7 @@ describe("bondingV2 liquidity", () => {
       expect(bondAfter.endBlock).to.equal(bondBefore.endBlock);
     });
     it("remove all and add again should work", async () => {
-      expect(bond.id).to.equal(0);
+      expect(bond.id).to.equal(1);
       expect(bond.bsAmount).to.equal(1);
       expect(bondDetail.lpAmount).to.equal(one.mul(100));
       expect(bondDetail.lpFirstDeposited).to.equal(one.mul(100));
@@ -220,7 +220,7 @@ describe("bondingV2 liquidity", () => {
       expect(bondDetail.lpRewardDebt).to.equal(0);
       expect(bondDetail.creationBlock).to.equal(bond.creationBlock);
       expect(bondDetail.endBlock).to.equal(bond.endBlock);
-      expect(bondFourth.id).to.equal(1);
+      expect(bondFourth.id).to.equal(2);
       expect(bondFourth.bsAmount).to.equal(1);
       expect(bondFourthDetail.lpAmount).to.equal(amountFourth);
       expect(bondFourthDetail.lpFirstDeposited).to.equal(amountFourth);

@@ -45,6 +45,7 @@ const config: HardhatUserConfig = {
     timeout: 1000000,
   },
   namedAccounts: {
+    tester: "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
     sablier: "0xA4fc358455Febe425536fd1878bE67FfDBDEC59a",
     DAI: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
     USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",

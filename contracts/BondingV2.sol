@@ -89,6 +89,14 @@ contract BondingV2 is CollectableDust, Pausable {
         _;
     }
 
+    modifier onlyPauser() {
+        require(
+            manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
+            "Governance token: not pauser"
+        );
+        _;
+    }
+
     modifier onlyMigrator() {
         require(msg.sender == migrator, "not migrator");
         _;
@@ -177,9 +185,6 @@ contract BondingV2 is CollectableDust, Pausable {
             0,
             0
         );
-        /*      _updateLpPerShare;
-        if (amount < lpRewards)
-        lpRewards -= amount; */
         ITWAPOracle(manager.twapOracleAddress()).update();
         uint256 toTransfer = IERC20(manager.dollarTokenAddress()).balanceOf(
             address(this)
@@ -193,7 +198,6 @@ contract BondingV2 is CollectableDust, Pausable {
             coinWithdrawn,
             toTransfer
         );
-        // TODO remove totalLp
     }
 
     /// @dev crvPriceReset remove 3CRV unilateraly from the curve LP share sitting inside
@@ -220,7 +224,6 @@ contract BondingV2 is CollectableDust, Pausable {
             1,
             0
         );
-        /*   lpRewards -= amount; */
         ITWAPOracle(manager.twapOracleAddress()).update();
         uint256 toTransfer = IERC20(manager.curve3PoolTokenAddress()).balanceOf(
             address(this)
@@ -234,7 +237,6 @@ contract BondingV2 is CollectableDust, Pausable {
             coinWithdrawn,
             toTransfer
         );
-        // TODO remove totalLp
     }
 
     function setBondingFormulasAddress(address _bondingFormulasAddress)
@@ -291,6 +293,7 @@ contract BondingV2 is CollectableDust, Pausable {
     /// @notice weeks act as a multiplier for the amount of bonding shares to be received
     function deposit(uint256 _lpsAmount, uint256 _weeks)
         external
+        whenNotPaused
         returns (uint256 _id)
     {
         require(
@@ -341,25 +344,13 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 _amount,
         uint256 _id,
         uint256 _weeks
-    ) external {
-        require(
-            IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
-                msg.sender,
-                _id
-            ) == 1,
-            "Bonding: caller is not owner"
-        );
-        BondingShareV2 bonding = BondingShareV2(manager.bondingShareAddress());
-        BondingShareV2.Bond memory bond = bonding.getBond(_id);
-        require(
-            block.number > bond.endBlock,
-            "Bonding: Redeem not allowed before bonding time"
-        );
-        ITWAPOracle(manager.twapOracleAddress()).update();
+    ) external whenNotPaused {
+        (
+            uint256[2] memory bs,
+            BondingShareV2.Bond memory bond
+        ) = _checkForLiquidity(_id);
 
         // calculate pending LP rewards
-        uint256[2] memory bs = IMasterChefV2(manager.masterChefAddress())
-            .getBondingShareInfo(_id);
         uint256 sharesToRemove = bs[0];
         _updateLpPerShare();
         uint256 pendingLpReward = lpRewardForShares(
@@ -400,8 +391,6 @@ contract BondingV2 is CollectableDust, Pausable {
         // calculate end locking period block number
         // 1 week = 45361 blocks = 2371753*7/366
         // n = (block + duration * 45361)
-        // id = n - n % blockRonding
-        // blockRonding = 100 => 2 ending zeros
         bond.endBlock = block.number + _weeks * blockCountInAWeek;
 
         // should be done after masterchef withdraw
@@ -430,26 +419,15 @@ contract BondingV2 is CollectableDust, Pausable {
     /// @param _amount of LP token deposited when _id was created to be withdrawn
     /// @param _id bonding shares id
     /// @notice bonding shares are ERC1155 (aka NFT) because they have an expiration date
-    function removeLiquidity(uint256 _amount, uint256 _id) external {
-        require(
-            IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
-                msg.sender,
-                _id
-            ) == 1,
-            "Bonding: caller is not owner"
-        );
-        BondingShareV2 bonding = BondingShareV2(manager.bondingShareAddress());
-        BondingShareV2.Bond memory bond = bonding.getBond(_id);
-        require(
-            block.number > bond.endBlock,
-            "Bonding: Redeem not allowed before bonding time"
-        );
-
+    function removeLiquidity(uint256 _amount, uint256 _id)
+        external
+        whenNotPaused
+    {
+        (
+            uint256[2] memory bs,
+            BondingShareV2.Bond memory bond
+        ) = _checkForLiquidity(_id);
         require(bond.lpAmount >= _amount, "Bonding: amount too big");
-        ITWAPOracle(manager.twapOracleAddress()).update();
-        uint256[2] memory bs = IMasterChefV2(manager.masterChefAddress())
-            .getBondingShareInfo(_id);
-
         // we should decrease the UBQ rewards proportionally to the LP removed
         // sharesToRemove = (bonding shares * _amount )  / bond.lpAmount ;
         uint256 sharesToRemove = BondingFormulas(this.bondingFormulasAddress())
@@ -547,9 +525,17 @@ contract BondingV2 is CollectableDust, Pausable {
         return 0;
     }
 
+    function pause() public virtual onlyPauser {
+        _pause();
+    }
+
+    function unpause() public virtual onlyPauser {
+        _unpause();
+    }
+
     /// @dev migrate let a user migrate from V1
     /// @notice user will then be able to migrate
-    function migrate() public returns (uint256 _id) {
+    function migrate() public whenMigrating returns (uint256 _id) {
         _id = toMigrateId[msg.sender];
         require(_id > 0, "not v1 address");
 
@@ -593,7 +579,7 @@ contract BondingV2 is CollectableDust, Pausable {
         address user,
         uint256 _lpsAmount,
         uint256 _weeks
-    ) internal whenMigrating returns (uint256 _id) {
+    ) internal returns (uint256 _id) {
         require(toMigrateId[user] > 0, "not v1 address");
         require(_lpsAmount > 0, "LP amount is zero");
         require(
@@ -673,5 +659,29 @@ contract BondingV2 is CollectableDust, Pausable {
                 lpRewardDebt,
                 endBlock
             );
+    }
+
+    function _checkForLiquidity(uint256 _id)
+        internal
+        returns (uint256[2] memory bs, BondingShareV2.Bond memory bond)
+    {
+        require(
+            IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
+                msg.sender,
+                _id
+            ) == 1,
+            "Bonding: caller is not owner"
+        );
+        BondingShareV2 bonding = BondingShareV2(manager.bondingShareAddress());
+        bond = bonding.getBond(_id);
+        require(
+            block.number > bond.endBlock,
+            "Bonding: Redeem not allowed before bonding time"
+        );
+
+        ITWAPOracle(manager.twapOracleAddress()).update();
+        bs = IMasterChefV2(manager.masterChefAddress()).getBondingShareInfo(
+            _id
+        );
     }
 }
