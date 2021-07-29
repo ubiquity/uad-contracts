@@ -27,5 +27,7 @@ module.exports = {
     "@typescript-eslint/no-unused-expressions": "off",
     // prettier already checks this
     "@typescript-eslint/indent": "off",
+    // we use it when accessing Etherscan data
+    "no-underscore-dangle": "off",
   },
 };
