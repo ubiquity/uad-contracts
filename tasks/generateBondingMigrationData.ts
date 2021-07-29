@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { task, types } from "hardhat/config";
-import { BigNumber } from "ethers";
+import { BigNumber, utils } from "ethers";
 import { Bonding } from "../artifacts/types/Bonding";
 import {
   Transaction,
@@ -98,10 +98,10 @@ function parseTransactions(
 }
 function calculateTotal(amounts: string[]): string {
   const lpsAmount = amounts.reduce(
-    (t, d) => t.add(ethers.BigNumber.from(d)),
-    ethers.BigNumber.from(0)
+    (t, d) => t.add(BigNumber.from(d)),
+    BigNumber.from(0)
   );
-  return ethers.utils.formatEther(lpsAmount);
+  return utils.formatEther(lpsAmount);
 }
 function writeToDisk(
   migrations: { [key: string]: MigrationData },
