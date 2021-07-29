@@ -84,7 +84,7 @@ const config: HardhatUserConfig = {
         url: `https://eth-mainnet.alchemyapi.io/v2/${
           process.env.ALCHEMY_API_KEY || ""
         }`,
-        blockNumber: 12910000,
+        blockNumber: 12592661,
       },
       accounts,
       /*  accounts: [

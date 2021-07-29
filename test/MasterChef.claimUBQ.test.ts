@@ -144,7 +144,6 @@ describe("MasterChef UBQ rewards", () => {
         const totalLP = await metaPool.balanceOf(BondingAddress);
         expect(totalLP).to.be.gt(0);
 
-        await manager.connect(ubqAdmin).grantRole(BONDING_MANAGER, ubq);
         await bonding
           .connect(ubqAdmin)
           .sendDust(BondingV2Address, MetaPoolAddress, totalLP);
