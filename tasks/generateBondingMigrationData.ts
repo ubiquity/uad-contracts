@@ -194,7 +194,6 @@ task(
         migrations[tx.from] = migrations[tx.from] || {
           address: tx.from,
           deposits: [],
-          withdraws: [],
           migration: null,
         };
         migrations[tx.from].deposits.push({
@@ -221,6 +220,9 @@ task(
           throw new Error("All withdraws should have been deposited");
 
         deposit.withdraw = withdraw;
+        if (deposit.withdraw.bondingShareAmount < deposit.bondingShareAmount) {
+          console.log("Withdrew less than deposited: ", deposit);
+        }
       });
 
       Object.values(migrations).forEach((m) => {
