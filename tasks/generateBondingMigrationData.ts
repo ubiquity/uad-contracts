@@ -94,7 +94,13 @@ function parseTransactions(transactions: Transaction[]): ParsedTransaction[] {
     return parsedTransaction;
   });
 }
-
+function calculateTotal(amounts: string[]): string {
+  const lpsAmount = amounts.reduce(
+    (t, d) => t.add(ethers.BigNumber.from(d)),
+    ethers.BigNumber.from(0)
+  );
+  return ethers.utils.formatEther(lpsAmount);
+}
 function writeToDisk(
   migrations: { [key: string]: MigrationData },
   directory: string
@@ -270,7 +276,8 @@ task(
       console.log("Addresses", toMigrateOriginals);
       console.log("Balances", toMigrateBalance);
       console.log("Weeks", toMigrateWeeks);
-
+      console.log("total addresses", toMigrateOriginals.length);
+      console.log("total LP to be migrated", calculateTotal(toMigrateBalance));
       writeToDisk(migrations, taskArgs.path);
       console.log("Results saved to: ", path.resolve(taskArgs.path));
     } catch (e) {
