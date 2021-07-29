@@ -1,10 +1,8 @@
 import fs from "fs";
 import path from "path";
 import { task, types } from "hardhat/config";
-import Web3 from "web3";
-
-import * as ethers from "ethers";
-import * as ABI from "../deployments/mainnet/Bonding.json"; // Contract ABI
+import { BigNumber } from "ethers";
+import { Bonding } from "../artifacts/types/Bonding";
 import {
   Transaction,
   TransactionEvent,
@@ -13,8 +11,6 @@ import {
   generateEventLogQuery,
   fetchEtherscanApi,
 } from "../utils/etherscan";
-
-const inter = new ethers.utils.Interface(ABI.abi);
 
 const BONDING_CONTRACT_ADDRESS = "0x831e3674Abc73d7A3e9d8a9400AF2301c32cEF0C";
 const BONDING_SHARE_CONTRACT_ADDRESS =
@@ -65,7 +61,10 @@ async function fetchTransferSingleEvents(): Promise<
   );
 }
 
-function parseTransactions(transactions: Transaction[]): ParsedTransaction[] {
+function parseTransactions(
+  bondingContract: Bonding,
+  transactions: Transaction[]
+): ParsedTransaction[] {
   return transactions.map((t) => {
     const parsedTransaction: ParsedTransaction = {
       hash: t.hash,
@@ -78,14 +77,17 @@ function parseTransactions(transactions: Transaction[]): ParsedTransaction[] {
       transaction: t,
     };
     if (t.to) {
-      const input = inter.parseTransaction({ data: t.input });
+      const input = bondingContract.interface.parseTransaction({
+        data: t.input,
+      });
+      // console.log(input);
       parsedTransaction.name = input.name;
 
       parsedTransaction.inputs = Object.fromEntries(
         Object.keys(input.args)
           .filter((k) => !/^[0-9]+$/.exec(k))
           .map((k) => {
-            return [k, (input.args[k] as ethers.BigNumber).toString()];
+            return [k, (input.args[k] as BigNumber).toString()];
           })
       );
     } else {
@@ -147,7 +149,12 @@ task(
     `./${DEFAULT_OUTPUT_NAME}`,
     types.string
   )
-  .setAction(async (taskArgs: CliArgs) => {
+  .setAction(async (taskArgs: CliArgs, { ethers }) => {
+    const bondingContract = (await ethers.getContractAt(
+      "Bonding",
+      BONDING_CONTRACT_ADDRESS
+    )) as Bonding;
+
     console.log("Arguments: ", taskArgs);
     if (!process.env.ETHERSCAN_API_KEY)
       throw new Error("ETHERSCAN_API_KEY environment variable must be set");
@@ -159,7 +166,7 @@ task(
     try {
       const response = await fetchEtherscanBondingContract();
 
-      const transactions = parseTransactions(response.result);
+      const transactions = parseTransactions(bondingContract, response.result);
       const deposits = transactions.filter(
         (t) => !t.isError && t.name === "deposit"
       );
@@ -169,26 +176,18 @@ task(
 
       // Get all the bonding share IDs and values for each transaction ID
 
-      const web3 = new Web3();
-
       const bondingShareData: { [key: string]: { id: string; value: string } } =
         {};
 
       (await fetchTransferSingleEvents()).result.forEach((ev) => {
-        const data = web3.eth.abi.decodeParameters(
-          [
-            {
-              type: "uint256",
-              name: "id",
-            },
-            { type: "uint256", name: "value" },
-          ],
+        const data = ethers.utils.defaultAbiCoder.decode(
+          ["uint256", "uint256"],
           ev.data
-        ) as { id: string; value: string };
+        ) as [BigNumber, BigNumber];
 
         bondingShareData[ev.transactionHash] = {
-          id: data.id,
-          value: data.value,
+          id: data[0].toString(),
+          value: data[1].toString(),
         };
       });
 
@@ -235,18 +234,14 @@ task(
         const depositsToMigrate = m.deposits.filter((d) => !d.withdraw);
         if (depositsToMigrate.length > 0) {
           const lpsAmount = depositsToMigrate.reduce(
-            (t, d) => t.add(ethers.BigNumber.from(d.lpsAmount)),
-            ethers.BigNumber.from(0)
+            (t, d) => t.add(BigNumber.from(d.lpsAmount)),
+            BigNumber.from(0)
           );
           const weeks = depositsToMigrate
             .reduce(
               (t, d) =>
-                t.add(
-                  ethers.BigNumber.from(d.weeks).mul(
-                    ethers.BigNumber.from(d.lpsAmount)
-                  )
-                ),
-              ethers.BigNumber.from(0)
+                t.add(BigNumber.from(d.weeks).mul(BigNumber.from(d.lpsAmount))),
+              BigNumber.from(0)
             )
             .div(lpsAmount);
 

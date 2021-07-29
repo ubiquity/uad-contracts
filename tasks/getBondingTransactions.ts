@@ -68,7 +68,6 @@ function parseTransactions(transactions: Transaction[]): ParsedTransaction[] {
       const input = inter.parseTransaction({ data: t.input });
       parsedTransaction.name = input.name;
 
-      console.log(input);
       parsedTransaction.inputs = Object.fromEntries(
         Object.keys(input.args)
           .filter((k) => !/^[0-9]+$/.exec(k))
