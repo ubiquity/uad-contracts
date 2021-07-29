@@ -1,36 +1,23 @@
 import fs from "fs";
 import path from "path";
 import { task, types } from "hardhat/config";
-import fetch from "node-fetch";
 import * as ethers from "ethers";
 import * as ABI from "../deployments/mainnet/Bonding.json"; // Contract ABI
+import {
+  Transaction,
+  EtherscanResponse,
+  generateEtherscanQuery,
+  fetchEtherscanApi,
+} from "../utils/etherscan";
 
 const inter = new ethers.utils.Interface(ABI.abi);
 
 const BONDING_CONTRACT_ADDRESS = "0x831e3674Abc73d7A3e9d8a9400AF2301c32cEF0C";
-const API_URL = "https://api.etherscan.io/api";
 const CONTRACT_GENESIS_BLOCK = 12595544;
 const DEFAULT_OUTPUT_NAME = "bonding_transactions.json";
 const contractFunctions = ABI.abi
   .filter((a) => a.type === "function")
   .map((a) => a.name as string);
-
-type EtherscanResponse = {
-  status: string;
-  message: string;
-  result: Transaction[];
-};
-
-type Transaction = {
-  isError: "0" | "1";
-  input: string;
-  hash: string;
-  from: string;
-  to: string;
-  blockNumber: string;
-  contractAddress: string;
-  timeStamp: string;
-};
 
 type CliArgs = {
   path: string;
@@ -56,46 +43,11 @@ type ParsedTransaction = {
   transaction: Transaction;
 };
 
-async function fetchEtherscanApi<T>(query: Record<string, string>): Promise<T> {
-  const response = await fetch(
-    `${API_URL}?${new URLSearchParams(query).toString()}`
-  );
-  return response.json() as Promise<T>;
-}
-
-async function fetchLatestBlockNumber(): Promise<number> {
-  console.log("Fetching latest block number...");
-  const response = await fetchEtherscanApi<{ result: string }>({
-    module: "proxy",
-    action: "eth_blockNumber",
-    apiKey: process.env.ETHERSCAN_API_KEY || "",
-  });
-  const latestBlockNumber = parseInt(response.result, 16);
-  console.log("Latest block number: ", latestBlockNumber);
-  return latestBlockNumber;
-}
-
-function generateEtherscanQuery(
-  address: string,
-  startblock: number,
-  endblock: number
-): Record<string, string> {
-  return {
-    module: "account",
-    action: "txlist",
-    address, // This is the bonding smart contract right?
-    startblock: startblock.toString(),
-    endblock: endblock.toString(),
-    sort: "asc",
-    apiKey: process.env.ETHERSCAN_API_KEY || "",
-  };
-}
-
 async function fetchEtherscanBondingContract(
   filter: CliArgs
-): Promise<EtherscanResponse> {
+): Promise<EtherscanResponse<Transaction>> {
   const { startBlock } = filter;
-  const endBlock = filter.endBlock || (await fetchLatestBlockNumber());
+  const endBlock = filter.endBlock || "latest";
   return fetchEtherscanApi(
     generateEtherscanQuery(BONDING_CONTRACT_ADDRESS, startBlock, endBlock)
   );

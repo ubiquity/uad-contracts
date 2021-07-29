@@ -4,6 +4,7 @@ import "./accountsFromMnemonic";
 import "./accounts";
 import "./get-code";
 import "./getBondingTransactions";
+import "./generateBondingMigrationData";
 import "./blockNumber";
 import "./chainId";
 import "./tx";
