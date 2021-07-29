@@ -6,7 +6,7 @@ import { Signer } from "ethers";
 import { MasterChef } from "../artifacts/types/MasterChef";
 import { Bonding } from "../artifacts/types/Bonding";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
-import { resetFork, latestBlockNumber } from "./utils/hardhatNode";
+import { resetFork } from "./utils/hardhatNode";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 
 let masterChef: MasterChef;
