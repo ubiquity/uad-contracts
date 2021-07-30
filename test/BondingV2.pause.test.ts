@@ -44,7 +44,7 @@ describe("Pause V2 Bonding", () => {
     it("Should pause and unpause only with role", async () => {
       // pause revert without role
       await expect(bondingV2.connect(secondAccount).pause()).to.be.revertedWith(
-        ""
+        "not pauser"
       );
 
       // pause work with role
@@ -58,7 +58,7 @@ describe("Pause V2 Bonding", () => {
       // unpause revert without role
       await expect(
         bondingV2.connect(secondAccount).unpause()
-      ).to.be.revertedWith("");
+      ).to.be.revertedWith("not pauser");
 
       // unpause work with role
       await expect(bondingV2.connect(admin).unpause()).to.not.be.reverted;
@@ -133,7 +133,7 @@ describe("Pause V2 Bonding", () => {
       // pause revert without role
       await expect(
         bondingShareV2.connect(secondAccount).pause()
-      ).to.be.revertedWith("");
+      ).to.be.revertedWith("not pauser");
 
       // pause work with role
       await expect(bondingShareV2.connect(admin).pause()).to.not.be.reverted;
@@ -146,7 +146,7 @@ describe("Pause V2 Bonding", () => {
       // unpause revert without role
       await expect(
         bondingShareV2.connect(secondAccount).unpause()
-      ).to.be.revertedWith("");
+      ).to.be.revertedWith("not pauser");
 
       // unpause work with role
       await expect(bondingShareV2.connect(admin).unpause()).to.not.be.reverted;

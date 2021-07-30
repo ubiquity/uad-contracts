@@ -36,6 +36,9 @@ const BONDING_MANAGER = ethers.utils.keccak256(
 );
 
 describe("MasterChef UBQ rewards", () => {
+  after(async () => {
+    await resetFork(12592661);
+  });
   beforeEach(async () => {
     await resetFork(12910000);
     ({
