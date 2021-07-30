@@ -92,7 +92,7 @@ contract BondingV2 is CollectableDust, Pausable {
     modifier onlyPauser() {
         require(
             manager.hasRole(manager.PAUSER_ROLE(), msg.sender),
-            "Governance token: not pauser"
+            "not pauser"
         );
         _;
     }
@@ -629,7 +629,6 @@ contract BondingV2 is CollectableDust, Pausable {
 
             // is there new LP rewards to be distributed ?
             if (currentLpRewards >= lpRewards) {
-
                 // we calculate the new accumulated LP rewards per share
                 accLpRewardPerShare =
                     accLpRewardPerShare +
