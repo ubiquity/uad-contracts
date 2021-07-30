@@ -515,13 +515,6 @@ describe("bondingV2 price reset", () => {
     // remove the pending rewards
     const treasuryAdr = await treasury.getAddress();
     // only leave 4.2 eth as lp rewards
-    /*  await bondingV2.sendDust(
-      treasuryAdr,
-      metaPool.address,
-      (await metaPool.balanceOf(bondingV2.address))
-        .sub(await bondingShareV2.totalLP())
-        .sub(ethers.utils.parseEther("4.2"))
-    ); */
 
     const amountOfLpdeposited = one.mul(100);
     // deposit 100 uLP more tokens in addition to the 100 already in the bonding contract
@@ -699,11 +692,7 @@ describe("bondingV2 price reset", () => {
         .toString(),
       "0.00000001"
     );
-    /*  const isPrecise = isAmountEquivalent(
-      pendingLpRewards2.toString(),
-      ethers.utils.parseEther("7.1").toString(),
-      "0.00000000001"
-    ); */
+
     expect(isPrecise).to.be.true;
 
     await expect(
@@ -765,14 +754,6 @@ describe("bondingV2 price reset", () => {
     // only leave 4.2 eth as lp rewards
     const firstLPRewards = ethers.utils.parseEther("4.2");
     await metaPool.connect(admin).transfer(bondingV2.address, firstLPRewards);
-    /*  await bondingV2.sendDust(
-      treasuryAdr,
-      metaPool.address,
-      (await metaPool.balanceOf(bondingV2.address))
-        .sub(await bondingShareV2.totalLP())
-        .sub(firstLPRewards)
-    );
- */
     const amountOfLpdeposited = one.mul(100);
     // deposit 100 uLP more tokens in addition to the 100 already in the bonding contract
     const idSecond = (await deposit(secondAccount, amountOfLpdeposited, 1)).id;
