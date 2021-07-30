@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
+import { BigNumber } from "ethers";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { Bonding } from "../artifacts/types/Bonding";
@@ -135,7 +136,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   /**
    *  hardhat local
    *  */
-  await resetFork(12910000);
+  await resetFork(12926140);
 
   await network.provider.request({
     method: "hardhat_impersonateAccount",
@@ -410,7 +411,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     idsAfter[0]
   );
   deployments.log("idsAfter:", idsAfter[0].toNumber());
-  const bond = await bondingShareV2.getBond(idsAfter[0]);
+  let bond = await bondingShareV2.getBond(idsAfter[0]);
   deployments.log(`bond id:${idsAfter[0].toNumber()}
            minter:${bond.minter}
            lpAmount:${ethers.utils.formatEther(bond.lpAmount)}
@@ -447,6 +448,15 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     .connect(testAccount)
     .removeLiquidity(bond.lpAmount, idsAfter[0]);
   await tx.wait();
+  bond = await bondingShareV2.getBond(idsAfter[0]);
+  deployments.log(`old bond id:${idsAfter[0].toNumber()}
+  minter:${bond.minter}
+  lpAmount:${ethers.utils.formatEther(bond.lpAmount)}
+  lpFirstDeposited:${ethers.utils.formatEther(bond.lpFirstDeposited)}
+  endBlock:${bond.endBlock.toNumber()}
+  tx:${tx.blockNumber ? tx.blockNumber.toString() : ""}
+`);
+
   const testerLPRewardsAfterRemove = await bondingV2.pendingLpRewards(
     idsAfter[0]
   );
@@ -470,6 +480,77 @@ totalLpToMigrateBeforeMigrate  :${ethers.utils.formatEther(
 totalLpToMigrateAfterMigrate  :${ethers.utils.formatEther(
     totalLpToMigrateAfterMigrate
   )}
+`);
+
+  tx = await metaPool
+    .connect(testAccount)
+    .approve(bondingV2.address, testerLPBalAfterMigrate);
+  await tx.wait();
+  const addAmount = testerLPBalAfterMigrate.div(BigNumber.from(2));
+  deployments.log(`
+  addAmount  :${ethers.utils.formatEther(addAmount)}
+
+  `);
+  tx = await bondingV2
+    .connect(testAccount)
+    .addLiquidity(addAmount, idsAfter[0], 42);
+  await tx.wait();
+  const testerLPBalAfterAdd = await metaPool.balanceOf(tester);
+  tx = await bondingV2.connect(testAccount).deposit(testerLPBalAfterAdd, 208);
+  await tx.wait();
+  const testerBsIds = await bondingShareV2.holderTokens(tester);
+  deployments.log(`
+  testerBsIds length  :${testerBsIds.length}
+  idsAfter[0]  :${idsAfter[0].toString()}
+  testerBsIds[0]  :${testerBsIds[0].toString()}
+  testerBsIds[1]  :${testerBsIds[1].toString()}
+  `);
+  bond = await bondingShareV2.getBond(idsAfter[0]);
+  deployments.log(`old bond id:${idsAfter[0].toNumber()}
+  minter:${bond.minter}
+  lpAmount:${ethers.utils.formatEther(bond.lpAmount)}
+  lpFirstDeposited:${ethers.utils.formatEther(bond.lpFirstDeposited)}
+  endBlock:${bond.endBlock.toNumber()}
+  tx:${tx.blockNumber ? tx.blockNumber.toString() : ""}
+`);
+
+  const bond1 = await bondingShareV2.getBond(testerBsIds[0]);
+  deployments.log(`bond1 id:${testerBsIds[0].toNumber()}
+  minter:${bond1.minter}
+  lpAmount:${ethers.utils.formatEther(bond1.lpAmount)}
+  lpFirstDeposited:${ethers.utils.formatEther(bond1.lpFirstDeposited)}
+  endBlock:${bond1.endBlock.toNumber()}
+  tx:${tx.blockNumber ? tx.blockNumber.toString() : ""}
+`);
+  const bond2 = await bondingShareV2.getBond(testerBsIds[1]);
+  deployments.log(`bond2 id:${testerBsIds[1].toNumber()}
+  minter:${bond2.minter}
+  lpAmount:${ethers.utils.formatEther(bond2.lpAmount)}
+  lpFirstDeposited:${ethers.utils.formatEther(bond2.lpFirstDeposited)}
+  endBlock:${bond2.endBlock.toNumber()}
+  tx:${tx.blockNumber ? tx.blockNumber.toString() : ""}
+`);
+
+  await mineNBlock(blockCountInAWeek.toNumber());
+
+  const pendingBond1 = await masterChefV2.pendingUGOV(testerBsIds[0]);
+  const pendingBond2 = await masterChefV2.pendingUGOV(testerBsIds[1]);
+  const bondingShareInfoBond1 = await masterChefV2.getBondingShareInfo(
+    testerBsIds[0]
+  );
+  const bondingShareInfoBond2 = await masterChefV2.getBondingShareInfo(
+    testerBsIds[1]
+  );
+  const totalShares = await masterChefV2.totalShares();
+  deployments.log(`
+
+  pendingBond1 :${ethers.utils.formatEther(pendingBond1)}
+  pendingBond2 :${ethers.utils.formatEther(pendingBond2)}
+  bondingShareInfoBond1-0 :${ethers.utils.formatEther(bondingShareInfoBond1[0])}
+  bondingShareInfoBond1-1 :${ethers.utils.formatEther(bondingShareInfoBond1[1])}
+  bondingShareInfoBond2-0 :${ethers.utils.formatEther(bondingShareInfoBond2[0])}
+  bondingShareInfoBond2-1 :${ethers.utils.formatEther(bondingShareInfoBond2[1])}
+  totalShares :${ethers.utils.formatEther(totalShares)}
 `);
 
   deployments.log(`

@@ -169,16 +169,6 @@ contract BondingV2 is CollectableDust, Pausable {
     /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
     function uADPriceReset(uint256 amount) external onlyBondingManager {
         IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
-        // safe approve
-        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-            address(this),
-            0
-        );
-
-        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-            address(this),
-            amount
-        );
         // remove one coin
         uint256 coinWithdrawn = metaPool.remove_liquidity_one_coin(
             amount,
@@ -189,7 +179,7 @@ contract BondingV2 is CollectableDust, Pausable {
         uint256 toTransfer = IERC20(manager.dollarTokenAddress()).balanceOf(
             address(this)
         );
-        IERC20(manager.dollarTokenAddress()).safeTransfer(
+        IERC20(manager.dollarTokenAddress()).transfer(
             manager.treasuryAddress(),
             toTransfer
         );
@@ -207,28 +197,18 @@ contract BondingV2 is CollectableDust, Pausable {
     /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
     function crvPriceReset(uint256 amount) external onlyBondingManager {
         IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
-        // safe approve
-        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-            address(this),
-            0
-        );
-        // safe approve
-        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
-            address(this),
-            amount
-        );
         // remove one coin
-        // update twap
         uint256 coinWithdrawn = metaPool.remove_liquidity_one_coin(
             amount,
             1,
             0
         );
+        // update twap
         ITWAPOracle(manager.twapOracleAddress()).update();
         uint256 toTransfer = IERC20(manager.curve3PoolTokenAddress()).balanceOf(
             address(this)
         );
-        IERC20(manager.curve3PoolTokenAddress()).safeTransfer(
+        IERC20(manager.curve3PoolTokenAddress()).transfer(
             manager.treasuryAddress(),
             toTransfer
         );
