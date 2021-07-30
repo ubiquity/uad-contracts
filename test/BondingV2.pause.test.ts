@@ -7,7 +7,7 @@ import { BondingV2 } from "../artifacts/types/BondingV2";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { bondingSetupV2 } from "./BondingSetupV2";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
-import { mineNBlock } from "./utils/hardhatNode";
+import { mineNBlock, resetFork } from "./utils/hardhatNode";
 
 let bondingV2: BondingV2;
 let metaPool: IMetaPool;
@@ -25,6 +25,9 @@ const PAUSER_ROLE = ethers.utils.keccak256(
 );
 
 describe("Pause V2 Bonding", () => {
+  after(async () => {
+    await resetFork(12592661);
+  });
   beforeEach(async () => {
     ({
       manager,
