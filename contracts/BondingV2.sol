@@ -628,7 +628,7 @@ contract BondingV2 is CollectableDust, Pausable {
                 (bond.totalLP() + totalLpToMigrate);
 
             // is there new LP rewards to be distributed ?
-            if (currentLpRewards >= lpRewards) {
+            if (currentLpRewards > lpRewards) {
                 // we calculate the new accumulated LP rewards per share
                 accLpRewardPerShare =
                     accLpRewardPerShare +
