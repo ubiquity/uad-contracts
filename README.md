@@ -99,6 +99,22 @@ this task will all the addresses registered in the manager
 npx hardhat --network mainnet manager
 ```
 
+### Get Bonding Contract Transactions
+
+this task will retrieve and filter the bonding contract transactions, print a summary and save them to a file
+
+```sh
+# OPTIONS: --end-block <INT> [--is-error <BOOLEAN>] [--name <STRING>] [--start-block <INT>] [path]
+
+#   --end-block  	The end block for the Etherscan request (defaults to latest block)
+#   --is-error   	Select transactions that were errors (default: false)
+#   --name       	The function name (use empty string for all) (default: "deposit")
+#   --start-block	The starting block for the Etherscan request (defaults is contract creation block) (default: 12595544)
+#   path	The path to store the bonding contract transactions (default: "./bonding_transactions.json")
+
+npx hardhat --network mainnet getBondingTransactions
+```
+
 ## Testing
 
 ### Requirements:

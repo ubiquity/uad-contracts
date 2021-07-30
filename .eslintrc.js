@@ -9,6 +9,7 @@ module.exports = {
   ],
   parserOptions: {
     project: "./tsconfig.eslint.json",
+    tsconfigRootDir: __dirname,
   },
   ignorePatterns: ["**/artifacts", "**/coverage"],
   rules: {
@@ -24,5 +25,9 @@ module.exports = {
     "import/no-extraneous-dependencies": "off",
     // we use it for tests
     "@typescript-eslint/no-unused-expressions": "off",
+    // prettier already checks this
+    "@typescript-eslint/indent": "off",
+    // we use it when accessing Etherscan data
+    "no-underscore-dangle": "off",
   },
 };
