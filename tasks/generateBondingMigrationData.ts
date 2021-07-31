@@ -229,7 +229,7 @@ task(
 
         deposit.withdraw = withdraw;
         if (deposit.withdraw.bondingShareAmount < deposit.bondingShareAmount) {
-          console.log("Withdrew less than deposited: ", deposit);
+          console.log("Withdrawal less than deposited: ", tx.from, deposit);
         }
       });
 
@@ -272,7 +272,8 @@ task(
         migrationsArr.map((m) => masterChef.pendingUGOV(m.address))
       );
       pendingRewards.forEach((reward, i) => {
-        migrationsArr[i].rewards = reward.toString();
+        // migrationsArr[i].rewards = reward.toString();
+        migrationsArr[i].rewards = ethers.utils.formatEther(reward);
       });
 
       console.table(migrations, ["rewards"]);
