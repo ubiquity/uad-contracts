@@ -3,6 +3,7 @@ import path from "path";
 import { task, types } from "hardhat/config";
 import { BigNumber, utils } from "ethers";
 import { Bonding } from "../artifacts/types/Bonding";
+import { MasterChef } from "../artifacts/types/MasterChef";
 import {
   Transaction,
   TransactionEvent,
@@ -12,6 +13,7 @@ import {
   fetchEtherscanApi,
 } from "../utils/etherscan";
 
+const MASTER_CHEF_ADDRESS = "0x8fFCf9899738e4633A721904609ffCa0a2C44f3D";
 const BONDING_CONTRACT_ADDRESS = "0x831e3674Abc73d7A3e9d8a9400AF2301c32cEF0C";
 const BONDING_SHARE_CONTRACT_ADDRESS =
   "0x0013B6033dd999676Dc547CEeCEA29f781D8Db17";
@@ -136,6 +138,7 @@ type Migration = {
 type MigrationData = {
   address: string;
   deposits: Deposit[];
+  rewards: null | string;
   migration: null | Migration;
 };
 
@@ -230,7 +233,11 @@ task(
         }
       });
 
-      Object.values(migrations).forEach((m) => {
+      const migrationsArr = Object.values(migrations);
+
+      console.log("Found ", migrationsArr.length, " addresses");
+
+      migrationsArr.forEach((m) => {
         const depositsToMigrate = m.deposits.filter((d) => !d.withdraw);
         if (depositsToMigrate.length > 0) {
           const lpsAmount = depositsToMigrate.reduce(
@@ -252,9 +259,27 @@ task(
         }
       });
 
+      // Check UBQ rewards from MasterChef
+
+      const masterChef = (await ethers.getContractAt(
+        "MasterChef",
+        MASTER_CHEF_ADDRESS
+      )) as MasterChef;
+
+      console.log("Checking pending UBQ rewards...");
+
+      const pendingRewards = await Promise.all(
+        migrationsArr.map((m) => masterChef.pendingUGOV(m.address))
+      );
+      pendingRewards.forEach((reward, i) => {
+        migrationsArr[i].rewards = reward.toString();
+      });
+
+      console.table(migrations, ["rewards"]);
+
       // Print and save to disk
 
-      console.log(JSON.stringify(migrations, null, 2));
+      // console.log(JSON.stringify(migrations, null, 2));
 
       const toMigrateOriginals: string[] = [];
       const toMigrateBalance: string[] = [];
