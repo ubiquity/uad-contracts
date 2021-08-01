@@ -104,7 +104,7 @@ const config: HardhatUserConfig = {
       }`,
       accounts: [process.env.UBQ ?? ""],
       // accounts,
-      gasPrice: 40000000000,
+      gasPrice: 2500000000,
     },
     ropsten: {
       gasPrice: 100000000000,
