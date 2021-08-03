@@ -1,19 +1,12 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
-import { CurveUADIncentive } from "../artifacts/types/CurveUADIncentive";
-import { BondingShare } from "../artifacts/types/BondingShare";
 import { Bonding } from "../artifacts/types/Bonding";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
 import { BondingFormulas } from "../artifacts/types/BondingFormulas";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
-import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { BondingV2 } from "../artifacts/types/BondingV2";
-import { IUniswapV2Pair } from "../artifacts/types/IUniswapV2Pair";
-import pressAnyKey from "../utils/flow";
-import { mineNBlock, resetFork } from "../test/utils/hardhatNode";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {

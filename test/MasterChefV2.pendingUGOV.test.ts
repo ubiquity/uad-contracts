@@ -15,11 +15,11 @@ const zero = BigNumber.from(0);
 const firstOneAddress = "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d";
 let firstOne: Signer;
 
-let UbiquityAlgorithmicDollarManagerAddress =
+const UbiquityAlgorithmicDollarManagerAddress =
   "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
 let manager: UbiquityAlgorithmicDollarManager;
 
-let adminAddress = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
+const adminAddress = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 let admin: Signer;
 
 // const BondingShareV2BlockCreation = 12931486;
@@ -60,17 +60,10 @@ const init = async (block: number): Promise<void> => {
     BondingShareV2Address
   )) as BondingShareV2;
 
-  // masterChefV2 = (await ethers.getContractAt(
-  //   "MasterChefV2",
-  //   MasterChefV2Address
-  // )) as MasterChefV2;
-
-  // deploy a new MasterChefV2 to debug
-  masterChefV2 = (await (
-    await ethers.getContractFactory("MasterChefV2")
-  ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
-  await manager.connect(admin).setMasterChefAddress(masterChefV2.address);
-  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, masterChefV2.address);
+  masterChefV2 = (await ethers.getContractAt(
+    "MasterChefV2",
+    MasterChefV2Address
+  )) as MasterChefV2;
 
   bondingV2 = (await ethers.getContractAt(
     "BondingV2",
@@ -82,11 +75,13 @@ const query = async (): Promise<
   [BigNumber, BigNumber, BigNumber, BigNumber, BigNumber, BigNumber]
 > => {
   const totalShares = await masterChefV2.totalShares();
-  console.log(`totalShares ${totalShares}`);
+  console.log(`totalShares ${totalShares.toString()}`);
 
   const [lastRewardBlock, accuGOVPerShare] = await masterChefV2.pool();
   console.log(
-    `pool ${lastRewardBlock} ${ethers.utils.formatEther(accuGOVPerShare)}`
+    `pool ${lastRewardBlock.toString()} ${ethers.utils.formatEther(
+      accuGOVPerShare
+    )}`
   );
 
   const pendingUGOV = await masterChefV2.pendingUGOV(1);
@@ -100,10 +95,10 @@ const query = async (): Promise<
   );
 
   const totalSupply = await bondingShareV2.totalSupply();
-  console.log(`pool ${totalSupply}`);
+  console.log(`pool ${totalSupply.toString()}`);
 
   const bond = await bondingShareV2.getBond(1);
-  console.log(`bond 1 ${bond}`);
+  console.log(`bond 1 ${bond.toString()}`);
 
   return [
     totalShares,
@@ -115,29 +110,35 @@ const query = async (): Promise<
   ];
 };
 
-describe("pendingUGOV", () => {
-  it("Should get pendingUGOV Bond 1 NULL just before first migration", async () => {
+describe("PROD MasterChefV2", () => {
+  it("Should get Bond1 pendingUGOV NULL just before first migration", async () => {
     await init(firstMigrateBlock - 1);
     expect(await query()).to.be.eql([zero, zero, zero, zero, zero, zero]);
   });
 
-  it("Should get pendingUGOV Bond 1 null just before first migration", async () => {
-    await init(firstMigrateBlock - 1);
-    await bondingV2.connect(admin).migrate();
-    expect(true).to.be.true;
-  });
-
-  it("Should get pendingUGOV Bond 1 TOO BIG after first migration", async () => {
+  it("Should get Bond1 pendingUGOV TOO BIG after first migration", async () => {
     await init(firstMigrateBlock);
-    const [
-      totalShares,
-      accuGOVPerShare,
-      pendingUGOV,
-      amount,
-      rewardDebt,
-      totalSupply,
-    ] = await query();
-
+    const [, , , , , totalSupply] = await query();
     expect(totalSupply).to.be.equal(1);
+  });
+});
+
+describe("NEW MasterChefV2", () => {
+  it("Should get Bond1 pendingUGOV with new MasterChefV2 contract with traces", async () => {
+    await init(firstMigrateBlock - 1);
+
+    // deploy a NEW MasterChefV2 to debug
+    masterChefV2 = (await (
+      await ethers.getContractFactory("MasterChefV2")
+    ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
+    await manager.connect(admin).setMasterChefAddress(masterChefV2.address);
+    await manager
+      .connect(admin)
+      .grantRole(UBQ_MINTER_ROLE, masterChefV2.address);
+
+    await query();
+    await bondingV2.connect(firstOne).migrate();
+    await query();
+    expect(true).to.be.true;
   });
 });
