@@ -8,7 +8,7 @@ let masterChefV2: MasterChefV2;
 
 describe("pendingUGOV", () => {
   beforeEach(async () => {
-    await resetFork(12942183);
+    await resetFork(12931490);
 
     masterChefV2 = (await ethers.getContractAt(
       "MasterChefV2",
@@ -16,15 +16,62 @@ describe("pendingUGOV", () => {
     )) as MasterChefV2;
   });
 
-  it("Should get pendingUGOV Bond1", async () => {
+  it("Should get pendingUGOV Bond 1 null at creation", async () => {
+    const block = 12931491;
+    await resetFork(block);
+
+    const totalShares = await masterChefV2.totalShares();
+    console.log(`totalShares ${totalShares}`);
+
+    const [lastRewardBlock, accuGOVPerShare] = await masterChefV2.pool();
+    console.log(
+      `pool ${block} ${lastRewardBlock} ${ethers.utils.formatEther(
+        accuGOVPerShare
+      )}`
+    );
+
     const pendingUGOV = await masterChefV2.pendingUGOV(1);
-    console.log("pendingUGOV1", ethers.utils.formatEther(pendingUGOV));
-    expect(pendingUGOV).to.be.gt(1);
+    console.log(
+      `pendingUGOV 1 ${block} ${ethers.utils.formatEther(pendingUGOV)}`
+    );
+
+    const [amount, rewardDebt] = await masterChefV2.getBondingShareInfo(1);
+    console.log(
+      `getBondingShareInfo 1 ${block} ${ethers.utils.formatEther(
+        amount
+      )} ${ethers.utils.formatEther(rewardDebt)}`
+    );
+
+    expect(pendingUGOV).to.be.equal(0);
+    expect(amount).to.be.equal(0);
+    expect(rewardDebt).to.be.equal(0);
   });
 
-  it("Should get pendingUGOV Bond2", async () => {
-    const pendingUGOV = await masterChefV2.pendingUGOV(2);
-    console.log("pendingUGOV2", ethers.utils.formatEther(pendingUGOV));
-    expect(pendingUGOV).to.be.gt(1);
+  it("Should get pendingUGOV Bond 1 modified after first migration", async () => {
+    const block = 12932142;
+    await resetFork(block);
+    const totalShares = await masterChefV2.totalShares();
+    console.log(`totalShares ${totalShares}`);
+
+    const [lastRewardBlock, accuGOVPerShare] = await masterChefV2.pool();
+    console.log(
+      `pool ${block} ${lastRewardBlock} ${ethers.utils.formatEther(
+        accuGOVPerShare
+      )}`
+    );
+
+    console.log(
+      `pendingUGOV 1 ${block}`,
+      ethers.utils.formatEther(await masterChefV2.pendingUGOV(1))
+    );
+
+    const [amount, rewardDebt] = await masterChefV2.getBondingShareInfo(1);
+    console.log(
+      `getBondingShareInfo 1 ${block} ${ethers.utils.formatEther(
+        amount
+      )} ${ethers.utils.formatEther(rewardDebt)}`
+    );
+
+    expect(2).to.be.gt(1);
   });
 });
