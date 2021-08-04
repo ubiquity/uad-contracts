@@ -183,9 +183,7 @@ contract MasterChefV2 {
             uint256 multiplier = _getMultiplier();
 
             uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
-            accuGOVPerShare =
-                accuGOVPerShare +
-                ((uGOVReward) / (lpSupply * 1e6));
+            accuGOVPerShare = accuGOVPerShare + uGOVReward / (lpSupply * 1e6);
         }
 
         return (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
@@ -254,10 +252,7 @@ contract MasterChefV2 {
             manager.treasuryAddress(),
             uGOVReward / uGOVDivider
         );
-        pool.accuGOVPerShare =
-            pool.accuGOVPerShare +
-            ((uGOVReward) / (lpSupply * 1e6));
-
+        pool.accuGOVPerShare = pool.accuGOVPerShare + uGOVReward / (lpSupply * 1e6);
         pool.lastRewardBlock = block.number;
     }
 

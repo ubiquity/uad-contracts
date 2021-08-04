@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, network } from "hardhat";
-import { resetFork } from "./utils/hardhatNode";
+import { resetFork, mineNBlock } from "./utils/hardhatNode";
 
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
@@ -42,7 +42,18 @@ const firstMigrateBlock = 12932141;
 
 const lastBlock = 12957400;
 
-const init = async (block: number): Promise<void> => {
+const newMasterChefV2 = async (): Promise<MasterChefV2> => {
+  // deploy a NEW MasterChefV2 to debug
+  const newChefV2: MasterChefV2 = (await (
+    await ethers.getContractFactory("MasterChefV2")
+  ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
+  await manager.connect(admin).setMasterChefAddress(newChefV2.address);
+  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, newChefV2.address);
+
+  return newChefV2;
+};
+
+const init = async (block: number, newChef = false): Promise<void> => {
   await resetFork(block);
   await network.provider.request({
     method: "hardhat_impersonateAccount",
@@ -70,11 +81,14 @@ const init = async (block: number): Promise<void> => {
     BondingShareV2Address
   )) as BondingShareV2;
 
-  masterChefV2 = (await ethers.getContractAt(
-    "MasterChefV2",
-    MasterChefV2Address
-  )) as MasterChefV2;
-
+  if (newChef) {
+    masterChefV2 = await newMasterChefV2();
+  } else {
+    masterChefV2 = (await ethers.getContractAt(
+      "MasterChefV2",
+      MasterChefV2Address
+    )) as MasterChefV2;
+  }
   bondingV2 = (await ethers.getContractAt(
     "BondingV2",
     BondingV2Address
@@ -124,17 +138,6 @@ const query = async (
   ];
 };
 
-const newMasterChefV2 = async (): Promise<MasterChefV2> => {
-  // deploy a NEW MasterChefV2 to debug
-  const newChefV2: MasterChefV2 = (await (
-    await ethers.getContractFactory("MasterChefV2")
-  ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
-  await manager.connect(admin).setMasterChefAddress(newChefV2.address);
-  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, newChefV2.address);
-
-  return newChefV2;
-};
-
 describe("Should get pendingUGOV", () => {
   describe("PROD MasterChefV2", () => {
     it("NULL just before first migration", async () => {
@@ -158,7 +161,7 @@ describe("Should get pendingUGOV", () => {
         amount,
         rewardDebt,
         totalSupply,
-      ] = await query(firstOneBondId, true);
+      ] = await query(firstOneBondId);
 
       // NORMAL
       expect(pendingUGOV).to.be.equal(0);
@@ -176,9 +179,7 @@ describe("Should get pendingUGOV", () => {
 
   describe("NEW MasterChefV2", () => {
     it("OK before first transaction", async () => {
-      await init(firstMigrateBlock - 1);
-
-      masterChefV2 = await newMasterChefV2();
+      await init(firstMigrateBlock - 1, true);
 
       expect(await query(firstOneBondId)).to.be.eql([
         zero,
@@ -196,7 +197,7 @@ describe("Should get pendingUGOV", () => {
         amount,
         rewardDebt,
         totalSupply,
-      ] = await query(firstOneBondId, true);
+      ] = await query(firstOneBondId);
 
       expect(pendingUGOV).to.be.equal(0);
       expect(totalSupply).to.be.equal(1);
@@ -210,15 +211,15 @@ describe("Should get pendingUGOV", () => {
       expect(rewardDebt).to.be.lt(BigNumber.from(10).pow(24));
     });
 
-    it("OK? after first 4 migrations", async () => {
-      await init(lastBlock);
+    it("OK after first 4 migrations", async () => {
+      await init(lastBlock, true);
 
       masterChefV2 = await newMasterChefV2();
       const newOneBondId = (
         await bondingV2.toMigrateId(newOneAddress)
       ).toNumber();
 
-      expect(await query(newOneBondId, true)).to.be.eql([
+      expect(await query(newOneBondId)).to.be.eql([
         zero,
         zero,
         zero,
@@ -230,6 +231,13 @@ describe("Should get pendingUGOV", () => {
       await bondingV2.connect(admin).setMigrating(true);
       await (await bondingV2.connect(newOne).migrate()).wait();
 
+      const id = (
+        await bondingShareV2.holderTokens(newOneAddress)
+      )[0].toNumber();
+
+      // mine some blocks to get pendingUGOV
+      await mineNBlock(10);
+
       const [
         totalShares,
         accuGOVPerShare,
@@ -237,17 +245,18 @@ describe("Should get pendingUGOV", () => {
         amount,
         rewardDebt,
         totalSupply,
-      ] = await query(5, true);
+      ] = await query(id);
 
-      expect(pendingUGOV).to.be.equal(0);
+      expect(pendingUGOV).to.be.gt(BigNumber.from(10).pow(18));
+      expect(pendingUGOV).to.be.lt(BigNumber.from(10).pow(24));
       expect(totalSupply).to.be.equal(5);
-      // expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
+      expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
       expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
-      // expect(amount).to.be.gt(BigNumber.from(10).pow(16));
+      expect(amount).to.be.gt(BigNumber.from(10).pow(16));
       expect(amount).to.be.lt(BigNumber.from(10).pow(24));
-      // expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(10));
+      expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(10));
       expect(accuGOVPerShare).to.be.lt(BigNumber.from(10).pow(18));
-      // expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(16));
+      expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(16));
       expect(rewardDebt).to.be.lt(BigNumber.from(10).pow(24));
     });
   });

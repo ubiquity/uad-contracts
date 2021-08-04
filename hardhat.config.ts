@@ -85,8 +85,6 @@ const config: HardhatUserConfig = {
           process.env.ALCHEMY_API_KEY || ""
         }`,
         blockNumber: 12592661,
-        // block before setUGOVPerBlock set to 0
-        // blockNumber: 12942182,
       },
       accounts,
       /*  accounts: [
@@ -104,9 +102,9 @@ const config: HardhatUserConfig = {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
-      // accounts: [process.env.UBQ ?? ""],
-      accounts,
-      gasPrice: 2500000,
+      accounts: [process.env.UBQ ?? ""],
+      // accounts,
+      gasPrice: 2500000000,
     },
     ropsten: {
       gasPrice: 100000000000,
