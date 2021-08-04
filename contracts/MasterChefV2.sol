@@ -9,6 +9,7 @@ import "./BondingShareV2.sol";
 import "./interfaces/IUbiquityFormulas.sol";
 
 import "./interfaces/IERC1155Ubiquity.sol";
+import "hardhat/console.sol";
 
 contract MasterChefV2 {
     using SafeERC20 for IERC20Ubiquity;
@@ -176,18 +177,35 @@ contract MasterChefV2 {
     {
         BondingShareInfo storage user = _bsInfo[bondingShareID];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
-        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-            .totalSupply();
 
-        if (block.number > pool.lastRewardBlock && lpSupply != 0) {
+        if (block.number > pool.lastRewardBlock && _totalShares != 0) {
             uint256 multiplier = _getMultiplier();
-
+            console.log(
+                "## multiplier:%s uGOVPerBlock:%s _totalShares:%s",
+                multiplier,
+                uGOVPerBlock,
+                _totalShares
+            );
             uint256 uGOVReward = (multiplier * uGOVPerBlock) / 1e18;
+            console.log(
+                "## uGOVReward:%s accuGOVPerShare:%s",
+                uGOVReward,
+                accuGOVPerShare
+            );
             accuGOVPerShare =
                 accuGOVPerShare +
-                ((uGOVReward * 1e12) / lpSupply);
+                ((uGOVReward * 1e12) / _totalShares);
+            console.log("## accuGOVPerShare:%s", accuGOVPerShare);
         }
-
+        console.log(
+            "## user.amount:%s user.rewardDebt:%s",
+            user.amount,
+            user.rewardDebt
+        );
+        console.log(
+            "## return value:%s",
+            (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt
+        );
         return (user.amount * accuGOVPerShare) / 1e12 - user.rewardDebt;
     }
 
@@ -237,9 +255,8 @@ contract MasterChefV2 {
             return;
         }
         _updateUGOVMultiplier();
-        uint256 lpSupply = IERC1155Ubiquity(manager.bondingShareAddress())
-            .totalSupply();
-        if (lpSupply == 0) {
+
+        if (_totalShares == 0) {
             pool.lastRewardBlock = block.number;
             return;
         }
@@ -256,7 +273,7 @@ contract MasterChefV2 {
         );
         pool.accuGOVPerShare =
             pool.accuGOVPerShare +
-            ((uGOVReward * 1e12) / lpSupply);
+            ((uGOVReward * 1e12) / _totalShares);
         pool.lastRewardBlock = block.number;
     }
 
@@ -273,6 +290,19 @@ contract MasterChefV2 {
     }
 
     function _getMultiplier() internal view returns (uint256) {
+        console.log(
+            "## block.number:%s pool.lastRewardBlock:%s uGOVmultiplier:%s",
+            block.number,
+            pool.lastRewardBlock,
+            uGOVmultiplier
+        );
+        uint256 subs = block.number - pool.lastRewardBlock;
+        uint256 muls = subs * uGOVmultiplier;
+        console.log("## subs:%s muls:%s", subs, muls);
+        console.log(
+            "## return multiplier:%s",
+            (block.number - pool.lastRewardBlock) * uGOVmultiplier
+        );
         return (block.number - pool.lastRewardBlock) * uGOVmultiplier;
     }
 

@@ -141,8 +141,9 @@ const deposit: IbondTokens = async function (
   const blockBefore = await ethers.provider.getBlock(
     await ethers.provider.getBlockNumber()
   );
+  const curBlockCountInAWeek = await bondingV2.blockCountInAWeek();
   const endBlock =
-    blockBefore.number + 1 + duration * blockCountInAWeek.toNumber();
+    blockBefore.number + 1 + duration * curBlockCountInAWeek.toNumber();
   const zz1 = await bondingV2.bondingDiscountMultiplier(); // zz1 = zerozero1 = 0.001 ether = 10^16
   const shares = BigNumber.from(
     await ubiquityFormulas.durationMultiply(amount, duration, zz1)
