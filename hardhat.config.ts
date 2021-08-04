@@ -102,7 +102,7 @@ const config: HardhatUserConfig = {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
-      accounts: [process.env.UBQ ?? ""],
+      // accounts: [process.env.UBQ ?? ""],
       // accounts,
       gasPrice: 2500000000,
     },
