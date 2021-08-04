@@ -14,6 +14,9 @@ const UBQ_MINTER_ROLE = ethers.utils.keccak256(
 const zero = BigNumber.from(0);
 const firstOneAddress = "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d";
 let firstOne: Signer;
+const firstOneBondId = 1;
+const newOneAddress = "0xd6efc21d8c941aa06f90075de1588ac7e912fec6";
+let newOne: Signer;
 
 const UbiquityAlgorithmicDollarManagerAddress =
   "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
@@ -37,6 +40,8 @@ let bondingV2: BondingV2;
 // const contractsV2created = 12931495;
 const firstMigrateBlock = 12932141;
 
+const lastBlock = 12957400;
+
 const init = async (block: number): Promise<void> => {
   await resetFork(block);
   await network.provider.request({
@@ -47,8 +52,13 @@ const init = async (block: number): Promise<void> => {
     method: "hardhat_impersonateAccount",
     params: [firstOneAddress],
   });
-  firstOne = ethers.provider.getSigner(firstOneAddress);
+  await network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [newOneAddress],
+  });
   admin = ethers.provider.getSigner(adminAddress);
+  firstOne = ethers.provider.getSigner(firstOneAddress);
+  newOne = ethers.provider.getSigner(newOneAddress);
 
   manager = (await ethers.getContractAt(
     "UbiquityAlgorithmicDollarManager",
@@ -71,35 +81,39 @@ const init = async (block: number): Promise<void> => {
   )) as BondingV2;
 };
 
-const query = async (): Promise<
+const query = async (
+  bondId = 1,
+  log = false
+): Promise<
   [BigNumber, BigNumber, BigNumber, BigNumber, BigNumber, BigNumber]
 > => {
+  const block = await ethers.provider.getBlockNumber();
+  const uGOVPerBlock = await masterChefV2.uGOVPerBlock();
   const totalShares = await masterChefV2.totalShares();
-  console.log(`totalShares ${totalShares.toString()}`);
-
   const [lastRewardBlock, accuGOVPerShare] = await masterChefV2.pool();
-  console.log(
-    `pool ${lastRewardBlock.toString()} ${ethers.utils.formatEther(
-      accuGOVPerShare
-    )}`
-  );
-
-  const pendingUGOV = await masterChefV2.pendingUGOV(1);
-  console.log(`pendingUGOV 1 ${ethers.utils.formatEther(pendingUGOV)}`);
-
-  const [amount, rewardDebt] = await masterChefV2.getBondingShareInfo(1);
-  console.log(
-    `getBondingShareInfo 1  ${ethers.utils.formatEther(
-      amount
-    )} ${ethers.utils.formatEther(rewardDebt)}`
-  );
-
   const totalSupply = await bondingShareV2.totalSupply();
-  console.log(`pool ${totalSupply.toString()}`);
 
-  const bond = await bondingShareV2.getBond(1);
-  console.log(`bond 1 ${bond.toString()}`);
+  const pendingUGOV = await masterChefV2.pendingUGOV(bondId);
+  const [amount, rewardDebt] = await masterChefV2.getBondingShareInfo(bondId);
+  const bond = await bondingShareV2.getBond(bondId);
 
+  if (log) {
+    console.log(`BLOCK:${block}`);
+    console.log("uGOVPerBlock", ethers.utils.formatEther(uGOVPerBlock));
+    console.log("totalShares", ethers.utils.formatEther(totalShares));
+    console.log("lastRewardBlock", lastRewardBlock.toString());
+    console.log(
+      "accuGOVPerShare",
+      ethers.utils.formatUnits(accuGOVPerShare.toString(), 12)
+    );
+    console.log("totalSupply", totalSupply.toString());
+
+    console.log(`BOND:${bondId}`);
+    console.log("pendingUGOV", ethers.utils.formatEther(pendingUGOV));
+    console.log("amount", ethers.utils.formatEther(amount));
+    console.log("rewardDebt", ethers.utils.formatEther(rewardDebt));
+    console.log("bond", bond.toString());
+  }
   return [
     totalShares,
     accuGOVPerShare,
@@ -110,35 +124,131 @@ const query = async (): Promise<
   ];
 };
 
-describe("PROD MasterChefV2", () => {
-  it("Should get Bond1 pendingUGOV NULL just before first migration", async () => {
-    await init(firstMigrateBlock - 1);
-    expect(await query()).to.be.eql([zero, zero, zero, zero, zero, zero]);
+const newMasterChefV2 = async (): Promise<MasterChefV2> => {
+  // deploy a NEW MasterChefV2 to debug
+  const newChefV2: MasterChefV2 = (await (
+    await ethers.getContractFactory("MasterChefV2")
+  ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
+  await manager.connect(admin).setMasterChefAddress(newChefV2.address);
+  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, newChefV2.address);
+
+  return newChefV2;
+};
+
+describe("Should get pendingUGOV", () => {
+  describe("PROD MasterChefV2", () => {
+    it("NULL just before first migration", async () => {
+      await init(firstMigrateBlock - 1);
+      expect(await query(firstOneBondId)).to.be.eql([
+        zero,
+        zero,
+        zero,
+        zero,
+        zero,
+        zero,
+      ]);
+    });
+
+    it("TOO BIG after first migration", async () => {
+      await init(firstMigrateBlock);
+      const [
+        totalShares,
+        accuGOVPerShare,
+        pendingUGOV,
+        amount,
+        rewardDebt,
+        totalSupply,
+      ] = await query(firstOneBondId, true);
+
+      // NORMAL
+      expect(pendingUGOV).to.be.equal(0);
+      expect(totalSupply).to.be.equal(1);
+      expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
+      expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
+      expect(amount).to.be.gt(BigNumber.from(10).pow(18));
+      expect(amount).to.be.lt(BigNumber.from(10).pow(24));
+
+      // TOO BIG
+      expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(30));
+      expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(30));
+    });
   });
 
-  it("Should get Bond1 pendingUGOV TOO BIG after first migration", async () => {
-    await init(firstMigrateBlock);
-    const [, , , , , totalSupply] = await query();
-    expect(totalSupply).to.be.equal(1);
-  });
-});
+  describe("NEW MasterChefV2", () => {
+    it("OK before first transaction", async () => {
+      await init(firstMigrateBlock - 1);
 
-describe("NEW MasterChefV2", () => {
-  it("Should get Bond1 pendingUGOV with new MasterChefV2 contract with traces", async () => {
-    await init(firstMigrateBlock - 1);
+      masterChefV2 = await newMasterChefV2();
 
-    // deploy a NEW MasterChefV2 to debug
-    masterChefV2 = (await (
-      await ethers.getContractFactory("MasterChefV2")
-    ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
-    await manager.connect(admin).setMasterChefAddress(masterChefV2.address);
-    await manager
-      .connect(admin)
-      .grantRole(UBQ_MINTER_ROLE, masterChefV2.address);
+      expect(await query(firstOneBondId)).to.be.eql([
+        zero,
+        zero,
+        zero,
+        zero,
+        zero,
+        zero,
+      ]);
+      await (await bondingV2.connect(firstOne).migrate()).wait();
+      const [
+        totalShares,
+        accuGOVPerShare,
+        pendingUGOV,
+        amount,
+        rewardDebt,
+        totalSupply,
+      ] = await query(firstOneBondId, true);
 
-    await query();
-    await bondingV2.connect(firstOne).migrate();
-    await query();
-    expect(true).to.be.true;
+      expect(pendingUGOV).to.be.equal(0);
+      expect(totalSupply).to.be.equal(1);
+      expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
+      expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
+      expect(amount).to.be.gt(BigNumber.from(10).pow(18));
+      expect(amount).to.be.lt(BigNumber.from(10).pow(24));
+      expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(12));
+      expect(accuGOVPerShare).to.be.lt(BigNumber.from(10).pow(18));
+      expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(18));
+      expect(rewardDebt).to.be.lt(BigNumber.from(10).pow(24));
+    });
+
+    it("OK? after first 4 migrations", async () => {
+      await init(lastBlock);
+
+      masterChefV2 = await newMasterChefV2();
+      const newOneBondId = (
+        await bondingV2.toMigrateId(newOneAddress)
+      ).toNumber();
+
+      expect(await query(newOneBondId, true)).to.be.eql([
+        zero,
+        zero,
+        zero,
+        zero,
+        zero,
+        BigNumber.from(4),
+      ]);
+
+      await bondingV2.connect(admin).setMigrating(true);
+      await (await bondingV2.connect(newOne).migrate()).wait();
+
+      const [
+        totalShares,
+        accuGOVPerShare,
+        pendingUGOV,
+        amount,
+        rewardDebt,
+        totalSupply,
+      ] = await query(5, true);
+
+      expect(pendingUGOV).to.be.equal(0);
+      expect(totalSupply).to.be.equal(5);
+      // expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
+      expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
+      // expect(amount).to.be.gt(BigNumber.from(10).pow(16));
+      expect(amount).to.be.lt(BigNumber.from(10).pow(24));
+      // expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(10));
+      expect(accuGOVPerShare).to.be.lt(BigNumber.from(10).pow(18));
+      // expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(16));
+      expect(rewardDebt).to.be.lt(BigNumber.from(10).pow(24));
+    });
   });
 });
