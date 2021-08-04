@@ -215,18 +215,6 @@ describe("Should get pendingUGOV", () => {
       await init(lastBlock, true);
 
       masterChefV2 = await newMasterChefV2();
-      const newOneBondId = (
-        await bondingV2.toMigrateId(newOneAddress)
-      ).toNumber();
-
-      expect(await query(newOneBondId)).to.be.eql([
-        zero,
-        zero,
-        zero,
-        zero,
-        zero,
-        BigNumber.from(4),
-      ]);
 
       await bondingV2.connect(admin).setMigrating(true);
       await (await bondingV2.connect(newOne).migrate()).wait();

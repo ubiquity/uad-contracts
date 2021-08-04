@@ -17,3 +17,4 @@ import "./manager";
 import "./priceReset";
 import "./excessDollarDistribution";
 import "./revoke";
+import "./simulateMigrate";
