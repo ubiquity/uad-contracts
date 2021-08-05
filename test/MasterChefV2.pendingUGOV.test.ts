@@ -42,7 +42,7 @@ let bondingV2: BondingV2;
 // const contractsV2created = 12931495;
 const firstMigrateBlock = 12932141;
 
-const lastBlock = 12957400;
+const lastBlock = 12967000;
 
 const newMasterChefV2 = async (): Promise<MasterChefV2> => {
   // deploy a NEW MasterChefV2 to debug
@@ -141,6 +141,10 @@ const query = async (
 };
 
 describe("Should get pendingUGOV", () => {
+  after(async () => {
+    await resetFork(12592661);
+  });
+
   describe("PROD MasterChefV2", () => {
     it("NULL just before first migration", async () => {
       await init(firstMigrateBlock - 1);
@@ -181,7 +185,7 @@ describe("Should get pendingUGOV", () => {
     it("OK before first transaction", async () => {
       await init(firstMigrateBlock - 1, true);
 
-      expect(await query(firstOneBondId, true)).to.be.eql([
+      expect(await query(firstOneBondId)).to.be.eql([
         zero,
         zero,
         zero,
@@ -202,7 +206,7 @@ describe("Should get pendingUGOV", () => {
         amount,
         rewardDebt,
         totalSupply,
-      ] = await query(firstOneBondId, true);
+      ] = await query(firstOneBondId);
 
       expect(pendingUGOV).to.be.gt(ten.pow(18)).lt(ten.pow(24));
       expect(totalSupply).to.be.equal(1);
@@ -234,10 +238,10 @@ describe("Should get pendingUGOV", () => {
         amount,
         rewardDebt,
         totalSupply,
-      ] = await query(id, true);
+      ] = await query(id);
 
       expect(pendingUGOV).to.be.gt(ten.pow(18)).lt(ten.pow(24));
-      expect(totalSupply).to.be.equal(5);
+      expect(totalSupply).to.be.equal(6);
       expect(totalShares).to.be.gt(ten.pow(18)).lt(ten.pow(24));
       expect(amount).to.be.gt(ten.pow(16)).lt(ten.pow(24));
       expect(accuGOVPerShare).to.be.equal(0);

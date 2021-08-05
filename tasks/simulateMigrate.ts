@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/no-loop-func */
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
 import { expect } from "chai";
@@ -8,18 +14,53 @@ import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
+const toMigrateOriginals = [
+  "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
+  "0xefc0e701a824943b469a694ac564aa1eff7ab7dd",
+  "0xa53a6fe2d8ad977ad926c485343ba39f32d3a3f6",
+  "0x7c76f4db70b7e2177de10de3e2f668dadcd11108",
+  "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d",
+  "0xf6501068a54f3eab46c1f145cb9d3fb91658b220",
+  "0x10693e86f2e7151b3010469e33b6c1c2da8887d6",
+  "0xcefd0e73cc48b0b9d4c8683e52b7d7396600abb2",
+  "0xd028babbdc15949aaa35587f95f9e96c7d49417d",
+  "0x9968efe1424d802e1f79fd8af8da67b0f08c814d",
+  "0xd3bc13258e685df436715104882888d087f87ed8",
+  "0x0709b103d46d71458a71e5d81230dd688809a53d",
+  "0xe3e39161d35e9a81edec667a5387bfae85752854",
+  "0x7c361828849293684ddf7212fd1d2cb5f0aade70",
+  "0x9d3f4eeb533b8e3c8f50dbbd2e351d1bf2987908",
+  "0x865dc9a621b50534ba3d17e0ea8447c315e31886",
+  "0x324e0b53cefa84cf970833939249880f814557c6",
+  "0xce156d5d62a8f82326da8d808d0f3f76360036d0",
+  "0x26bdde6506bd32bd7b5cc5c73cd252807ff18568",
+  "0xd6efc21d8c941aa06f90075de1588ac7e912fec6",
+  "0xe0d62cc9233c7e2f1f23fe8c77d6b4d1a265d7cd",
+  "0x0b54b916e90b8f28ad21da40638e0724132c9c93",
+  "0x629cd43eaf443e66a9a69ed246728e1001289eac",
+  "0x0709e442a5469b88bb090dd285b1b3a63fb0c226",
+  "0x94a2ffdbdbd84984ac7967878c5c397126e7bbbe",
+  "0x51ec66e63199176f59c80268e0be6ffa91fab220",
+  "0x0a71e650f70b35fca8b70e71e4441df8d44e01e9",
+  "0xc1b6052e707dff9017deab13ae9b89008fc1fc5d",
+  "0x9be95ef84676393588e49ad8b99c9d4cdfdaa631",
+  "0xfffff6e70842330948ca47254f2be673b1cb0db7",
+  "0x0000ce08fa224696a819877070bf378e8b131acf",
+  "0xc2cb4b1bcaebaa78c8004e394cf90ba07a61c8f7",
+  "0xb2812370f17465ae096ced55679428786734a678",
+  "0x3eb851c3959f0d37e15c2d9476c4adb46d5231d1",
+  "0xad286cf287b91719ee85d3ba5cf3da483d631dba",
+  "0xbd37a957773d883186b989f6b21c209459022252",
+];
+
 task("simulateMigrate", "simulate migration of one address")
-  .addParam("address", "The address to simulate migration")
+  .addOptionalParam("address", "The address to simulate migration")
   .setAction(async (taskArgs: { address: string }, { ethers, network }) => {
-    const { address } = taskArgs;
-    console.log(address);
+    const { address: paramAddress } = taskArgs;
 
     const UBQ_MINTER_ROLE = ethers.utils.keccak256(
       ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
     );
-    const zero = BigNumber.from(0);
-
-    let newOne: Signer;
 
     const UbiquityAlgorithmicDollarManagerAddress =
       "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
@@ -32,15 +73,13 @@ task("simulateMigrate", "simulate migration of one address")
     const BondingShareV2Address = "0x2dA07859613C14F6f05c97eFE37B9B4F212b5eF5";
     let bondingShareV2: BondingShareV2;
 
-    // const MasterChefV2BlockCreation = 12931490;
-    const MasterChefV2Address = "0xb8ec70d24306ecef9d4aaf9986dcb1da5736a997";
     let masterChefV2: MasterChefV2;
 
     // const BondingV2BlockCreation = 12931495;
     const BondingV2Address = "0xC251eCD9f1bD5230823F9A0F99a44A87Ddd4CA38";
     let bondingV2: BondingV2;
 
-    const lastBlock = 12957400;
+    const lastBlock = 12967000;
     const mineBlock = async (timestamp: number): Promise<void> => {
       await network.provider.request({
         method: "evm_mine",
@@ -110,18 +149,14 @@ task("simulateMigrate", "simulate migration of one address")
       return newChefV2;
     };
 
-    const init = async (block: number, newChef = false): Promise<void> => {
+    const init = async (block: number): Promise<void> => {
       await resetFork(block);
       await network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [adminAddress],
       });
-      await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [address],
-      });
+
       admin = ethers.provider.getSigner(adminAddress);
-      newOne = ethers.provider.getSigner(address);
 
       manager = (await ethers.getContractAt(
         "UbiquityAlgorithmicDollarManager",
@@ -133,14 +168,8 @@ task("simulateMigrate", "simulate migration of one address")
         BondingShareV2Address
       )) as BondingShareV2;
 
-      if (newChef) {
-        masterChefV2 = await newMasterChefV2();
-      } else {
-        masterChefV2 = (await ethers.getContractAt(
-          "MasterChefV2",
-          MasterChefV2Address
-        )) as MasterChefV2;
-      }
+      masterChefV2 = await newMasterChefV2();
+
       bondingV2 = (await ethers.getContractAt(
         "BondingV2",
         BondingV2Address
@@ -148,13 +177,23 @@ task("simulateMigrate", "simulate migration of one address")
     };
 
     const query = async (
-      bondId = 1,
+      bondId: number,
       log = false
     ): Promise<
-      [BigNumber, BigNumber, BigNumber, BigNumber, BigNumber, BigNumber]
+      [
+        BigNumber,
+        BigNumber,
+        BigNumber,
+        BigNumber,
+        BigNumber,
+        BigNumber,
+        BigNumber,
+        BigNumber,
+        number
+      ]
     > => {
       const block = await ethers.provider.getBlockNumber();
-      const uGOVPerBlock = await masterChefV2.uGOVPerBlock();
+      const uGOVmultiplier = await masterChefV2.uGOVmultiplier();
       const totalShares = await masterChefV2.totalShares();
       const [lastRewardBlock, accuGOVPerShare] = await masterChefV2.pool();
       const totalSupply = await bondingShareV2.totalSupply();
@@ -167,7 +206,7 @@ task("simulateMigrate", "simulate migration of one address")
 
       if (log) {
         console.log(`BLOCK:${block}`);
-        console.log("uGOVPerBlock", ethers.utils.formatEther(uGOVPerBlock));
+        console.log("uGOVmultiplier", ethers.utils.formatEther(uGOVmultiplier));
         console.log("totalShares", ethers.utils.formatEther(totalShares));
         console.log("lastRewardBlock", lastRewardBlock.toString());
         console.log(
@@ -176,11 +215,13 @@ task("simulateMigrate", "simulate migration of one address")
         );
         console.log("totalSupply", totalSupply.toString());
 
-        console.log(`BOND:${bondId}`);
-        console.log("pendingUGOV", ethers.utils.formatEther(pendingUGOV));
-        console.log("amount", ethers.utils.formatEther(amount));
-        console.log("rewardDebt", ethers.utils.formatEther(rewardDebt));
-        console.log("bond", bond.toString());
+        if (bondId) {
+          console.log(`BOND:${bondId}`);
+          console.log("pendingUGOV", ethers.utils.formatEther(pendingUGOV));
+          console.log("amount", ethers.utils.formatEther(amount));
+          console.log("rewardDebt", ethers.utils.formatEther(rewardDebt));
+          console.log("bond", bond.toString());
+        }
       }
       return [
         totalShares,
@@ -189,42 +230,78 @@ task("simulateMigrate", "simulate migration of one address")
         amount,
         rewardDebt,
         totalSupply,
+        uGOVmultiplier,
+        lastRewardBlock,
+        block,
       ];
     };
 
-    const migrate = async () => {
-      masterChefV2 = await newMasterChefV2();
+    const migrate = async (_address: string) => {
+      console.log(`\n>> Address ${_address}`);
+
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [_address],
+      });
+      const account = ethers.provider.getSigner(_address);
 
       await bondingV2.connect(admin).setMigrating(true);
-      await (await bondingV2.connect(newOne).migrate()).wait();
+      try {
+        const tx = await bondingV2.connect(account).migrate();
 
-      const id = (await bondingShareV2.holderTokens(address))[0].toNumber();
+        const { events } = await tx.wait();
+        const args = events?.find((event) => event.event === "Migrated")?.args;
+        const user = args && args[0]?.toString();
+        const id = args && args[1].toString();
+        const lpsAmount = args && ethers.utils.formatEther(args[2]);
+        const sharesAmount = args && args[3];
+        const weeks = args && args[4];
 
-      // mine some blocks to get pendingUGOV
-      await mineNBlock(10);
+        expect(user?.toLowerCase()).to.be.equal(_address.toLowerCase());
+        expect(id).to.be.equal(
+          (await bondingShareV2.holderTokens(_address))[0].toString()
+        );
 
-      const [
-        totalShares,
-        accuGOVPerShare,
-        pendingUGOV,
-        amount,
-        rewardDebt,
-        totalSupply,
-      ] = await query(id, true);
+        // mine some blocks to get pendingUGOV
+        await mineNBlock(100);
 
-      expect(pendingUGOV).to.be.gt(BigNumber.from(10).pow(18));
-      expect(pendingUGOV).to.be.lt(BigNumber.from(10).pow(24));
-      expect(totalSupply).to.be.equal(5);
-      expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
-      expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
-      expect(amount).to.be.gt(BigNumber.from(10).pow(16));
-      expect(amount).to.be.lt(BigNumber.from(10).pow(24));
-      expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(10));
-      expect(accuGOVPerShare).to.be.lt(BigNumber.from(10).pow(18));
-      expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(16));
-      expect(rewardDebt).to.be.lt(BigNumber.from(10).pow(24));
+        const res = await query(id);
+        expect(res[3]).to.be.equal(sharesAmount);
+
+        const totalShares = ethers.utils.formatEther(res[0]);
+        const accuGOVPerShare = ethers.utils.formatUnits(res[1], 12);
+        const pendingUGOV = ethers.utils.formatEther(res[2]);
+        const amount = ethers.utils.formatEther(res[3]);
+        const rewardDebt = ethers.utils.formatEther(res[4]);
+        const totalSupply = res[5];
+        const uGOVmultiplier = ethers.utils.formatEther(res[6]);
+        const lastRewardBlock = res[7].toString();
+        const block = res[8];
+
+        console.log(
+          `>> ${lpsAmount} uAD3RV-f locked ${weeks} weeks Migrated to Bond #${id}`
+        );
+        console.log(
+          `>> ${amount} UBQ  and ${pendingUGOV} UBQ pending  plus ${rewardDebt} uDEBT`
+        );
+        console.log(
+          `== Block ${block}  Last Reward Block ${lastRewardBlock}  UBQ Rewards per Block ${uGOVmultiplier}`
+        );
+        console.log(
+          `== Total Bond ${totalSupply}  Total UBQ ${totalShares}  Total UBQ Accumulated per Share ${accuGOVPerShare}`
+        );
+      } catch (e) {
+        console.log(`** ERROR ${e.message}`);
+      }
     };
 
-    await init(lastBlock, true);
-    await migrate();
+    await init(lastBlock);
+    if (paramAddress) {
+      await migrate(paramAddress);
+    } else {
+      for (let i = 0; i < toMigrateOriginals.length; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await migrate(toMigrateOriginals[i]);
+      }
+    }
   });

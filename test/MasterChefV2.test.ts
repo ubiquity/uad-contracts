@@ -44,7 +44,6 @@ describe("MasterChefV2", () => {
         bondingV2.address
       );
       const amount = one.mul(100);
-      let pool = await masterChefV2.pool();
       const { id, bsAmount, shares, creationBlock, endBlock } = await deposit(
         secondAccount,
         amount,
@@ -100,7 +99,6 @@ describe("MasterChefV2", () => {
       expect(percentage).to.equal(50);
       // we mine 99 blocks plus 1 block to mine the deposit that makes 100 blocks
       await mineNBlock(99);
-      pool = await masterChefV2.pool();
 
       const pendingUGOV2 = await masterChefV2.pendingUGOV(tokensID[0]);
 
@@ -125,7 +123,6 @@ describe("MasterChefV2", () => {
       );
       expect(isPrecise2).to.be.true;
       // the rewards is actually what has been calculated
-      const beforeBal = await uGOV.balanceOf(secondAddress);
       await masterChefV2.connect(secondAccount).getRewards(tokensID[0]);
       const calculatedPendingUGOVAfterGetRewards = uGOVPerBlock
         .mul(uGOVmultiplier)
