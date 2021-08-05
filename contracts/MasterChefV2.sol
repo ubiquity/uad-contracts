@@ -178,6 +178,13 @@ contract MasterChefV2 {
         BondingShareInfo storage user = _bsInfo[bondingShareID];
         uint256 accuGOVPerShare = pool.accuGOVPerShare;
 
+        console.log(
+            "## _totalShares:%s block.number:%s pool.lastRewardBlock:%s",
+            _totalShares,
+            block.number,
+            pool.lastRewardBlock
+        );
+
         if (block.number > pool.lastRewardBlock && _totalShares != 0) {
             uint256 multiplier = _getMultiplier();
             console.log(

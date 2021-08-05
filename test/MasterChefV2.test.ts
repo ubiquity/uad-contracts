@@ -38,7 +38,7 @@ describe("MasterChefV2", () => {
   });
 
   describe("deposit", () => {
-    it.only("should be able to calculate pending UBQ", async () => {
+    it("should be able to calculate pending UBQ", async () => {
       const totalLPBeforeAdd = await bondingShareV2.totalLP();
       const balanceBondingBeforeAdd = await metaPool.balanceOf(
         bondingV2.address

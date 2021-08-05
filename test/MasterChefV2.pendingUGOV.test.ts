@@ -12,6 +12,8 @@ const UBQ_MINTER_ROLE = ethers.utils.keccak256(
   ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
 );
 const zero = BigNumber.from(0);
+const ten = BigNumber.from(10);
+
 const firstOneAddress = "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d";
 let firstOne: Signer;
 const firstOneBondId = 1;
@@ -166,14 +168,12 @@ describe("Should get pendingUGOV", () => {
       // NORMAL
       expect(pendingUGOV).to.be.equal(0);
       expect(totalSupply).to.be.equal(1);
-      expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
-      expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
-      expect(amount).to.be.gt(BigNumber.from(10).pow(18));
-      expect(amount).to.be.lt(BigNumber.from(10).pow(24));
+      expect(totalShares).to.be.gt(ten.pow(18)).lt(ten.pow(24));
+      expect(amount).to.be.gt(ten.pow(18)).lt(ten.pow(24));
 
       // TOO BIG
-      expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(30));
-      expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(30));
+      expect(accuGOVPerShare).to.be.gt(ten.pow(30));
+      expect(rewardDebt).to.be.gt(ten.pow(30));
     });
   });
 
@@ -181,7 +181,7 @@ describe("Should get pendingUGOV", () => {
     it("OK before first transaction", async () => {
       await init(firstMigrateBlock - 1, true);
 
-      expect(await query(firstOneBondId)).to.be.eql([
+      expect(await query(firstOneBondId, true)).to.be.eql([
         zero,
         zero,
         zero,
@@ -189,7 +189,12 @@ describe("Should get pendingUGOV", () => {
         zero,
         zero,
       ]);
+
       await (await bondingV2.connect(firstOne).migrate()).wait();
+
+      // mine some blocks to get pendingUGOV
+      await mineNBlock(10);
+
       const [
         totalShares,
         accuGOVPerShare,
@@ -197,18 +202,14 @@ describe("Should get pendingUGOV", () => {
         amount,
         rewardDebt,
         totalSupply,
-      ] = await query(firstOneBondId);
+      ] = await query(firstOneBondId, true);
 
-      expect(pendingUGOV).to.be.equal(0);
+      expect(pendingUGOV).to.be.gt(ten.pow(18)).lt(ten.pow(24));
       expect(totalSupply).to.be.equal(1);
-      expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
-      expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
-      expect(amount).to.be.gt(BigNumber.from(10).pow(18));
-      expect(amount).to.be.lt(BigNumber.from(10).pow(24));
-      expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(12));
-      expect(accuGOVPerShare).to.be.lt(BigNumber.from(10).pow(18));
-      expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(18));
-      expect(rewardDebt).to.be.lt(BigNumber.from(10).pow(24));
+      expect(totalShares).to.be.gt(ten.pow(18)).lt(ten.pow(24));
+      expect(amount).to.be.gt(ten.pow(18)).lt(ten.pow(24));
+      expect(accuGOVPerShare).to.be.equal(0);
+      expect(rewardDebt).to.be.equal(0);
     });
 
     it("OK after first 4 migrations", async () => {
@@ -233,19 +234,14 @@ describe("Should get pendingUGOV", () => {
         amount,
         rewardDebt,
         totalSupply,
-      ] = await query(id);
+      ] = await query(id, true);
 
-      expect(pendingUGOV).to.be.gt(BigNumber.from(10).pow(18));
-      expect(pendingUGOV).to.be.lt(BigNumber.from(10).pow(24));
+      expect(pendingUGOV).to.be.gt(ten.pow(18)).lt(ten.pow(24));
       expect(totalSupply).to.be.equal(5);
-      expect(totalShares).to.be.gt(BigNumber.from(10).pow(18));
-      expect(totalShares).to.be.lt(BigNumber.from(10).pow(24));
-      expect(amount).to.be.gt(BigNumber.from(10).pow(16));
-      expect(amount).to.be.lt(BigNumber.from(10).pow(24));
-      expect(accuGOVPerShare).to.be.gt(BigNumber.from(10).pow(10));
-      expect(accuGOVPerShare).to.be.lt(BigNumber.from(10).pow(18));
-      expect(rewardDebt).to.be.gt(BigNumber.from(10).pow(16));
-      expect(rewardDebt).to.be.lt(BigNumber.from(10).pow(24));
+      expect(totalShares).to.be.gt(ten.pow(18)).lt(ten.pow(24));
+      expect(amount).to.be.gt(ten.pow(16)).lt(ten.pow(24));
+      expect(accuGOVPerShare).to.be.equal(0);
+      expect(rewardDebt).to.be.equal(0);
     });
   });
 });
