@@ -17,7 +17,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const uri = `{
     "name": "Bonding Share",
     "description": "Ubiquity Bonding Share V2",
-    "image": "https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg"
+    "image": "https://bafybeifibz4fhk4yag5reupmgh5cdbm2oladke4zfd7ldyw7avgipocpmy.ipfs.infura-ipfs.io/"
   }`;
   const uAD = await deployments.deploy("BondingShareV2", {
     args: [manager.address, uri],

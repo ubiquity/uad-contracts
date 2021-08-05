@@ -1,6 +1,6 @@
 # Ubiquity Algorithmic Dollar Contracts
 
-![Logo of the project](https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg)
+![Logo of the project](https://bafybeifibz4fhk4yag5reupmgh5cdbm2oladke4zfd7ldyw7avgipocpmy.ipfs.infura-ipfs.io/)
 
 ## Table of Contents
 
