@@ -1,11 +1,12 @@
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
-import { ethers, network } from "hardhat";
+import { ethers, network, deployments } from "hardhat";
 import { resetFork, mineNBlock } from "./utils/hardhatNode";
 
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
+import { IERC20Ubiquity } from "../artifacts/types/IERC20Ubiquity";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
 const UBQ_MINTER_ROLE = ethers.utils.keccak256(
@@ -32,36 +33,26 @@ const BondingShareV2Address = "0x2dA07859613C14F6f05c97eFE37B9B4F212b5eF5";
 let bondingShareV2: BondingShareV2;
 
 // const MasterChefV2BlockCreation = 12931490;
-const MasterChefV2Address = "0xb8ec70d24306ecef9d4aaf9986dcb1da5736a997";
+let MasterChefV2Address = "0xb8ec70d24306ecef9d4aaf9986dcb1da5736a997";
 let masterChefV2: MasterChefV2;
 
 // const BondingV2BlockCreation = 12931495;
 const BondingV2Address = "0xC251eCD9f1bD5230823F9A0F99a44A87Ddd4CA38";
 let bondingV2: BondingV2;
 
-// const contractsV2created = 12931495;
-const firstMigrateBlock = 12932141;
+const UbqAddress = "0x4e38d89362f7e5db0096ce44ebd021c3962aa9a0";
+let UBQ: IERC20Ubiquity;
 
+const firstMigrateBlock = 12932141;
 const lastBlock = 12967000;
 
-const newMasterChefV2 = async (): Promise<MasterChefV2> => {
-  // deploy a NEW MasterChefV2 to debug
-  const newChefV2: MasterChefV2 = (await (
-    await ethers.getContractFactory("MasterChefV2")
-  ).deploy(
-    UbiquityAlgorithmicDollarManagerAddress,
-    [],
-    [],
-    []
-  )) as MasterChefV2;
-  await manager.connect(admin).setMasterChefAddress(newChefV2.address);
-  await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, newChefV2.address);
-
-  return newChefV2;
-};
+// const newMasterChefV2 = async (): Promise<MasterChefV2> => {
+//   return await deployments.fixture(["MasterChefV2.1"]);
+// };
 
 const init = async (block: number, newChef = false): Promise<void> => {
   await resetFork(block);
+
   await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [adminAddress],
@@ -83,19 +74,26 @@ const init = async (block: number, newChef = false): Promise<void> => {
     UbiquityAlgorithmicDollarManagerAddress
   )) as UbiquityAlgorithmicDollarManager;
 
+  UBQ = (await ethers.getContractAt(
+    "UbiquityGovernance",
+    UbqAddress
+  )) as IERC20Ubiquity;
+
   bondingShareV2 = (await ethers.getContractAt(
     "BondingShareV2",
     BondingShareV2Address
   )) as BondingShareV2;
 
   if (newChef) {
-    masterChefV2 = await newMasterChefV2();
-  } else {
-    masterChefV2 = (await ethers.getContractAt(
-      "MasterChefV2",
-      MasterChefV2Address
-    )) as MasterChefV2;
+    await deployments.fixture(["MasterChefV2.1"]);
+    MasterChefV2Address = (await deployments.get("MasterChefV2")).address;
   }
+
+  masterChefV2 = (await ethers.getContractAt(
+    "MasterChefV2",
+    MasterChefV2Address
+  )) as MasterChefV2;
+
   bondingV2 = (await ethers.getContractAt(
     "BondingV2",
     BondingV2Address
@@ -145,7 +143,7 @@ const query = async (
   ];
 };
 
-describe("Should get pendingUGOV", () => {
+describe("MasterChefV2 pendingUGOV", () => {
   after(async () => {
     await resetFork(12592661);
   });
@@ -186,45 +184,18 @@ describe("Should get pendingUGOV", () => {
     });
   });
 
-  describe("NEW MasterChefV2", () => {
-    it("OK before first transaction", async () => {
-      await init(firstMigrateBlock - 1, true);
-
-      expect(await query(firstOneBondId)).to.be.eql([
-        zero,
-        zero,
-        zero,
-        zero,
-        zero,
-        zero,
-      ]);
-
-      await (await bondingV2.connect(firstOne).migrate()).wait();
-
-      // mine some blocks to get pendingUGOV
-      await mineNBlock(10);
-
-      const [
-        totalShares,
-        accuGOVPerShare,
-        pendingUGOV,
-        amount,
-        rewardDebt,
-        totalSupply,
-      ] = await query(firstOneBondId);
-
-      expect(pendingUGOV).to.be.gt(ten.pow(18)).lt(ten.pow(24));
-      expect(totalSupply).to.be.equal(1);
-      expect(totalShares).to.be.gt(ten.pow(18)).lt(ten.pow(24));
-      expect(amount).to.be.gt(ten.pow(18)).lt(ten.pow(24));
-      expect(accuGOVPerShare).to.be.equal(0);
-      expect(rewardDebt).to.be.equal(0);
-    });
-
-    it("OK after first 4 migrations", async () => {
+  describe("NEW MasterChefV2.1", () => {
+    it("OK after first 5 migrations", async () => {
       await init(lastBlock, true);
 
-      masterChefV2 = await newMasterChefV2();
+      expect(await query(firstOneBondId)).to.be.eql([
+        BigNumber.from("130176002929905530325461"),
+        zero,
+        BigNumber.from("20517869345000"),
+        BigNumber.from("1301000000000000000"),
+        zero,
+        BigNumber.from(5),
+      ]);
 
       await bondingV2.connect(admin).setMigrating(true);
       await (await bondingV2.connect(newOne).migrate()).wait();
@@ -249,8 +220,44 @@ describe("Should get pendingUGOV", () => {
       expect(totalSupply).to.be.equal(6);
       expect(totalShares).to.be.gt(ten.pow(18)).lt(ten.pow(24));
       expect(amount).to.be.gt(ten.pow(16)).lt(ten.pow(24));
-      expect(accuGOVPerShare).to.be.equal(0);
-      expect(rewardDebt).to.be.equal(0);
+      expect(accuGOVPerShare).to.gt(ten.pow(7));
+      expect(rewardDebt).to.gt(ten.pow(16)).lt(ten.pow(24));
+    });
+
+    it("Bond2 should get back UBQ", async () => {
+      await init(lastBlock, true);
+
+      const user2 = "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d";
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [user2],
+      });
+      const bond2Signer = ethers.provider.getSigner(user2);
+
+      await mineNBlock(1000);
+
+      const pendingUGOV1 = await masterChefV2.pendingUGOV(2);
+      const bond1 = await bondingShareV2.getBond(2);
+      const ubq1 = await UBQ.balanceOf(user2);
+
+      // console.log("pendingUGOV", ethers.utils.formatEther(pendingUGOV1));
+      // console.log("lpAmount", ethers.utils.formatEther(bond1[5]));
+      // console.log("UBQ", ethers.utils.formatEther(ubq1));
+
+      expect(pendingUGOV1).to.be.equal("589459704683294321568"); // 589.459704683294321568
+      expect(bond1[5]).to.be.equal("74603879373206500005186"); // 74603.879373206500005186
+      expect(ubq1).to.be.equal("168394820774964495022850"); // 168394.82077496449502285
+      expect(bond1[0].toLowerCase()).to.be.equal(user2.toLowerCase());
+
+      await masterChefV2.connect(bond2Signer).getRewards(2);
+      const pendingUGOV2 = await masterChefV2.pendingUGOV(2);
+      const ubq2 = await UBQ.balanceOf(user2);
+
+      // console.log("pendingUGOV", ethers.utils.formatEther(pendingUGOV2));
+      // console.log("UBQ", ethers.utils.formatEther(ubq2));
+
+      expect(pendingUGOV2).to.be.equal(0);
+      expect(ubq1.add(pendingUGOV1).sub(ubq2)).to.be.lt(ten.pow(18));
     });
   });
 });
