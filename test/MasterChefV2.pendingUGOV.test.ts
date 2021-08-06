@@ -48,7 +48,12 @@ const newMasterChefV2 = async (): Promise<MasterChefV2> => {
   // deploy a NEW MasterChefV2 to debug
   const newChefV2: MasterChefV2 = (await (
     await ethers.getContractFactory("MasterChefV2")
-  ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
+  ).deploy(
+    UbiquityAlgorithmicDollarManagerAddress,
+    [],
+    [],
+    []
+  )) as MasterChefV2;
   await manager.connect(admin).setMasterChefAddress(newChefV2.address);
   await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, newChefV2.address);
 

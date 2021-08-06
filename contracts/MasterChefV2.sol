@@ -81,12 +81,28 @@ contract MasterChefV2 {
         _;
     }
 
-    constructor(address _manager) {
+    constructor(
+        address _manager,
+        address[] memory _tos,
+        uint256[] memory _amounts,
+        uint256[] memory _bondingShareIDs
+    ) {
         manager = UbiquityAlgorithmicDollarManager(_manager);
         pool.lastRewardBlock = block.number;
         pool.accuGOVPerShare = 0; // uint256(1e12);
         uGOVDivider = 5; // 100 / 5 = 20% extra minted ugov for treasury
         _updateUGOVMultiplier();
+
+        uint256 lgt = _tos.length;
+        require(lgt == _amounts.length, "_amounts array not same length");
+        require(
+            lgt == _bondingShareIDs.length,
+            "_bondingShareIDs array not same length"
+        );
+
+        for (uint256 i = 0; i < lgt; ++i) {
+            _deposit(_tos[i], _amounts[i], _bondingShareIDs[i]);
+        }
     }
 
     function setUGOVPerBlock(uint256 _uGOVPerBlock) external onlyTokenManager {
@@ -113,17 +129,7 @@ contract MasterChefV2 {
         uint256 _amount,
         uint256 _bondingShareID
     ) external onlyBondingContract {
-        BondingShareInfo storage bs = _bsInfo[_bondingShareID];
-        _updatePool();
-        if (bs.amount > 0) {
-            uint256 pending = ((bs.amount * pool.accuGOVPerShare) / 1e12) -
-                bs.rewardDebt;
-            _safeUGOVTransfer(to, pending);
-        }
-        bs.amount += _amount;
-        bs.rewardDebt = (bs.amount * pool.accuGOVPerShare) / 1e12;
-        _totalShares += _amount;
-        emit Deposit(to, _amount, _bondingShareID);
+        _deposit(to, _amount, _bondingShareID);
     }
 
     // Withdraw LP tokens from MasterChef.
@@ -203,6 +209,25 @@ contract MasterChefV2 {
      */
     function totalShares() external view virtual returns (uint256) {
         return _totalShares;
+    }
+
+    // _Deposit LP tokens to MasterChef for uGOV allocation.
+    function _deposit(
+        address to,
+        uint256 _amount,
+        uint256 _bondingShareID
+    ) internal {
+        BondingShareInfo storage bs = _bsInfo[_bondingShareID];
+        _updatePool();
+        if (bs.amount > 0) {
+            uint256 pending = ((bs.amount * pool.accuGOVPerShare) / 1e12) -
+                bs.rewardDebt;
+            _safeUGOVTransfer(to, pending);
+        }
+        bs.amount += _amount;
+        bs.rewardDebt = (bs.amount * pool.accuGOVPerShare) / 1e12;
+        _totalShares += _amount;
+        emit Deposit(to, _amount, _bondingShareID);
     }
 
     // UPDATE uGOV multiplier

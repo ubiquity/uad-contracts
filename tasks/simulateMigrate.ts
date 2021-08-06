@@ -14,6 +14,22 @@ import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
+const tos = [
+  "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
+  "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d",
+  "0x7c76f4db70b7e2177de10de3e2f668dadcd11108",
+  "0x0000ce08fa224696a819877070bf378e8b131acf",
+  "0xa53a6fe2d8ad977ad926c485343ba39f32d3a3f6",
+];
+const amounts = [
+  "1301000000000000000",
+  "74603879373206500005186",
+  "44739174270101943975392",
+  "1480607760433248019987",
+  "9351040526163838324896",
+];
+const ids = [1, 2, 3, 4, 5];
+
 const toMigrateOriginals = [
   "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
   "0xefc0e701a824943b469a694ac564aa1eff7ab7dd",
@@ -140,7 +156,12 @@ task("simulateMigrate", "simulate migration of one address")
       // deploy a NEW MasterChefV2 to debug
       const newChefV2: MasterChefV2 = (await (
         await ethers.getContractFactory("MasterChefV2")
-      ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as MasterChefV2;
+      ).deploy(
+        UbiquityAlgorithmicDollarManagerAddress,
+        tos,
+        amounts,
+        ids
+      )) as MasterChefV2;
       await manager.connect(admin).setMasterChefAddress(newChefV2.address);
       await manager
         .connect(admin)
@@ -189,6 +210,7 @@ task("simulateMigrate", "simulate migration of one address")
         BigNumber,
         BigNumber,
         BigNumber,
+        BigNumber,
         number
       ]
     > => {
@@ -197,6 +219,7 @@ task("simulateMigrate", "simulate migration of one address")
       const totalShares = await masterChefV2.totalShares();
       const [lastRewardBlock, accuGOVPerShare] = await masterChefV2.pool();
       const totalSupply = await bondingShareV2.totalSupply();
+      const totalLP = await bondingShareV2.totalLP();
 
       const pendingUGOV = await masterChefV2.pendingUGOV(bondId);
       const [amount, rewardDebt] = await masterChefV2.getBondingShareInfo(
@@ -214,6 +237,7 @@ task("simulateMigrate", "simulate migration of one address")
           ethers.utils.formatUnits(accuGOVPerShare.toString(), 12)
         );
         console.log("totalSupply", totalSupply.toString());
+        console.log("totalLP", totalLP.toString());
 
         if (bondId) {
           console.log(`BOND:${bondId}`);
@@ -230,6 +254,7 @@ task("simulateMigrate", "simulate migration of one address")
         amount,
         rewardDebt,
         totalSupply,
+        totalLP,
         uGOVmultiplier,
         lastRewardBlock,
         block,
@@ -272,23 +297,22 @@ task("simulateMigrate", "simulate migration of one address")
         const accuGOVPerShare = ethers.utils.formatUnits(res[1], 12);
         const pendingUGOV = ethers.utils.formatEther(res[2]);
         const amount = ethers.utils.formatEther(res[3]);
-        const rewardDebt = ethers.utils.formatEther(res[4]);
+        // const rewardDebt = ethers.utils.formatEther(res[4]);
         const totalSupply = res[5];
-        const uGOVmultiplier = ethers.utils.formatEther(res[6]);
-        const lastRewardBlock = res[7].toString();
-        const block = res[8];
+        const totalLP = ethers.utils.formatEther(res[6]);
+        const uGOVmultiplier = ethers.utils.formatEther(res[7]);
+        const lastRewardBlock = res[8].toString();
+        const block = res[9];
 
         console.log(
-          `>> ${lpsAmount} uAD3RV-f locked ${weeks} weeks Migrated to Bond #${id}`
+          `>> ${lpsAmount} uAD3CRV-f locked ${weeks} weeks Migrated to Bond #${id}`
+        );
+        console.log(`>> ${amount} UBQ  and ${pendingUGOV} UBQ pending`);
+        console.log(
+          `== Block ${block}  Last Reward Block ${lastRewardBlock}  Total Bond ${totalSupply}  UBQ Rewards per Block ${uGOVmultiplier}`
         );
         console.log(
-          `>> ${amount} UBQ  and ${pendingUGOV} UBQ pending  plus ${rewardDebt} uDEBT`
-        );
-        console.log(
-          `== Block ${block}  Last Reward Block ${lastRewardBlock}  UBQ Rewards per Block ${uGOVmultiplier}`
-        );
-        console.log(
-          `== Total Bond ${totalSupply}  Total UBQ ${totalShares}  Total UBQ Accumulated per Share ${accuGOVPerShare}`
+          `== Total uAD3CRV-f ${totalLP}  Total UBQ ${totalShares}  Total UBQ Accumulated per Share ${accuGOVPerShare}`
         );
       } catch (e) {
         console.log(`** ERROR ${e.message}`);
