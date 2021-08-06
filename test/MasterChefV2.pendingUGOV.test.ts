@@ -7,23 +7,23 @@ import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { IERC20Ubiquity } from "../artifacts/types/IERC20Ubiquity";
-import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+// import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
-const UBQ_MINTER_ROLE = ethers.utils.keccak256(
-  ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
-);
+// const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+//   ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
+// );
 const zero = BigNumber.from(0);
 const ten = BigNumber.from(10);
 
 const firstOneAddress = "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d";
-let firstOne: Signer;
+// let firstOne: Signer;
 const firstOneBondId = 1;
 const newOneAddress = "0xd6efc21d8c941aa06f90075de1588ac7e912fec6";
 let newOne: Signer;
 
-const UbiquityAlgorithmicDollarManagerAddress =
-  "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
-let manager: UbiquityAlgorithmicDollarManager;
+// const UbiquityAlgorithmicDollarManagerAddress =
+//   "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
+// let manager: UbiquityAlgorithmicDollarManager;
 
 const adminAddress = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 let admin: Signer;
@@ -66,13 +66,13 @@ const init = async (block: number, newChef = false): Promise<void> => {
     params: [newOneAddress],
   });
   admin = ethers.provider.getSigner(adminAddress);
-  firstOne = ethers.provider.getSigner(firstOneAddress);
+  // firstOne = ethers.provider.getSigner(firstOneAddress);
   newOne = ethers.provider.getSigner(newOneAddress);
 
-  manager = (await ethers.getContractAt(
-    "UbiquityAlgorithmicDollarManager",
-    UbiquityAlgorithmicDollarManagerAddress
-  )) as UbiquityAlgorithmicDollarManager;
+  // manager = (await ethers.getContractAt(
+  //   "UbiquityAlgorithmicDollarManager",
+  //   UbiquityAlgorithmicDollarManagerAddress
+  // )) as UbiquityAlgorithmicDollarManager;
 
   UBQ = (await ethers.getContractAt(
     "UbiquityGovernance",

@@ -608,7 +608,7 @@ async function bondingSetupV2(): Promise<{
   // DEPLOY MasterChefV2
   masterChefV2 = (await (
     await ethers.getContractFactory("MasterChefV2")
-  ).deploy(manager.address,[],[],[])) as MasterChefV2;
+  ).deploy(manager.address, [], [], [])) as MasterChefV2;
   await manager.setMasterChefAddress(masterChefV2.address);
   await manager.grantRole(UBQ_MINTER_ROLE, masterChefV2.address);
 
