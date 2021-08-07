@@ -1,4 +1,4 @@
-import { ContractTransaction } from "ethers";
+import { ContractTransaction, Signer, BigNumber } from "ethers";
 import { network, ethers } from "hardhat";
 import { TransactionReceipt } from "@ethersproject/abstract-provider";
 
@@ -64,6 +64,24 @@ export async function mineNBlock(
   });
   // eslint-disable-next-line no-await-in-loop
   await Promise.all(minings);
+}
+
+export async function impersonate(account: string): Promise<void> {
+  await network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [account],
+  });
+}
+
+export async function send(account: string, amount: number): Promise<void> {
+  const whaleAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+  await impersonate(whaleAddress);
+  const whale: Signer = ethers.provider.getSigner(whaleAddress);
+
+  await whale.sendTransaction({
+    to: account,
+    value: BigNumber.from(10).pow(18).mul(amount),
+  });
 }
 
 export async function resetFork(blockNumber: number): Promise<void> {

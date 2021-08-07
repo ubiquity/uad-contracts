@@ -45,6 +45,10 @@ const config: HardhatUserConfig = {
     timeout: 1000000,
   },
   namedAccounts: {
+    ubq: {
+      default: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd", //  without PRIVATE_KEY => impersonate
+      mainnet: 0, // use default account 0 with PRIVATE_KEY (of same address !) on mainnet
+    },
     tester: "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
     sablier: "0xA4fc358455Febe425536fd1878bE67FfDBDEC59a",
     DAI: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
@@ -56,7 +60,6 @@ const config: HardhatUserConfig = {
     curveWhaleAddress: "0xC2872ab688400940d5a6041599b3F7de20730d49",
     daiWhaleAddress: "0x16463c0fdB6BA9618909F5b120ea1581618C1b9E",
     sushiMultiSig: "0x9a8541Ddf3a932a9A922B607e9CF7301f1d47bD1",
-    ubq: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd",
     UbqWhaleAddress: "0xa53A6fE2d8Ad977aD926C485343Ba39f32D3A3F6",
     MasterChefAddress: "0x8fFCf9899738e4633A721904609ffCa0a2C44f3D",
     MetaPoolAddress: "0x20955cb69ae1515962177d164dfc9522feef567e",
@@ -87,23 +90,13 @@ const config: HardhatUserConfig = {
         blockNumber: 12592661,
       },
       accounts,
-      /*  accounts: [
-        {
-          privateKey: process.env.TREASURY_PRIV_KEY ?? "",
-          balance: "10000000000000000000000",
-        },
-        {
-          privateKey: process.env.SECOND_ACC_PRIV_KEY ?? "",
-          balance: "10000000000000000000000",
-        },
-      ], */
+      gasPrice: 100000000000,
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
-      // accounts: [process.env.PRIVATE_KEY ?? ""],
-      accounts,
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : accounts,
       gasPrice: 20000000000,
     },
     ropsten: {

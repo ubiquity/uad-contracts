@@ -1,13 +1,16 @@
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, network, deployments } from "hardhat";
-import { resetFork, mineNBlock } from "./utils/hardhatNode";
+import { resetFork, mineNBlock, impersonate, send } from "./utils/hardhatNode";
 
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { IERC20Ubiquity } from "../artifacts/types/IERC20Ubiquity";
-// import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+
+const firstMigrateBlock = 12932141;
+const lastBlock = 12967000;
 
 // const UBQ_MINTER_ROLE = ethers.utils.keccak256(
 //   ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
@@ -21,9 +24,8 @@ const firstOneBondId = 1;
 const newOneAddress = "0xd6efc21d8c941aa06f90075de1588ac7e912fec6";
 let newOne: Signer;
 
-// const UbiquityAlgorithmicDollarManagerAddress =
-//   "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
-// let manager: UbiquityAlgorithmicDollarManager;
+const managerAddress = "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
+let manager: UbiquityAlgorithmicDollarManager;
 
 const adminAddress = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 let admin: Signer;
@@ -43,9 +45,6 @@ let bondingV2: BondingV2;
 const UbqAddress = "0x4e38d89362f7e5db0096ce44ebd021c3962aa9a0";
 let UBQ: IERC20Ubiquity;
 
-const firstMigrateBlock = 12932141;
-const lastBlock = 12967000;
-
 // const newMasterChefV2 = async (): Promise<MasterChefV2> => {
 //   return await deployments.fixture(["MasterChefV2.1"]);
 // };
@@ -53,18 +52,10 @@ const lastBlock = 12967000;
 const init = async (block: number, newChef = false): Promise<void> => {
   await resetFork(block);
 
-  await network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [adminAddress],
-  });
-  await network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [firstOneAddress],
-  });
-  await network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [newOneAddress],
-  });
+  await impersonate(adminAddress);
+  await impersonate(firstOneAddress);
+  await impersonate(newOneAddress);
+
   admin = ethers.provider.getSigner(adminAddress);
   // firstOne = ethers.provider.getSigner(firstOneAddress);
   newOne = ethers.provider.getSigner(newOneAddress);
@@ -93,6 +84,25 @@ const init = async (block: number, newChef = false): Promise<void> => {
     "MasterChefV2",
     MasterChefV2Address
   )) as MasterChefV2;
+
+  if (newChef) {
+    await send(adminAddress, 100);
+    const mgrFactory = await ethers.getContractFactory(
+      "UbiquityAlgorithmicDollarManager"
+    );
+    const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
+    );
+    manager = mgrFactory.attach(
+      managerAddress
+    ) as UbiquityAlgorithmicDollarManager;
+    expect(manager.address).to.be.equal(managerAddress);
+
+    await manager.connect(admin).setMasterChefAddress(masterChefV2.address);
+    await manager
+      .connect(admin)
+      .grantRole(UBQ_MINTER_ROLE, masterChefV2.address);
+  }
 
   bondingV2 = (await ethers.getContractAt(
     "BondingV2",
@@ -191,7 +201,7 @@ describe("MasterChefV2 pendingUGOV", () => {
       expect(await query(firstOneBondId)).to.be.eql([
         BigNumber.from("130176002929905530325461"),
         zero,
-        BigNumber.from("20517869345000"),
+        BigNumber.from("30776804668000"),
         BigNumber.from("1301000000000000000"),
         zero,
         BigNumber.from(5),
@@ -228,10 +238,8 @@ describe("MasterChefV2 pendingUGOV", () => {
       await init(lastBlock, true);
 
       const user2 = "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d";
-      await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [user2],
-      });
+      await send(user2, 100);
+      await impersonate(user2);
       const bond2Signer = ethers.provider.getSigner(user2);
 
       await mineNBlock(1000);
@@ -244,9 +252,9 @@ describe("MasterChefV2 pendingUGOV", () => {
       // console.log("lpAmount", ethers.utils.formatEther(bond1[5]));
       // console.log("UBQ", ethers.utils.formatEther(ubq1));
 
-      expect(pendingUGOV1).to.be.equal("589459704683294321568"); // 589.459704683294321568
-      expect(bond1[5]).to.be.equal("74603879373206500005186"); // 74603.879373206500005186
-      expect(ubq1).to.be.equal("168394820774964495022850"); // 168394.82077496449502285
+      expect(pendingUGOV1).to.be.equal("590636270975891737806"); // 590.xxx
+      expect(bond1[5]).to.be.equal("74603879373206500005186"); // 74603.xxx
+      expect(ubq1).to.be.equal("168394820774964495022850"); // 168394.xxx
       expect(bond1[0].toLowerCase()).to.be.equal(user2.toLowerCase());
 
       await masterChefV2.connect(bond2Signer).getRewards(2);
