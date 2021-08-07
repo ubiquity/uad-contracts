@@ -217,7 +217,7 @@ describe("SushiSwapPool", () => {
       expect(await newSushi.pair()).to.equal(await sushiUGOVPool.pair());
     });
 
-    it("should add pool and earn sushi", async () => {
+    it.skip("should add pool and earn sushi", async () => {
       const secondAccAdr = await secondAccount.getAddress();
       // must allow to transfer token
       await uAD
