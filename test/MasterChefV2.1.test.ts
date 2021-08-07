@@ -3,6 +3,7 @@ import { ethers, deployments } from "hardhat";
 import { impersonate, resetFork } from "./utils/hardhatNode";
 
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
+import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 
 let masterChefV2: MasterChefV2;
 
@@ -26,10 +27,10 @@ describe("MasterChefV2.1", () => {
   });
 
   it("Should have proper balances", async () => {
-    const bondingShareV2 = await ethers.getContractAt(
+    const bondingShareV2 = (await ethers.getContractAt(
       "BondingShareV2",
       "0x2dA07859613C14F6f05c97eFE37B9B4F212b5eF5"
-    );
+    )) as BondingShareV2;
     const amounts = [
       "0",
       "1301000000000000000",
@@ -40,6 +41,7 @@ describe("MasterChefV2.1", () => {
     ];
 
     for (let bondId = 0; bondId <= 5; bondId += 1) {
+      // eslint-disable-next-line no-await-in-loop
       const bond = await bondingShareV2.getBond(bondId);
 
       // console.log(`BOND #${bondId} ${bond[0]}`);

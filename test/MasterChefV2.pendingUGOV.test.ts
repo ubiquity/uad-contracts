@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
-import { ethers, network, deployments } from "hardhat";
+import { ethers, deployments } from "hardhat";
 import { resetFork, mineNBlock, impersonate, send } from "./utils/hardhatNode";
 
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
