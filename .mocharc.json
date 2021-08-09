@@ -1,4 +1,5 @@
 {
   "require": ["hardhat/register"],
-  "timeout": 100000
+  "timeout": 100000,
+  "retries": 3
 }

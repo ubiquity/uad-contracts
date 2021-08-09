@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import { BigNumber, Signer } from "ethers";
 import { ethers, deployments } from "hardhat";
-import { resetFork, mineNBlock, impersonate, send } from "./utils/hardhatNode";
+import {
+  resetFork,
+  mineNBlock,
+  impersonate,
+  impersonateWithEther,
+} from "./utils/hardhatNode";
 
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
@@ -19,7 +24,7 @@ const zero = BigNumber.from(0);
 const ten = BigNumber.from(10);
 const one = ten.pow(18);
 
-const firstOneAddress = "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d";
+// const firstOneAddress = "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d";
 // let firstOne: Signer;
 const firstOneBondId = 1;
 const newOneAddress = "0xd6efc21d8c941aa06f90075de1588ac7e912fec6";
@@ -53,13 +58,9 @@ let UBQ: IERC20Ubiquity;
 const init = async (block: number, newChef = false): Promise<void> => {
   await resetFork(block);
 
-  await impersonate(adminAddress);
-  await impersonate(firstOneAddress);
-  await impersonate(newOneAddress);
-
-  admin = ethers.provider.getSigner(adminAddress);
-  // firstOne = ethers.provider.getSigner(firstOneAddress);
-  newOne = ethers.provider.getSigner(newOneAddress);
+  admin = await impersonate(adminAddress);
+  // firstOne = await impersonate(firstOneAddress);
+  newOne = await impersonate(newOneAddress);
 
   // manager = (await ethers.getContractAt(
   //   "UbiquityAlgorithmicDollarManager",
@@ -87,7 +88,7 @@ const init = async (block: number, newChef = false): Promise<void> => {
   )) as MasterChefV2;
 
   if (newChef) {
-    await send(adminAddress, 100);
+    await impersonateWithEther(adminAddress, 100);
     await masterChefV2.connect(admin).setUGOVPerBlock(one);
 
     const mgrFactory = await ethers.getContractFactory(
@@ -241,9 +242,7 @@ describe("MasterChefV2 pendingUGOV", () => {
       await init(lastBlock, true);
 
       const user2 = "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d";
-      await send(user2, 100);
-      await impersonate(user2);
-      const bond2Signer = ethers.provider.getSigner(user2);
+      const user2Signer = await impersonateWithEther(user2, 100);
 
       await mineNBlock(1000);
 
@@ -260,7 +259,7 @@ describe("MasterChefV2 pendingUGOV", () => {
       expect(ubq1).to.be.equal("168394820774964495022850"); // 168394.xxx
       expect(bond1[0].toLowerCase()).to.be.equal(user2.toLowerCase());
 
-      await masterChefV2.connect(bond2Signer).getRewards(2);
+      await masterChefV2.connect(user2Signer).getRewards(2);
       const pendingUGOV2 = await masterChefV2.pendingUGOV(2);
       const ubq2 = await UBQ.balanceOf(user2);
 

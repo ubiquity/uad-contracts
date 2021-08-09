@@ -22,7 +22,7 @@ describe("MasterChefV2", () => {
   let bondingV2: BondingV2;
   let bondingShareV2: BondingShareV2;
 
-  before(async () => {
+  beforeEach(async () => {
     ({
       masterChefV2,
       bondingV2,

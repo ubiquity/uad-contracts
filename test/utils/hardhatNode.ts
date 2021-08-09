@@ -1,5 +1,5 @@
 import { ContractTransaction, Signer, BigNumber } from "ethers";
-import { network, ethers } from "hardhat";
+import { network, getNamedAccounts, ethers } from "hardhat";
 import { TransactionReceipt } from "@ethersproject/abstract-provider";
 
 export async function passOneHour(): Promise<void> {
@@ -66,22 +66,31 @@ export async function mineNBlock(
   await Promise.all(minings);
 }
 
-export async function impersonate(account: string): Promise<void> {
+export async function impersonate(account: string): Promise<Signer> {
   await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [account],
   });
+  return ethers.provider.getSigner(account);
 }
 
-export async function send(account: string, amount: number): Promise<void> {
-  const whaleAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
-  await impersonate(whaleAddress);
-  const whale: Signer = ethers.provider.getSigner(whaleAddress);
+export async function getEther(account: string, amount: number): Promise<void> {
+  if (amount > 0) {
+    const { whaleAddress } = await getNamedAccounts();
+    const whale: Signer = await impersonate(whaleAddress);
+    await whale.sendTransaction({
+      to: account,
+      value: BigNumber.from(10).pow(18).mul(amount),
+    });
+  }
+}
 
-  await whale.sendTransaction({
-    to: account,
-    value: BigNumber.from(10).pow(18).mul(amount),
-  });
+export async function impersonateWithEther(
+  account: string,
+  amount: number
+): Promise<Signer> {
+  await getEther(account, amount || 0);
+  return impersonate(account);
 }
 
 export async function resetFork(blockNumber: number): Promise<void> {

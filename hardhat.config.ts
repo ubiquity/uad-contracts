@@ -49,6 +49,7 @@ const config: HardhatUserConfig = {
       default: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd", //  without PRIVATE_KEY => impersonate
       mainnet: 0, // use default account 0 with PRIVATE_KEY (of same address !) on mainnet
     },
+    whaleAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     tester: "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
     sablier: "0xA4fc358455Febe425536fd1878bE67FfDBDEC59a",
     DAI: "0x6B175474E89094C44Da98b954EedeAC495271d0F",

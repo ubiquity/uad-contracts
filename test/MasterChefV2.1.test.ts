@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import { ethers, deployments } from "hardhat";
 import { BigNumber, Signer } from "ethers";
-import { impersonate, resetFork, mineNBlock, send } from "./utils/hardhatNode";
+import {
+  impersonate,
+  impersonateWithEther,
+  resetFork,
+  mineNBlock,
+} from "./utils/hardhatNode";
 
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
@@ -29,12 +34,11 @@ let admin: Signer;
 let newOne: Signer;
 
 describe("MasterChefV2.1", () => {
-  before(async () => {
+  beforeEach(async () => {
     await resetFork(startBlock);
-    await impersonate(adminAddress);
-    await impersonate(newOneAddress);
-    admin = ethers.provider.getSigner(adminAddress);
-    newOne = ethers.provider.getSigner(newOneAddress);
+
+    admin = await impersonate(adminAddress);
+    newOne = await impersonate(newOneAddress);
 
     await deployments.fixture(["MasterChefV2.1"]);
     const masterChefV2Address = (await deployments.get("MasterChefV2")).address;
@@ -132,8 +136,7 @@ describe("MasterChefV2.1", () => {
 
   it("Should get back UBQ", async () => {
     const user2 = "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d";
-    await send(user2, 100);
-    await impersonate(user2);
+    await impersonateWithEther(user2, 100);
     const bond2Signer = ethers.provider.getSigner(user2);
 
     await mineNBlock(1000);
