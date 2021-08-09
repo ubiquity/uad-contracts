@@ -264,11 +264,21 @@ task("simulateMigrate", "simulate migration of one address")
     const migrate = async (_address: string) => {
       console.log(`\n>> Address ${_address}`);
 
+      const whaleAdress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
       await network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [_address],
       });
+      await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [whaleAdress],
+      });
+      const whale = ethers.provider.getSigner(whaleAdress);
       const account = ethers.provider.getSigner(_address);
+      await whale.sendTransaction({
+        to: _address,
+        value: BigNumber.from(10).pow(18).mul(10),
+      });
 
       await bondingV2.connect(admin).setMigrating(true);
       try {

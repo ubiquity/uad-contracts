@@ -2,6 +2,7 @@
 pragma solidity 0.8.3;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/IERC20Ubiquity.sol";
 import "./UbiquityAlgorithmicDollarManager.sol";
 import "./interfaces/ITWAPOracle.sol";
@@ -10,7 +11,7 @@ import "./interfaces/IUbiquityFormulas.sol";
 
 import "./interfaces/IERC1155Ubiquity.sol";
 
-contract MasterChefV2 {
+contract MasterChefV2 is ReentrancyGuard {
     using SafeERC20 for IERC20Ubiquity;
     using SafeERC20 for IERC20;
 
@@ -138,7 +139,7 @@ contract MasterChefV2 {
         address to,
         uint256 _amount,
         uint256 _bondingShareID
-    ) external onlyBondingContract {
+    ) external nonReentrant onlyBondingContract {
         _deposit(to, _amount, _bondingShareID);
     }
 
@@ -147,7 +148,7 @@ contract MasterChefV2 {
         address to,
         uint256 _amount,
         uint256 _bondingShareID
-    ) external onlyBondingContract {
+    ) external nonReentrant onlyBondingContract {
         BondingShareInfo storage bs = _bsInfo[_bondingShareID];
         require(bs.amount >= _amount, "MC: amount too high");
         _updatePool();
