@@ -42,11 +42,11 @@ contract MasterChefV2 {
     UbiquityAlgorithmicDollarManager public manager;
 
     // uGOV tokens created per block.
-    uint256 public uGOVPerBlock = 1e18;
+    uint256 public uGOVPerBlock;
     // Bonus muliplier for early uGOV makers.
     uint256 public uGOVmultiplier = 1e18;
-    uint256 public minPriceDiffToUpdateMultiplier = 1000000000000000;
-    uint256 public lastPrice = 1 ether;
+    uint256 public minPriceDiffToUpdateMultiplier = 1e15;
+    uint256 public lastPrice = 1e18;
     uint256 public uGOVDivider;
     // Info of each pool.
     PoolInfo public pool;
@@ -63,6 +63,12 @@ contract MasterChefV2 {
         address indexed user,
         uint256 amount,
         uint256 indexed bondingShareId
+    );
+
+    event UGOVPerBlockModified(uint256 indexed uGOVPerBlock);
+
+    event MinPriceDiffToUpdateMultiplierModified(
+        uint256 indexed minPriceDiffToUpdateMultiplier
     );
 
     // ----------- Modifiers -----------
@@ -107,6 +113,7 @@ contract MasterChefV2 {
 
     function setUGOVPerBlock(uint256 _uGOVPerBlock) external onlyTokenManager {
         uGOVPerBlock = _uGOVPerBlock;
+        emit UGOVPerBlockModified(_uGOVPerBlock);
     }
 
     // the bigger uGOVDivider is the less extra Ugov will be minted for the treasury
@@ -121,6 +128,9 @@ contract MasterChefV2 {
         uint256 _minPriceDiffToUpdateMultiplier
     ) external onlyTokenManager {
         minPriceDiffToUpdateMultiplier = _minPriceDiffToUpdateMultiplier;
+        emit MinPriceDiffToUpdateMultiplierModified(
+            _minPriceDiffToUpdateMultiplier
+        );
     }
 
     // Deposit LP tokens to MasterChef for uGOV allocation.

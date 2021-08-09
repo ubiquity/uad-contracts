@@ -314,6 +314,9 @@ async function bondingSetupV2(): Promise<{
   const UBQ_BURNER_ROLE = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
   );
+  const UBQ_TOKEN_MANAGER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_TOKEN_MANAGER_ROLE")
+  );
   // DEPLOY UbiquityAlgorithmicDollarManager Contract
   manager = (await (
     await ethers.getContractFactory("UbiquityAlgorithmicDollarManager")
@@ -611,7 +614,8 @@ async function bondingSetupV2(): Promise<{
   ).deploy(manager.address, [], [], [])) as MasterChefV2;
   await manager.setMasterChefAddress(masterChefV2.address);
   await manager.grantRole(UBQ_MINTER_ROLE, masterChefV2.address);
-
+  await manager.grantRole(UBQ_TOKEN_MANAGER_ROLE, adminAddress);
+  await masterChefV2.setUGOVPerBlock(BigNumber.from(10).pow(18));
   const managerMasterChefV2Address = await manager.masterChefAddress();
   expect(masterChefV2.address).to.be.equal(managerMasterChefV2Address);
 
@@ -624,6 +628,7 @@ async function bondingSetupV2(): Promise<{
   bondingShareV2 = (await (
     await ethers.getContractFactory("BondingShareV2")
   ).deploy(manager.address, uri)) as BondingShareV2;
+
   await manager.setBondingShareAddress(bondingShareV2.address);
   const managerBondingShareAddress = await manager.bondingShareAddress();
   expect(bondingShareV2.address).to.be.equal(managerBondingShareAddress);

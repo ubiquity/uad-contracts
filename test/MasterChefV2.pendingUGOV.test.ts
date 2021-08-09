@@ -17,6 +17,7 @@ const lastBlock = 12967000;
 // );
 const zero = BigNumber.from(0);
 const ten = BigNumber.from(10);
+const one = ten.pow(18);
 
 const firstOneAddress = "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d";
 // let firstOne: Signer;
@@ -87,6 +88,8 @@ const init = async (block: number, newChef = false): Promise<void> => {
 
   if (newChef) {
     await send(adminAddress, 100);
+    await masterChefV2.connect(admin).setUGOVPerBlock(one);
+
     const mgrFactory = await ethers.getContractFactory(
       "UbiquityAlgorithmicDollarManager"
     );
@@ -158,7 +161,7 @@ describe("MasterChefV2 pendingUGOV", () => {
     await resetFork(12592661);
   });
 
-  describe("PROD MasterChefV2", () => {
+  describe("MasterChefV2", () => {
     it("NULL just before first migration", async () => {
       await init(firstMigrateBlock - 1);
       expect(await query(firstOneBondId)).to.be.eql([
@@ -194,14 +197,14 @@ describe("MasterChefV2 pendingUGOV", () => {
     });
   });
 
-  describe("NEW MasterChefV2.1", () => {
+  describe("MasterChefV2.1", () => {
     it("OK after first 5 migrations", async () => {
       await init(lastBlock, true);
 
       expect(await query(firstOneBondId)).to.be.eql([
         BigNumber.from("130176002929905530325461"),
         zero,
-        BigNumber.from("30776804668000"),
+        BigNumber.from("41035739991000"),
         BigNumber.from("1301000000000000000"),
         zero,
         BigNumber.from(5),
@@ -252,7 +255,7 @@ describe("MasterChefV2 pendingUGOV", () => {
       // console.log("lpAmount", ethers.utils.formatEther(bond1[5]));
       // console.log("UBQ", ethers.utils.formatEther(ubq1));
 
-      expect(pendingUGOV1).to.be.equal("590636270975891737806"); // 590.xxx
+      expect(pendingUGOV1).to.be.equal("591224554122190445924"); // 590.xxx
       expect(bond1[5]).to.be.equal("74603879373206500005186"); // 74603.xxx
       expect(ubq1).to.be.equal("168394820774964495022850"); // 168394.xxx
       expect(bond1[0].toLowerCase()).to.be.equal(user2.toLowerCase());
