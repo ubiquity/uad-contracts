@@ -141,8 +141,9 @@ const deposit: IbondTokens = async function (
   const blockBefore = await ethers.provider.getBlock(
     await ethers.provider.getBlockNumber()
   );
+  const curBlockCountInAWeek = await bondingV2.blockCountInAWeek();
   const endBlock =
-    blockBefore.number + 1 + duration * blockCountInAWeek.toNumber();
+    blockBefore.number + 1 + duration * curBlockCountInAWeek.toNumber();
   const zz1 = await bondingV2.bondingDiscountMultiplier(); // zz1 = zerozero1 = 0.001 ether = 10^16
   const shares = BigNumber.from(
     await ubiquityFormulas.durationMultiply(amount, duration, zz1)
@@ -312,6 +313,9 @@ async function bondingSetupV2(): Promise<{
   );
   const UBQ_BURNER_ROLE = ethers.utils.keccak256(
     ethers.utils.toUtf8Bytes("UBQ_BURNER_ROLE")
+  );
+  const UBQ_TOKEN_MANAGER_ROLE = ethers.utils.keccak256(
+    ethers.utils.toUtf8Bytes("UBQ_TOKEN_MANAGER_ROLE")
   );
   // DEPLOY UbiquityAlgorithmicDollarManager Contract
   manager = (await (
@@ -607,10 +611,11 @@ async function bondingSetupV2(): Promise<{
   // DEPLOY MasterChefV2
   masterChefV2 = (await (
     await ethers.getContractFactory("MasterChefV2")
-  ).deploy(manager.address)) as MasterChefV2;
+  ).deploy(manager.address, [], [], [])) as MasterChefV2;
   await manager.setMasterChefAddress(masterChefV2.address);
   await manager.grantRole(UBQ_MINTER_ROLE, masterChefV2.address);
-
+  await manager.grantRole(UBQ_TOKEN_MANAGER_ROLE, adminAddress);
+  await masterChefV2.setUGOVPerBlock(BigNumber.from(10).pow(18));
   const managerMasterChefV2Address = await manager.masterChefAddress();
   expect(masterChefV2.address).to.be.equal(managerMasterChefV2Address);
 
@@ -618,11 +623,12 @@ async function bondingSetupV2(): Promise<{
   const uri = `{
     "name": "Bonding Share",
     "description": "Ubiquity Bonding Share V2",
-    "image": "https://ubq.fi/image/logos/april-2021/jpg/ubq-logo-waves.jpg"
+    "image": "https://bafybeifibz4fhk4yag5reupmgh5cdbm2oladke4zfd7ldyw7avgipocpmy.ipfs.infura-ipfs.io/"
   }`;
   bondingShareV2 = (await (
     await ethers.getContractFactory("BondingShareV2")
   ).deploy(manager.address, uri)) as BondingShareV2;
+
   await manager.setBondingShareAddress(bondingShareV2.address);
   const managerBondingShareAddress = await manager.bondingShareAddress();
   expect(bondingShareV2.address).to.be.equal(managerBondingShareAddress);

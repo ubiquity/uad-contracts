@@ -256,7 +256,7 @@ describe("SushiSwapPool", () => {
       });
       await secondAccount.sendTransaction({
         to: sushiMultiSig,
-        value: ethers.utils.parseEther("1.0"),
+        value: ethers.utils.parseEther("2.0"),
       });
 
       const totAllocPoint = await masterChef.totalAllocPoint();
