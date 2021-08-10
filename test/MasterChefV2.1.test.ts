@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers, deployments } from "hardhat";
+import { ethers, deployments, artifacts } from "hardhat";
 import { BigNumber, Signer } from "ethers";
 import {
   impersonate,
@@ -53,11 +53,11 @@ describe("MasterChefV2.1", () => {
         managerAddress
       )) as UbiquityAlgorithmicDollarManager;
 
-    await manager.connect(admin).setMasterChefAddress(masterChefV2Address);
     await manager
       .connect(admin)
       .grantRole(UBQ_MINTER_ROLE, masterChefV2Address);
     await masterChefV2.connect(admin).setUGOVPerBlock(one);
+    await manager.connect(admin).setMasterChefAddress(masterChefV2Address);
 
     bondingV2 = (await ethers.getContractAt(
       "BondingV2",
@@ -182,5 +182,30 @@ describe("MasterChefV2.1", () => {
     expect(await masterChefV2.minPriceDiffToUpdateMultiplier()).to.be.equal(
       zz1
     );
+  });
+
+  it("Should MasterchefV2.1 have at least same functions than MasterChefV2", async () => {
+    // https://etherscan.io/address/0xB8Ec70D24306ECEF9D4aaf9986DCb1DA5736A997#code
+    const abiV2 =
+      '[{"inputs":[{"internalType":"address","name":"_manager","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":true,"internalType":"uint256","name":"bondingShareId","type":"uint256"}],"name":"Deposit","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":true,"internalType":"uint256","name":"bondingShareId","type":"uint256"}],"name":"Withdraw","type":"event"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"},{"internalType":"uint256","name":"_bondingShareID","type":"uint256"}],"name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_id","type":"uint256"}],"name":"getBondingShareInfo","outputs":[{"internalType":"uint256[2]","name":"","type":"uint256[2]"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"bondingShareID","type":"uint256"}],"name":"getRewards","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"lastPrice","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"manager","outputs":[{"internalType":"contract UbiquityAlgorithmicDollarManager","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"minPriceDiffToUpdateMultiplier","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"bondingShareID","type":"uint256"}],"name":"pendingUGOV","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pool","outputs":[{"internalType":"uint256","name":"lastRewardBlock","type":"uint256"},{"internalType":"uint256","name":"accuGOVPerShare","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_minPriceDiffToUpdateMultiplier","type":"uint256"}],"name":"setMinPriceDiffToUpdateMultiplier","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_uGOVPerBlock","type":"uint256"}],"name":"setUGOVPerBlock","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"_uGOVDivider","type":"uint256"}],"name":"setUGOVShareForTreasury","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"totalShares","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"uGOVDivider","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"uGOVPerBlock","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"uGOVmultiplier","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"},{"internalType":"uint256","name":"_bondingShareID","type":"uint256"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}]';
+    const ifaceDeployed = new ethers.utils.Interface(abiV2);
+
+    const artifactDev = await artifacts.readArtifact(
+      "contracts/MasterChefV2.sol:MasterChefV2"
+    );
+    const ifaceDev = new ethers.utils.Interface(artifactDev.abi);
+
+    // start from previous version, new version has new events and may have new functions
+    ifaceDeployed.fragments.forEach((fragment) => {
+      // constructor differs, do not compare
+      if (fragment.type !== "constructor") {
+        const index = ifaceDev.fragments.findIndex(
+          (frag) =>
+            frag.type !== "constructor" && frag.format() === fragment.format()
+        );
+        // console.log(index, fragment.format());
+        expect(index).to.be.gte(0);
+      }
+    });
   });
 });
