@@ -1,4 +1,4 @@
-import { ContractTransaction, Signer, BigNumber } from "ethers";
+import { ContractTransaction, Signer } from "ethers";
 import { network, getNamedAccounts, ethers } from "hardhat";
 import { TransactionReceipt } from "@ethersproject/abstract-provider";
 
@@ -80,7 +80,7 @@ export async function getEther(account: string, amount: number): Promise<void> {
     const whale: Signer = await impersonate(whaleAddress);
     await whale.sendTransaction({
       to: account,
-      value: BigNumber.from(10).pow(18).mul(amount),
+      value: ethers.BigNumber.from(10).pow(18).mul(amount),
     });
   }
 }

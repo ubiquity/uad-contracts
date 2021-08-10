@@ -217,7 +217,7 @@ describe("SushiSwapPool", () => {
       expect(await newSushi.pair()).to.equal(await sushiUGOVPool.pair());
     });
 
-    it.skip("should add pool and earn sushi", async () => {
+    it("should add pool and earn sushi", async () => {
       const secondAccAdr = await secondAccount.getAddress();
       // must allow to transfer token
       await uAD
@@ -256,7 +256,7 @@ describe("SushiSwapPool", () => {
       });
       await secondAccount.sendTransaction({
         to: sushiMultiSig,
-        value: ethers.utils.parseEther("1.0"),
+        value: ethers.utils.parseEther("2.0"),
       });
 
       const totAllocPoint = await masterChef.totalAllocPoint();
