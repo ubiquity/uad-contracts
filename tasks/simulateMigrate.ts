@@ -14,7 +14,7 @@ import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
-const lastBlock = 13002610;
+const lastBlock = 13004900;
 
 const tos = [
   "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
@@ -157,14 +157,19 @@ task("simulateMigrate", "simulate migration of one address")
 
     const newMasterChefV2 = async (): Promise<MasterChefV2> => {
       // deploy a NEW MasterChefV2 to debug
-      const newChefV2: MasterChefV2 = (await (
-        await ethers.getContractFactory("MasterChefV2")
-      ).deploy(
-        UbiquityAlgorithmicDollarManagerAddress,
-        tos,
-        amounts,
-        ids
+      // const newChefV2: MasterChefV2 = (await (
+      //   await ethers.getContractFactory("MasterChefV2")
+      // ).deploy(
+      //   UbiquityAlgorithmicDollarManagerAddress,
+      //   tos,
+      //   amounts,
+      //   ids
+      // )) as MasterChefV2;
+      const newChefV2: MasterChefV2 = (await ethers.getContractAt(
+        "MasterChefV2",
+        "0xdae807071b5AC7B6a2a343beaD19929426dBC998"
       )) as MasterChefV2;
+
       await manager.connect(admin).setMasterChefAddress(newChefV2.address);
       await manager
         .connect(admin)
