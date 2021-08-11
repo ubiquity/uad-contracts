@@ -14,12 +14,15 @@ import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingV2 } from "../artifacts/types/BondingV2";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
+const lastBlock = 13002610;
+
 const tos = [
   "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
   "0x4007ce2083c7f3e18097aeb3a39bb8ec149a341d",
   "0x7c76f4db70b7e2177de10de3e2f668dadcd11108",
   "0x0000ce08fa224696a819877070bf378e8b131acf",
   "0xa53a6fe2d8ad977ad926c485343ba39f32d3a3f6",
+  "0xcefd0e73cc48b0b9d4c8683e52b7d7396600abb2",
 ];
 const amounts = [
   "1301000000000000000",
@@ -27,8 +30,9 @@ const amounts = [
   "44739174270101943975392",
   "1480607760433248019987",
   "9351040526163838324896",
+  "8991650309086743220575",
 ];
-const ids = [1, 2, 3, 4, 5];
+const ids = [1, 2, 3, 4, 5, 6];
 
 const toMigrateOriginals = [
   "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
@@ -95,7 +99,6 @@ task("simulateMigrate", "simulate migration of one address")
     const BondingV2Address = "0xC251eCD9f1bD5230823F9A0F99a44A87Ddd4CA38";
     let bondingV2: BondingV2;
 
-    const lastBlock = 12967000;
     const mineBlock = async (timestamp: number): Promise<void> => {
       await network.provider.request({
         method: "evm_mine",

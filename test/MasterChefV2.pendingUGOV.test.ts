@@ -15,7 +15,7 @@ import { IERC20Ubiquity } from "../artifacts/types/IERC20Ubiquity";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
 const firstMigrateBlock = 12932141;
-const lastBlock = 12967000;
+const lastBlock = 13002610;
 
 // const UBQ_MINTER_ROLE = ethers.utils.keccak256(
 //   ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
@@ -199,16 +199,16 @@ describe("MasterChefV2 pendingUGOV", () => {
   });
 
   describe("MasterChefV2.1", () => {
-    it("OK after first 5 migrations", async () => {
+    it("OK after first 6 migrations", async () => {
       await init(lastBlock, true);
 
       expect(await query(firstOneBondId)).to.be.eql([
-        BigNumber.from("130176002929905530325461"),
+        BigNumber.from("139167653238992273546036"),
         zero,
-        BigNumber.from("41035739991000"),
+        BigNumber.from("38357657511000"),
         BigNumber.from("1301000000000000000"),
         zero,
-        BigNumber.from(5),
+        BigNumber.from(6),
       ]);
 
       await bondingV2.connect(admin).setMigrating(true);
@@ -231,7 +231,7 @@ describe("MasterChefV2 pendingUGOV", () => {
       ] = await query(id);
 
       expect(pendingUGOV).to.be.gt(ten.pow(18)).lt(ten.pow(24));
-      expect(totalSupply).to.be.equal(6);
+      expect(totalSupply).to.be.equal(7);
       expect(totalShares).to.be.gt(ten.pow(18)).lt(ten.pow(24));
       expect(amount).to.be.gt(ten.pow(16)).lt(ten.pow(24));
       expect(accuGOVPerShare).to.gt(ten.pow(7));
@@ -254,9 +254,9 @@ describe("MasterChefV2 pendingUGOV", () => {
       // console.log("lpAmount", ethers.utils.formatEther(bond1[5]));
       // console.log("UBQ", ethers.utils.formatEther(ubq1));
 
-      expect(pendingUGOV1).to.be.equal("591224554122190445924"); // 590.xxx
-      expect(bond1[5]).to.be.equal("74603879373206500005186"); // 74603.xxx
-      expect(ubq1).to.be.equal("168394820774964495022850"); // 168394.xxx
+      expect(pendingUGOV1).to.be.equal("552639945759706411668");
+      expect(bond1[5]).to.be.equal("74603879373206500005186");
+      expect(ubq1).to.be.equal("168394820774964495022850");
       expect(bond1[0].toLowerCase()).to.be.equal(user2.toLowerCase());
 
       await masterChefV2.connect(user2Signer).getRewards(2);

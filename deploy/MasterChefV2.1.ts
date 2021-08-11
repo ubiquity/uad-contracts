@@ -12,6 +12,7 @@ const tos = [
   "0x7c76f4db70b7e2177de10de3e2f668dadcd11108",
   "0x0000ce08fa224696a819877070bf378e8b131acf",
   "0xa53a6fe2d8ad977ad926c485343ba39f32d3a3f6",
+  "0xcefd0e73cc48b0b9d4c8683e52b7d7396600abb2",
 ];
 const amounts = [
   "1301000000000000000",
@@ -19,8 +20,9 @@ const amounts = [
   "44739174270101943975392",
   "1480607760433248019987",
   "9351040526163838324896",
+  "8991650309086743220575",
 ];
-const ids = [1, 2, 3, 4, 5];
+const ids = [1, 2, 3, 4, 5, 6];
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { deployments, getNamedAccounts } = hre;
