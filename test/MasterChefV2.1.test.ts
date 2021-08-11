@@ -20,7 +20,7 @@ const UBQ_MINTER_ROLE = ethers.utils.keccak256(
 const ten = BigNumber.from(10);
 const one = ten.pow(18); // 1 ether
 
-const startBlock = 13002610;
+const startBlock = 13004900;
 const adminAddress = "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd";
 const managerAddress = "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98";
 const newOneAddress = "0xd6efc21d8c941aa06f90075de1588ac7e912fec6";
@@ -40,8 +40,9 @@ describe("MasterChefV2.1", () => {
     admin = await impersonate(adminAddress);
     newOne = await impersonate(newOneAddress);
 
-    await deployments.fixture(["MasterChefV2.1"]);
-    const masterChefV2Address = (await deployments.get("MasterChefV2")).address;
+    // await deployments.fixture(["MasterChefV2.1"]);
+    // const masterChefV2Address = (await deployments.get("MasterChefV2")).address;
+    const masterChefV2Address = "0xdae807071b5AC7B6a2a343beaD19929426dBC998";
     masterChefV2 = (await ethers.getContractAt(
       "MasterChefV2",
       masterChefV2Address
@@ -106,7 +107,7 @@ describe("MasterChefV2.1", () => {
       "139167653238992273546036"
     );
     expect(await masterChefV2.pendingUGOV(bondId)).to.be.equal(
-      "28768242808000"
+      "613722535788000"
     );
     let amount: BigNumber;
     let rewardDebt: BigNumber;
@@ -127,11 +128,11 @@ describe("MasterChefV2.1", () => {
       "164423351646027648930634"
     );
     expect(await masterChefV2.pendingUGOV(bondId)).to.be.equal(
-      "1575610941338545020"
+      "1575610941338545019"
     );
     [amount, rewardDebt] = await masterChefV2.getBondingShareInfo(bondId);
     expect(amount).to.be.equal("25255698407035375384598");
-    expect(rewardDebt).to.be.equal("930773862672659422");
+    expect(rewardDebt).to.be.equal("12286215194375831320");
     expect(await bondingShareV2.totalSupply()).to.be.equal(7);
   });
 
@@ -150,7 +151,7 @@ describe("MasterChefV2.1", () => {
     // console.log("lpAmount", ethers.utils.formatEther(bond1[5]));
     // console.log("UBQ", ethers.utils.formatEther(ubq1));
 
-    expect(pendingUGOV1).to.be.equal("552090055261810743078");
+    expect(pendingUGOV1).to.be.equal("585633375335031009566");
     expect(bond1[5]).to.be.equal("74603879373206500005186");
     expect(ubq1).to.be.equal("168394820774964495022850");
     expect(bond1[0].toLowerCase()).to.be.equal(user2.toLowerCase());

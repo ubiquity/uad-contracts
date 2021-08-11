@@ -15,7 +15,7 @@ import { IERC20Ubiquity } from "../artifacts/types/IERC20Ubiquity";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
 const firstMigrateBlock = 12932141;
-const lastBlock = 13002610;
+const lastBlock = 13004900;
 
 // const UBQ_MINTER_ROLE = ethers.utils.keccak256(
 //   ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
@@ -78,8 +78,8 @@ const init = async (block: number, newChef = false): Promise<void> => {
   )) as BondingShareV2;
 
   if (newChef) {
-    await deployments.fixture(["MasterChefV2.1"]);
-    MasterChefV2Address = (await deployments.get("MasterChefV2")).address;
+    // await deployments.fixture(["MasterChefV2.1"]);
+    MasterChefV2Address = "0xdae807071b5AC7B6a2a343beaD19929426dBC998";
   }
 
   masterChefV2 = (await ethers.getContractAt(
@@ -205,7 +205,7 @@ describe("MasterChefV2 pendingUGOV", () => {
       expect(await query(firstOneBondId)).to.be.eql([
         BigNumber.from("139167653238992273546036"),
         zero,
-        BigNumber.from("38357657511000"),
+        BigNumber.from("623311950491000"),
         BigNumber.from("1301000000000000000"),
         zero,
         BigNumber.from(6),
@@ -254,7 +254,7 @@ describe("MasterChefV2 pendingUGOV", () => {
       // console.log("lpAmount", ethers.utils.formatEther(bond1[5]));
       // console.log("UBQ", ethers.utils.formatEther(ubq1));
 
-      expect(pendingUGOV1).to.be.equal("552639945759706411668");
+      expect(pendingUGOV1).to.be.equal("586183265832926678156");
       expect(bond1[5]).to.be.equal("74603879373206500005186");
       expect(ubq1).to.be.equal("168394820774964495022850");
       expect(bond1[0].toLowerCase()).to.be.equal(user2.toLowerCase());
