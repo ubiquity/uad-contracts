@@ -46,8 +46,7 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     ubq: {
-      default: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd", //  without PRIVATE_KEY => impersonate
-      mainnet: 0, // use default account 0 with PRIVATE_KEY (of same address !) on mainnet
+      default: 0,
     },
     whaleAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     tester: "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
@@ -58,7 +57,7 @@ const config: HardhatUserConfig = {
     curve3CrvBasePool: "0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7",
     curve3CrvToken: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
     curveFactory: "0x0959158b6040D32d04c301A72CBFD6b39E21c9AE",
-    curveWhaleAddress: "0xC2872ab688400940d5a6041599b3F7de20730d49",
+    curveWhaleAddress: "0x2A1049062c6Cfd69bd38fbaf3b0559DF1DBbc92c",
     daiWhaleAddress: "0x16463c0fdB6BA9618909F5b120ea1581618C1b9E",
     sushiMultiSig: "0x9a8541Ddf3a932a9A922B607e9CF7301f1d47bD1",
     UbqWhaleAddress: "0xa53A6fE2d8Ad977aD926C485343Ba39f32D3A3F6",
@@ -88,7 +87,7 @@ const config: HardhatUserConfig = {
         url: `https://eth-mainnet.alchemyapi.io/v2/${
           process.env.ALCHEMY_API_KEY || ""
         }`,
-        blockNumber: 12592661,
+        blockNumber: 13004900,
       },
       accounts,
       gasPrice: 100000000000,

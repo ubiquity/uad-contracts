@@ -601,7 +601,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
         ethers.utils.parseEther("9900"),
         ethers.utils.parseEther("990"),
         adminAdr,
-        1625414021
+        1640966021
       );
 
     const sushiFactory = await ethers.getContractFactory("SushiSwapPool");
