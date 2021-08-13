@@ -4,3 +4,6 @@ build
 cache
 artifacts
 deployments
+package-lock.json
+.next
+dist

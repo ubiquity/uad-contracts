@@ -4,13 +4,13 @@
   "description": "Bonding system for the Universal Digital Dollar",
   "main": "index.js",
   "scripts": {
-    "first": "npx hardhat clean && TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
+    "first": "yarn hardhat clean && TS_NODE_TRANSPILE_ONLY=1 yarn hardhat compile",
     "compile": "hardhat compile",
-    "test": "npx hardhat test",
-    "test:coverage": "npx hardhat coverage",
-    "lint:sol": "npx solhint 'contracts/**/*.sol' --fix ",
-    "lint:eslint": "npx eslint . --ext .js,.ts --fix",
-    "lint:prettier": "npx prettier --write .",
+    "test": "yarn hardhat test",
+    "test:coverage": "yarn hardhat coverage",
+    "lint:sol": "yarn solhint 'contracts/**/*.sol' --fix ",
+    "lint:eslint": "yarn eslint . --ext .js,.ts --fix",
+    "lint:prettier": "yarn prettier --write .",
     "lint": "yarn lint:prettier && yarn lint:eslint && yarn run lint:sol && yarn compile"
   },
   "husky": {
