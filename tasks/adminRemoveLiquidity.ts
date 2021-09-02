@@ -6,14 +6,13 @@ import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { IMetaPool } from "../artifacts/types/IMetaPool";
-import { BondingV2 } from "../artifacts/types/BondingV2";
 import { ERC20 } from "../artifacts/types/ERC20";
 import pressAnyKey from "../utils/flow";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 
 task(
-  "priceReset",
-  "PriceReset can push uAD price lower or higher by burning LP token for uAD or 3CRV from the bonding contract"
+  "adminRemoveLiquidity",
+  "adminRemoveLiquidity can push uAD price lower or higher by burning LP token for uAD or 3CRV"
 )
   .addParam("amount", "The amount of uAD-3CRV LP token to be withdrawn")
   .addOptionalParam(
@@ -101,14 +100,6 @@ task(
         "ERC20",
         curve3CrvToken
       )) as ERC20;
-      const treasuryAddr = await manager.treasuryAddress();
-      console.log(`---treasury Address:${treasuryAddr}  `);
-      const bondingAddr = await manager.bondingContractAddress();
-      console.log(`---bonding Contract Address:${bondingAddr}  `);
-      const bonding = (await ethers.getContractAt(
-        "BondingV2",
-        bondingAddr
-      )) as BondingV2;
       const metaPoolAddr = await manager.stableSwapMetaPoolAddress();
       console.log(`---metaPoolAddr:${metaPoolAddr}  `);
       const metaPool = (await ethers.getContractAt(
@@ -126,12 +117,10 @@ task(
         curveFactory
       )) as ICurveFactory;
 
-      const uadTreasuryBalanceBefore = await uAD.balanceOf(treasuryAddr);
-      const crvTreasuryBalanceBefore = await curveToken.balanceOf(treasuryAddr);
-      const bondingMetapoolLPBalanceBefore = await metaPool.balanceOf(
-        bondingAddr
-      );
-      const LPBal = ethers.utils.formatEther(bondingMetapoolLPBalanceBefore);
+      const uadBalanceBefore = await uAD.balanceOf(adminAdr);
+      const crvBalanceBefore = await curveToken.balanceOf(adminAdr);
+      const metapoolLPBalanceBefore = await metaPool.balanceOf(adminAdr);
+      const LPBal = ethers.utils.formatEther(metapoolLPBalanceBefore);
       const expectedUAD = await metaPool[
         "calc_withdraw_one_coin(uint256,int128)"
       ](amount, 0);
@@ -144,13 +133,13 @@ task(
       const expectedCRVStr = ethers.utils.formatEther(expectedCRV);
       let coinIndex = 0;
       if (taskArgs.pushhigher) {
-        console.warn(`we will remove :${taskArgs.amount} uAD-3CRV LP token from ${LPBal} uAD3CRV balance
-                      sitting inside the bonding contract for an expected ${expectedUADStr} uAD unilateraly
+        console.warn(`we will remove :${taskArgs.amount} uAD-3CRV LP token from your ${LPBal} uAD3CRV balance
+                      for an expected ${expectedUADStr} uAD unilateraly
                       This will have the immediate effect of
                       pushing the uAD price HIGHER`);
       } else {
-        console.warn(`we will remove :${taskArgs.amount} uAD-3CRV LP token from ${LPBal} uAD3CRV balance
-                      sitting inside the bonding contract for an expected ${expectedCRVStr} 3CRV unilateraly
+        console.warn(`we will remove :${taskArgs.amount} uAD-3CRV LP token from your ${LPBal} uAD3CRV balance
+                      for an expected ${expectedCRVStr} 3CRV unilateraly
                       This will have the immediate effect of
                       pushing the uAD price LOWER`);
         coinIndex = 1;
@@ -213,14 +202,14 @@ task(
         "Press any key if you are sure you want to continue ..."
       );
 
-      let tx;
-      if (coinIndex === 1) {
-        tx = await bonding.connect(admin).crvPriceReset(amount);
-      } else {
-        tx = await bonding.connect(admin).uADPriceReset(amount);
-      }
-
-      console.log(`price reset waiting for confirmation`);
+      let tx = await metaPool
+        .connect(admin)
+        ["remove_liquidity_one_coin(uint256,int128,uint256)"](
+          amount,
+          coinIndex,
+          0
+        );
+      console.log(`removed liquidity waiting for confirmation`);
       let receipt = tx.wait(1);
       console.log(
         `tx ${(await receipt).status === 0 ? "FAIL" : "SUCCESS"}
@@ -228,28 +217,20 @@ task(
 
         `
       );
-      const uadTreasuryBalanceAfter = await uAD.balanceOf(treasuryAddr);
-      const crvTreasuryBalanceAfter = await curveToken.balanceOf(treasuryAddr);
-      const metapoolLPBalanceAfter = await metaPool.balanceOf(bondingAddr);
+      const uadBalanceAfter = await uAD.balanceOf(adminAdr);
+      const crvBalanceAfter = await curveToken.balanceOf(adminAdr);
+      const metapoolLPBalanceAfter = await metaPool.balanceOf(adminAdr);
       const LPBalAfter = ethers.utils.formatEther(metapoolLPBalanceAfter);
       console.log(`from ${LPBal} to ${LPBalAfter} uAD-3CRV LP token
       `);
 
-      const crvTreasuryBalanceBeforeStr = ethers.utils.formatEther(
-        crvTreasuryBalanceBefore
-      );
-      const crvTreasuryBalanceAfterStr = ethers.utils.formatEther(
-        crvTreasuryBalanceAfter
-      );
-      console.log(`Treasury 3CRV balance from ${crvTreasuryBalanceBeforeStr} to ${crvTreasuryBalanceAfterStr}
+      const crvBalanceBeforeStr = ethers.utils.formatEther(crvBalanceBefore);
+      const crvBalanceAfterStr = ethers.utils.formatEther(crvBalanceAfter);
+      console.log(`Admin 3CRV balance from ${crvBalanceBeforeStr} to ${crvBalanceAfterStr}
         `);
-      const balTreasuryUadBeforeStr = ethers.utils.formatEther(
-        uadTreasuryBalanceBefore
-      );
-      const balTreasuryUadAfterStr = ethers.utils.formatEther(
-        uadTreasuryBalanceAfter
-      );
-      console.log(`Treasury uAD balance from ${balTreasuryUadBeforeStr} to ${balTreasuryUadAfterStr}
+      const balUadBeforeStr = ethers.utils.formatEther(uadBalanceBefore);
+      const balUadAfterStr = ethers.utils.formatEther(uadBalanceAfter);
+      console.log(`Admin uAD balance from ${balUadBeforeStr} to ${balUadAfterStr}
         `);
       dyDAI2USDT = await metaPool["get_dy_underlying(int128,int128,uint256)"](
         indices[0],

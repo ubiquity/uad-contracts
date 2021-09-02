@@ -153,9 +153,9 @@ yarn hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/$ALCHEMY_API_KEY -
 - dollarMintingCalculator
   - `0xab840faA6A5eF68D8D32370EBC297f4DdC9F870F`
 - bondingShare
-  - `0x0013B6033dd999676Dc547CEeCEA29f781D8Db17`
+  - `0x2dA07859613C14F6f05c97eFE37B9B4F212b5eF5`
 - bondingContract
-  - `0x831e3674Abc73d7A3e9d8a9400AF2301c32cEF0C`
+  - `0xC251eCD9f1bD5230823F9A0F99a44A87Ddd4CA38`
 - uAD-3CRV metapool deployed aka stableSwapMetaPool
   - `0x20955CB69Ae1515962177D164dfC9522feef567E`
 - curve3PoolToken
@@ -165,7 +165,7 @@ yarn hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/$ALCHEMY_API_KEY -
 - sushiSwapPool
   - `0x534ac94F198F1fef0aDC45227A2185C7cE8d75dC`
 - masterChef
-  - `0x8fFCf9899738e4633A721904609ffCa0a2C44f3D`
+  - `0xdae807071b5AC7B6a2a343beaD19929426dBC998`
 - formulas
   - `0x54F528979A50FA8Fe99E0118EbbEE5fC8Ea802F7`
 - autoRedeemToken
