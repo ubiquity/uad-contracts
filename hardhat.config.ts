@@ -1,13 +1,13 @@
+import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import * as dotenv from "dotenv";
 import "hardhat-deploy";
 import "hardhat-deploy-ethers";
-import { HardhatUserConfig } from "hardhat/config";
-import "hardhat-typechain";
 import "hardhat-gas-reporter";
+import "hardhat-typechain";
+import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
 import "./tasks/index";
-import "@nomiclabs/hardhat-etherscan";
 
 dotenv.config();
 const mnemonic = `${
