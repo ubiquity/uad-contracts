@@ -4,7 +4,6 @@
   "description": "Bonding system for the Universal Digital Dollar",
   "main": "index.js",
   "scripts": {
-    "first": "npx hardhat clean && TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
     "compile": "hardhat compile",
     "test": "npx hardhat test",
     "test:coverage": "npx hardhat coverage",

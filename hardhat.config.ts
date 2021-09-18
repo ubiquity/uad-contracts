@@ -6,8 +6,13 @@ import { HardhatUserConfig } from "hardhat/config";
 import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
-import "./tasks/index";
 import "@nomiclabs/hardhat-etherscan";
+
+// Skip tasks loading while compiling, because tasks depend on artifacts created
+// by the compiling process
+if (process.argv.indexOf("compile") === -1) {
+  import("./tasks/index");
+}
 
 dotenv.config();
 const mnemonic = `${

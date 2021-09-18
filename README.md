@@ -27,12 +27,6 @@ yarn install
 
 ## Building
 
-If it is the first compilation, and only the first time, we need to generate the types first:
-
-```sh
-yarn run first
-```
-
 Compile the smart contracts:
 
 ```sh
