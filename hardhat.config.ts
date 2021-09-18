@@ -8,8 +8,8 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
 
-// Skip tasks loading while compiling, because tasks depend on artifacts created
-// by the compiling process
+// Since some tasks depend on compilation artifacts,
+// we skip loading the tasks when compiling
 if (process.argv.indexOf("compile") === -1) {
   import("./tasks/index");
 }
