@@ -7,11 +7,15 @@ import "hardhat-typechain";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
+import fs from "fs";
+import path from "path";
 
-// Since some tasks depend on compilation artifacts,
-// we skip loading the tasks when compiling
-if (process.argv.indexOf("compile") === -1) {
+if (fs.existsSync(path.join(__dirname, "artifacts/types"))) {
   import("./tasks/index");
+} else {
+  console.warn(
+    "Tasks loading skipped until compilation artifacts are available"
+  );
 }
 
 dotenv.config();
