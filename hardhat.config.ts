@@ -18,7 +18,6 @@ if (fs.existsSync(path.join(__dirname, "artifacts/types"))) {
   );
 }
 
-
 dotenv.config();
 const mnemonic = `${
   process.env.MNEMONIC ||
