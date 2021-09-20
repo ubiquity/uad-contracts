@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ubiquity/uad-contracts.git"
+    "url": "https://github.com/ubiquity/uad-contracts.git"
   },
   "scripts": {
     "dev:clean": "hardhat clean",
