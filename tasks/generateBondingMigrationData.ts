@@ -176,8 +176,9 @@ task(
 
       // Get all the bonding share IDs and values for each transaction ID
 
-      const bondingShareData: { [key: string]: { id: string; value: string } } =
-        {};
+      const bondingShareData: {
+        [key: string]: { id: string; value: string };
+      } = {};
 
       (await fetchTransferSingleEvents()).result.forEach((ev) => {
         const data = ethers.utils.defaultAbiCoder.decode(

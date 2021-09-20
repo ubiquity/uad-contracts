@@ -1,27 +1,26 @@
 {
   "name": "uad-contracts",
   "version": "1.0.0",
-  "description": "Bonding system for the Universal Digital Dollar",
-  "main": "index.js",
-  "scripts": {
-    "first": "npx hardhat clean && TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
-    "compile": "hardhat compile",
-    "test": "npx hardhat test",
-    "test:coverage": "npx hardhat coverage",
-    "lint:sol": "npx solhint 'contracts/**/*.sol' --fix ",
-    "lint:eslint": "npx eslint . --ext .js,.ts --fix",
-    "lint:prettier": "npx prettier --write .",
-    "lint": "yarn lint:prettier && yarn lint:eslint && yarn run lint:sol && yarn compile"
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
-      "pre-commit": "lint-staged"
-    }
+  "description": "Ubiquity Algorithmic Dollar smart contracts",
+  "author": "Ubiquity DAO",
+  "license": "Apache-2.0",
+  "homepage": "https://dao.ubq.fi/dollar",
+  "bugs": {
+    "url": "https://github.com/ubiquity/uad-contracts/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ubiquity/uad-contracts.git"
+  },
+  "scripts": {
+    "dev:clean": "hardhat clean",
+    "build": "TS_NODE_TRANSPILE_ONLY=1 yarn hardhat compile",
+    "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "lint": "run-s lint:* build",
+    "lint:sol": "solhint 'contracts/**/*.sol' --fix",
+    "lint:eslint": "eslint . --ext .js,.ts --fix",
+    "lint:prettier": "prettier --write ."
   },
   "keywords": [
     "stablecoin",
@@ -35,12 +34,12 @@
     "token",
     "algorithmic"
   ],
-  "author": "Ubiquity DAO",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/ubiquity/uad-contracts/issues"
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
+      "pre-commit": "lint-staged"
+    }
   },
-  "homepage": "https://github.com/ubiquity/uad-contracts#readme",
   "devDependencies": {
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
@@ -53,13 +52,16 @@
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/contracts": "4.2.0",
     "@typechain/ethers-v5": "^6.0.5",
     "@types/big.js": "^6.1.1",
     "@types/dotenv": "^8.2.0",
     "@types/mocha": "^8.2.3",
     "@typescript-eslint/eslint-plugin": "^4.26.0",
     "@typescript-eslint/parser": "^4.26.0",
+    "@uniswap/lib": "^4.0.1-alpha",
     "@uniswap/sdk": "^3.0.3",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "abi-to-sol": "^0.2.1",
     "axios": "^0.21.1",
     "babel-eslint": "^10.1.0",
@@ -80,23 +82,19 @@
     "hardhat-typechain": "^0.3.5",
     "husky": "^4.3.8",
     "lint-staged": "^10.5.4",
+    "node-fetch": "^2.6.1",
+    "npm-run-all": "^4.1.5",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.16",
     "solhint": "^3.3.6",
-    "node-fetch": "^2.6.1",
     "solhint-plugin-prettier": "^0.0.5",
     "solidity-coverage": "^0.7.16",
+    "solidity-linked-list": "^5.0.0",
     "ts-generator": "^0.1.1",
     "ts-node": "^9.1.1",
     "typechain": "^4.0.3",
     "typescript": "^4.3.5",
     "usb": "^1.7.1"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "4.2.0",
-    "@uniswap/lib": "^4.0.1-alpha",
-    "@uniswap/v2-periphery": "^1.1.0-beta.0",
-    "solidity-linked-list": "^5.0.0"
   },
   "lavamoat": {
     "allowScripts": {

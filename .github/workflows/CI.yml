@@ -32,7 +32,8 @@ jobs:
             ${{ matrix.os }}-yarn2-
 
       - run: yarn install --frozen-lockfile --ignore-scripts
-      - run: yarn first
+      - run: yarn dev:clean
+      - run: yarn build
         env:
           TS_NODE_TRANSPILE_ONLY: 1
       - run: yarn lint

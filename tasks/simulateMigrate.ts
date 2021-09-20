@@ -333,7 +333,7 @@ task("simulateMigrate", "simulate migration of one address")
           `== Total uAD3CRV-f ${totalLP}  Total UBQ ${totalShares}  Total UBQ Accumulated per Share ${accuGOVPerShare}`
         );
       } catch (e) {
-        console.log(`** ERROR ${e.message}`);
+        console.log(`** ERROR ${(e as Error).message}`);
       }
     };
 
