@@ -7,7 +7,17 @@ import "hardhat-gas-reporter";
 import "hardhat-typechain";
 import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
-import "./tasks/index";
+import fs from "fs";
+import path from "path";
+
+if (fs.existsSync(path.join(__dirname, "artifacts/types"))) {
+  import("./tasks/index");
+} else {
+  console.warn(
+    "Tasks loading skipped until compilation artifacts are available"
+  );
+}
+
 
 dotenv.config();
 const mnemonic = `${
