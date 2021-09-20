@@ -46,8 +46,8 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     ubq: {
-      default: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd", //  without PRIVATE_KEY => impersonate
-      mainnet: 0, // use default account 0 with PRIVATE_KEY (of same address !) on mainnet
+      default: "0xefC0e701A824943b469a694aC564Aa1efF7Ab7dd", //  without UBQ => impersonate
+      mainnet: 0, // use default account 0 with UBQ (of same address !) on mainnet
     },
     whaleAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
     tester: "0x89eae71b865a2a39cba62060ab1b40bbffae5b0d",
@@ -91,17 +91,17 @@ const config: HardhatUserConfig = {
         blockNumber: 12592661,
       },
       accounts,
-      gasPrice: 100000000000,
+      gasPrice: 35000000000,
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : accounts,
-      gasPrice: 20000000000,
+      accounts: process.env.UBQ ? [process.env.UBQ] : accounts,
+      gasPrice: 35000000000,
     },
     ropsten: {
-      gasPrice: 100000000000,
+      gasPrice: 35000000000,
       url: `https://eth-ropsten.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
