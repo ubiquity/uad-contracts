@@ -40,7 +40,21 @@
       "pre-commit": "lint-staged"
     }
   },
-  "devDependencies": {
+  "devDependencies": {},
+  "lavamoat": {
+    "allowScripts": {
+      "core-js": false,
+      "keccak": false,
+      "secp256k1": false,
+      "web3": false,
+      "bufferutil": false,
+      "utf-8-validate": false,
+      "core-js-pure": false,
+      "postinstall-postinstall": false,
+      "husky": false
+    }
+  },
+  "dependencies": {
     "@commitlint/cli": "^11.0.0",
     "@commitlint/config-conventional": "^11.0.0",
     "@eth-optimism/smock": "^0.2.1-alpha.0",
@@ -69,22 +83,7 @@
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.16",
-    "solhint-plugin-prettier": "^0.0.5"
-  },
-  "lavamoat": {
-    "allowScripts": {
-      "core-js": false,
-      "keccak": false,
-      "secp256k1": false,
-      "web3": false,
-      "bufferutil": false,
-      "utf-8-validate": false,
-      "core-js-pure": false,
-      "postinstall-postinstall": false,
-      "husky": false
-    }
-  },
-  "dependencies": {
+    "solhint-plugin-prettier": "^0.0.5",
     "eslint-plugin-jsx-a11y": "^6.4.1",
     "eslint-plugin-react": "^7.21.5",
     "eslint-plugin-react-hooks": "^4",
