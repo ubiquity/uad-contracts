@@ -100,7 +100,7 @@ const config: HardhatUserConfig = {
         blockNumber: 13252206,
       },
       accounts,
-      chainId: 1337,
+      gasPrice: 35000000000,
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
