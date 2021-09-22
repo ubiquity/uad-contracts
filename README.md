@@ -115,8 +115,10 @@ npx hardhat --network mainnet getBondingTransactions
 
 - node 14.15 (use nvm)
 
-rename the `example.env` file to `.env` and fill the `ALCHEMY_API_KEY` and
-`COINMARKETCAP_API_KEY` environment variables.
+Rename the `example.env` file to `.env` and fill:
+
+  - `ALCHEMY_API_KEY`: [get key at Alchemy API Dashboard](https://dashboard.alchemyapi.io/)
+  - `COINMARKETCAP_API_KEY`: [get key at CoinMarket](https://pro.coinmarketcap.com/login)
 
 ### Launch all tests
 
@@ -128,11 +130,42 @@ if you experience some timeout issues try running tests one by one
 
 ### Forking
 
-to run a local node that forks mainnet you can run
+To run a local node that forks mainnet we use Hardhat with the Alchemy API.
 
 ```sh
-yarn hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/$ALCHEMY_API_KEY --fork-block-number 12658501 --no-deploy --show-accounts
+yarn node:start
 ```
+
+If you are using Metamask on the browser, you can point it to the local node
+from the network menu by adding a custom RPC network with the following configuration:
+
+- Network name: `Hardhat`
+- RPC Url: `http://localhost:8545`
+- Chain ID: `1337`
+
+### Give yourself funds
+
+We recommend you use a separate browser session with Metamask for development.
+When you are prompted with the mnemonic phrase copy it to the .env file:
+
+```bash
+MNEMONIC="test test test test test test test test test test test junk"
+```
+
+(remember to use the quotation marks)
+
+When the hardhat fork starts it will create 10 accounts with 10000 ETH each from
+that phrase. Metamask will be using these accounts too.
+
+Now for the sake of testing you may want to give yourself uAD, uAR, UBQ, and uAD3CRV-f tokens.
+To do this, there is a tasks named faucet that gives you 1000 of each, transferred from
+the Ubiquity treasury account.
+
+```sh
+yarn node:faucet
+```
+
+This is to be run only when the `yarn node:start` task is running on another terminal window.
 
 ## Contracts
 

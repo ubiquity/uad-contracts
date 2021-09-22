@@ -97,10 +97,10 @@ const config: HardhatUserConfig = {
         url: `https://eth-mainnet.alchemyapi.io/v2/${
           process.env.ALCHEMY_API_KEY || ""
         }`,
-        blockNumber: 12592661,
+        blockNumber: 13252206,
       },
       accounts,
-      gasPrice: 35000000000,
+      chainId: 1337,
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
