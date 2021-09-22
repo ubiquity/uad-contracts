@@ -1,9 +1,12 @@
 import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
-import { ERC20 } from "../artifacts/types/ERC20";
+import { ERC1155Ubiquity, ERC20 } from "../artifacts/types";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
+import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 
 const NETWORK_ADDRESS = "http://localhost:8545";
+const accountWithWithdrawableBond =
+  "0x0000CE08fa224696A819877070BF378e8B131ACF";
 
 task("faucet", "Sends ETH and tokens to an address")
   .addOptionalParam("receiver", "The address that will receive them")
@@ -40,7 +43,13 @@ task("faucet", "Sends ETH and tokens to an address")
       const receiverAddress = taskArgs.receiver || firstAccount.address;
 
       await provider.send("hardhat_impersonateAccount", [namedTreasuryAddress]);
+      await provider.send("hardhat_impersonateAccount", [
+        accountWithWithdrawableBond,
+      ]);
       const treasuryAccount = provider.getSigner(namedTreasuryAddress);
+      const accountWithWithdrawableBondAccount = provider.getSigner(
+        accountWithWithdrawableBond
+      );
 
       console.log("Manager address: ", managerAddress);
       console.log("Treasury address: ", namedTreasuryAddress);
@@ -81,6 +90,34 @@ task("faucet", "Sends ETH and tokens to an address")
         await manager.governanceTokenAddress(),
         treasuryAccount
       )) as ERC20;
+
+      const bondingShareToken = (await ethers.getContractAt(
+        "BondingShareV2",
+        await manager.bondingShareAddress(),
+        accountWithWithdrawableBondAccount
+      )) as BondingShareV2;
+
+      const bondingShareId = (
+        await bondingShareToken.holderTokens(accountWithWithdrawableBond)
+      )[0];
+
+      try {
+        await bondingShareToken.safeTransferFrom(
+          accountWithWithdrawableBond,
+          receiverAddress,
+          bondingShareId,
+          ethers.BigNumber.from(1),
+          []
+        );
+
+        console.log(
+          `Transferred withdrawable bonding share token from ${bondingShareId.toString()} from ${accountWithWithdrawableBond}`
+        );
+      } catch (e) {
+        console.log(
+          "Tried to transfer a withdrawable bonding share token but couldn't"
+        );
+      }
 
       const transfer = async (name: string, token: ERC20, amount: number) => {
         console.log(`${name}: ${token.address}`);
