@@ -68,6 +68,10 @@ const config: HardhatUserConfig = {
     BondingV2Address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // FAKE ADDRESS, TO BE REPLACED AFTER V2 DEPLOYMENT
     UbiquityAlgorithmicDollarManagerAddress:
       "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98",
+    jarUSDCAddr: "0xEB801AB73E9A2A482aA48CaCA13B1954028F4c94",
+    strategyYearnUsdcV2: "0xEecEE2637c7328300846622c802B2a29e65f3919",
+    usdcWhaleAddress: "0x72A53cDBBcc1b9efa39c834A540550e23463AAcB",
+    pickleControllerAddr: "0x6847259b2B3A4c17e7c43C54409810aF48bA5210",
   },
 
   /*   paths: {
@@ -103,6 +107,13 @@ const config: HardhatUserConfig = {
     ropsten: {
       gasPrice: 100000000000,
       url: `https://eth-ropsten.alchemyapi.io/v2/${
+        process.env.ALCHEMY_API_KEY || ""
+      }`,
+      accounts,
+    },
+    rinkeby: {
+      gasPrice: 100000000000,
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
       accounts,
