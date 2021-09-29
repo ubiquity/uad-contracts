@@ -121,11 +121,23 @@ describe("Pickle", () => {
       await jar.earn();
       const ratio4 = await jar.getRatio();
       const tx = await jar.connect(secondAccount).withdrawAll();
+      const balUsdcUserAfterWithdraw = await usdcToken.balanceOf(
+        secondAccountAdr
+      );
       const balUsdc3 = await usdcToken.balanceOf(secondAccountAdr);
       const balJar3 = await jar.balanceOf(secondAccountAdr);
       const ratio4After = await jar.getRatio();
       console.log(`
       AFTER Withdraw
+      USDC amount deposited    : ${ethers.utils.formatUnits(amountToDeposit, 6)}
+      balUsdcUserAfterWithdraw :${ethers.utils.formatUnits(
+        balUsdcUserAfterWithdraw,
+        6
+      )}
+      net win : ${ethers.utils.formatUnits(
+        balUsdcUserAfterWithdraw.sub(amountToDeposit),
+        6
+      )}
       ratio4 :${ethers.utils.formatEther(ratio4)}
       ratio4After:${ethers.utils.formatEther(ratio4After)}
       balJar:${ethers.utils.formatEther(balJar3)}

@@ -27,10 +27,12 @@ let thirdAccount: Signer;
 let fourthAccount: Signer;
 let treasury: Signer;
 let jarUSDCAddr: string;
+let jarYCRVLUSDaddr: string;
 let adminAddress: string;
 let secondAddress: string;
 let ubiquityFormulas: UbiquityFormulas;
-
+let jar: IJar;
+let strategyYearnUsdcV2: string;
 export default async function yieldProxySetup(): Promise<{
   usdcToken: ERC20;
   usdcWhale: Signer;
@@ -42,6 +44,7 @@ export default async function yieldProxySetup(): Promise<{
   treasury: Signer;
   usdcWhaleAddress: string;
   jarUSDCAddr: string;
+  jarYCRVLUSDaddr: string;
   uAD: UbiquityAlgorithmicDollar;
   uAR: UbiquityAutoRedeem;
   uGOV: UbiquityGovernance;
@@ -49,10 +52,19 @@ export default async function yieldProxySetup(): Promise<{
   DAI: string;
   USDC: string;
   manager: UbiquityAlgorithmicDollarManager;
+  jar: IJar;
+  strategyYearnUsdcV2: string;
 }> {
   await resetFork(13185077);
   // GET contracts adresses
-  ({ DAI, USDC, usdcWhaleAddress, jarUSDCAddr } = await getNamedAccounts());
+  ({
+    DAI,
+    USDC,
+    usdcWhaleAddress,
+    jarUSDCAddr,
+    strategyYearnUsdcV2,
+    jarYCRVLUSDaddr,
+  } = await getNamedAccounts());
 
   // GET first EOA account as admin Signer
   [admin, secondAccount, thirdAccount, treasury, fourthAccount, fifthAccount] =
@@ -64,7 +76,7 @@ export default async function yieldProxySetup(): Promise<{
   });
 
   usdcWhale = ethers.provider.getSigner(usdcWhaleAddress);
-  const amountToDeposit = ethers.utils.parseUnits("10000000", 6);
+  const amountToDeposit = ethers.utils.parseUnits("10000", 6);
 
   adminAddress = await admin.getAddress();
   secondAddress = await secondAccount.getAddress();
@@ -100,7 +112,6 @@ export default async function yieldProxySetup(): Promise<{
 
   // GET USDC token contract
   usdcToken = (await ethers.getContractAt("ERC20", USDC)) as ERC20;
-  console.log({ usdcTokenaddr: usdcToken.address });
   await usdcToken.connect(usdcWhale).transfer(secondAddress, amountToDeposit);
 
   const mintingUAD = [
@@ -110,7 +121,7 @@ export default async function yieldProxySetup(): Promise<{
     fourthAddress,
   ].map(
     async (signer: string): Promise<ContractTransaction> =>
-      uAD.mint(signer, ethers.utils.parseEther("10000"))
+      uAD.mint(signer, ethers.utils.parseEther("20000"))
   );
   const mintingUBQ = [
     adminAddress,
@@ -119,37 +130,32 @@ export default async function yieldProxySetup(): Promise<{
     fourthAddress,
   ].map(
     async (signer: string): Promise<ContractTransaction> =>
-      uGOV.mint(signer, ethers.utils.parseEther("10000"))
+      uGOV.mint(signer, ethers.utils.parseEther("20000"))
   );
 
   await Promise.all([mintingUAD, mintingUBQ]);
-  console.log("Promisamlm");
   // deploy yield proxy
-  // _fees 10000 = 10%
+  // _fees 10000 = 10% because feesMax = 100000 and 10000 / 100000 = 0.1
   // _UBQRate 10e18, if the UBQRate is 10 then 10/10000 = 0.001  1UBQ gives you 0.001% of fee reduction so 100000 UBQ gives you 100%
   // _bonusYield  5000 = 50% 100 = 1% 10 = 0.1% 1 = 0.01%
-  const jar = (await ethers.getContractAt("IJar", jarUSDCAddr)) as IJar;
-  console.log({ jaraddr: jar.address, manager: manager.address });
+  jar = (await ethers.getContractAt("IJar", jarUSDCAddr)) as IJar;
   yieldProxy = (await (
     await ethers.getContractFactory("YieldProxy")
   ).deploy(
     manager.address,
     jar.address,
     10000,
-    ethers.utils.parseEther("10"),
+    ethers.utils.parseEther("100"),
     5000
   )) as YieldProxy;
-  console.log({ yieldProxyaddr: yieldProxy.address });
   // bonding should have the UBQ_MINTER_ROLE to mint bonding shares
   await manager.connect(admin).grantRole(UBQ_MINTER_ROLE, yieldProxy.address);
 
   const uARFactory = await ethers.getContractFactory("UbiquityAutoRedeem");
   uAR = (await uARFactory.deploy(manager.address)) as UbiquityAutoRedeem;
   await manager.setuARTokenAddress(uAR.address);
-  console.log("setuARTokenAddress");
   // set treasury,uGOVFund and lpReward address needed for excessDollarsDistributor
   await manager.connect(admin).setTreasuryAddress(await treasury.getAddress());
-  console.log("DONE !");
   return {
     usdcToken,
     usdcWhale,
@@ -161,6 +167,7 @@ export default async function yieldProxySetup(): Promise<{
     treasury,
     usdcWhaleAddress,
     jarUSDCAddr,
+    jarYCRVLUSDaddr,
     uAD,
     uGOV,
     uAR,
@@ -168,5 +175,7 @@ export default async function yieldProxySetup(): Promise<{
     DAI,
     USDC,
     manager,
+    jar,
+    strategyYearnUsdcV2,
   };
 }
