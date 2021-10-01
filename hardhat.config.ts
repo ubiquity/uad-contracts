@@ -103,7 +103,15 @@ const config: HardhatUserConfig = {
   networks: {
     localhost: {
       url: `http://127.0.0.1:8545`,
+      forking: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${
+          process.env.ALCHEMY_API_KEY || ""
+        }`,
+        blockNumber: 13252206,
+      },
       accounts,
+      hardfork: "london",
+      initialBaseFeePerGas: 0,
     },
     hardhat: {
       forking: {
@@ -113,7 +121,8 @@ const config: HardhatUserConfig = {
         blockNumber: 13252206,
       },
       accounts,
-      gasPrice: 35000000000,
+      hardfork: "london",
+      initialBaseFeePerGas: 0,
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${

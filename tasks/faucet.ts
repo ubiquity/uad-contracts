@@ -1,5 +1,6 @@
 import { task } from "hardhat/config";
 import "@nomiclabs/hardhat-waffle";
+import { BigNumber } from "ethers";
 import { ERC1155Ubiquity, ERC20 } from "../artifacts/types";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
@@ -33,6 +34,8 @@ task("faucet", "Sends ETH and tokens to an address")
       const {
         UbiquityAlgorithmicDollarManagerAddress: namedManagerAddress,
         ubq: namedTreasuryAddress,
+        usdcWhaleAddress,
+        USDC: usdcTokenAddress,
         // curve3CrvToken: namedCurve3CrvAddress,
       } = await getNamedAccounts();
 
@@ -46,10 +49,12 @@ task("faucet", "Sends ETH and tokens to an address")
       await provider.send("hardhat_impersonateAccount", [
         accountWithWithdrawableBond,
       ]);
+      await provider.send("hardhat_impersonateAccount", [usdcWhaleAddress]);
       const treasuryAccount = provider.getSigner(namedTreasuryAddress);
       const accountWithWithdrawableBondAccount = provider.getSigner(
         accountWithWithdrawableBond
       );
+      const usdcWhaleAccount = provider.getSigner(usdcWhaleAddress);
 
       console.log("Manager address: ", managerAddress);
       console.log("Treasury address: ", namedTreasuryAddress);
@@ -79,6 +84,12 @@ task("faucet", "Sends ETH and tokens to an address")
         treasuryAccount
       )) as ERC20;
 
+      const usdcToken = (await ethers.getContractAt(
+        "ERC20",
+        usdcTokenAddress,
+        usdcWhaleAccount
+      )) as ERC20;
+
       // const crvToken = (await ethers.getContractAt(
       //   "ERC20",
       //   namedCurve3CrvAddress,
@@ -101,7 +112,14 @@ task("faucet", "Sends ETH and tokens to an address")
         await bondingShareToken.holderTokens(accountWithWithdrawableBond)
       )[0];
 
-      try {
+      const bondingShareBalance = +(
+        await bondingShareToken.balanceOf(
+          accountWithWithdrawableBond,
+          bondingShareId
+        )
+      ).toString(); // Either 1 or 0
+
+      if (bondingShareBalance > 0) {
         await bondingShareToken.safeTransferFrom(
           accountWithWithdrawableBond,
           receiverAddress,
@@ -113,25 +131,35 @@ task("faucet", "Sends ETH and tokens to an address")
         console.log(
           `Transferred withdrawable bonding share token from ${bondingShareId.toString()} from ${accountWithWithdrawableBond}`
         );
-      } catch (e) {
+      } else {
         console.log(
           "Tried to transfer a withdrawable bonding share token but couldn't"
         );
       }
 
-      const transfer = async (name: string, token: ERC20, amount: number) => {
+      const transfer = async (
+        name: string,
+        token: ERC20,
+        amount: BigNumber
+      ) => {
         console.log(`${name}: ${token.address}`);
-        const tx = await token.transfer(
-          receiverAddress,
-          ethers.utils.parseEther(amount.toString())
+        const tx = await token.transfer(receiverAddress, amount);
+        console.log(
+          `  Transferred ${ethers.utils.formatEther(amount)} ${name} from ${
+            tx.from
+          }`
         );
-        console.log(`  Transferred ${amount} ${name} from ${tx.from}`);
       };
 
-      await transfer("uAD", uADToken, 1000);
-      await transfer("uAR", uARToken, 1000);
-      await transfer("uAD3CRV-f", curveLPToken, 1000);
+      await transfer("uAD", uADToken, ethers.utils.parseEther("1000"));
+      await transfer("uAR", uARToken, ethers.utils.parseEther("1000"));
+      await transfer(
+        "uAD3CRV-f",
+        curveLPToken,
+        ethers.utils.parseEther("1000")
+      );
       // await transfer("3CRV", crvToken, 1000);
-      await transfer("UBQ", ubqToken, 1000);
+      await transfer("UBQ", ubqToken, ethers.utils.parseEther("1000"));
+      await transfer("USDC", usdcToken, ethers.utils.parseUnits("1000", 6));
     }
   );

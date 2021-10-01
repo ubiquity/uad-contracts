@@ -19,3 +19,4 @@ import "./excessDollarDistribution";
 import "./revoke";
 import "./simulateMigrate";
 import "./priceReset";
+import "./deployYieldProxyLocally";
