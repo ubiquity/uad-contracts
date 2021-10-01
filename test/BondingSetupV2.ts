@@ -382,8 +382,8 @@ async function bondingSetupV2(): Promise<{
     bondingMinAccountAddress,
     bondingMaxAccountAddress,
   ].map(
-    async (signer: string): Promise<ContractTransaction> =>
-      uAD.mint(signer, ethers.utils.parseEther("10000"))
+    async (receiver: string): Promise<ContractTransaction> =>
+      uAD.mint(receiver, ethers.utils.parseEther("10000"))
   );
   await Promise.all(mintings);
   // Impersonate curve whale account

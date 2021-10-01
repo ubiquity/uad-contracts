@@ -19,9 +19,17 @@ if (fs.existsSync(path.join(__dirname, "artifacts/types"))) {
 }
 
 dotenv.config();
+const {
+  MNEMONIC,
+  PRIVATE_KEY,
+  ALCHEMY_API_KEY,
+  ETHERSCAN_API_KEY,
+  REPORT_GAS,
+  COINMARKETCAP_API_KEY,
+} = process.env;
+
 const mnemonic = `${
-  process.env.MNEMONIC ||
-  "test test test test test test test test test test test junk"
+  MNEMONIC || "test test test test test test test test test test test junk"
 }`;
 
 const accounts = {
@@ -77,6 +85,11 @@ const config: HardhatUserConfig = {
     BondingV2Address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // FAKE ADDRESS, TO BE REPLACED AFTER V2 DEPLOYMENT
     UbiquityAlgorithmicDollarManagerAddress:
       "0x4DA97a8b831C345dBe6d16FF7432DF2b7b776d98",
+    jarUSDCAddr: "0xEB801AB73E9A2A482aA48CaCA13B1954028F4c94",
+    jarYCRVLUSDaddr: "0x4fFe73Cf2EEf5E8C8E0E10160bCe440a029166D2",
+    strategyYearnUsdcV2: "0xEecEE2637c7328300846622c802B2a29e65f3919",
+    usdcWhaleAddress: "0x72A53cDBBcc1b9efa39c834A540550e23463AAcB",
+    pickleControllerAddr: "0x6847259b2B3A4c17e7c43C54409810aF48bA5210",
   },
 
   /*   paths: {
@@ -106,7 +119,7 @@ const config: HardhatUserConfig = {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
-      accounts: process.env.UBQ ? [process.env.UBQ] : accounts,
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : accounts,
       gasPrice: 35000000000,
     },
     ropsten: {
@@ -116,21 +129,27 @@ const config: HardhatUserConfig = {
       }`,
       accounts,
     },
+    rinkeby: {
+      gasPrice: 35000000000,
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_API_KEY || ""}`,
+      accounts,
+    },
   },
   typechain: {
     outDir: "artifacts/types",
     target: "ethers-v5",
   },
   gasReporter: {
+    enabled: REPORT_GAS === "true",
     currency: "USD",
     gasPrice: 35,
     onlyCalledMethods: true,
-    coinmarketcap: `${process.env.COINMARKETCAP_API_KEY || ""}`,
+    coinmarketcap: `${COINMARKETCAP_API_KEY || ""}`,
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: `${process.env.ETHERSCAN_API_KEY || ""}`,
+    apiKey: `${ETHERSCAN_API_KEY || ""}`,
   },
 };
 
