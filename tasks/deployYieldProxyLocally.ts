@@ -55,6 +55,16 @@ task(
       )) as YieldProxy;
       await yieldProxy.deployTransaction.wait();
 
+      await provider.send("hardhat_impersonateAccount", [namedTreasuryAddress]);
+      const treasuryAccount = provider.getSigner(namedTreasuryAddress);
+
+      const UBQ_MINTER_ROLE = ethers.utils.keccak256(
+        ethers.utils.toUtf8Bytes("UBQ_MINTER_ROLE")
+      );
+      await manager
+        .connect(treasuryAccount)
+        .grantRole(UBQ_MINTER_ROLE, yieldProxy.address);
+
       console.log("Yield proxy address: ", yieldProxy.address);
     }
   );
