@@ -10,7 +10,7 @@ import { IUniswapV2Router02 } from "../artifacts/types/IUniswapV2Router02";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
-import { mineNBlock } from "./utils/hardhatNode";
+import { mineNBlock, resetFork } from "./utils/hardhatNode";
 
 /*
       SUSHISWAP Glossary
@@ -55,6 +55,7 @@ describe("SushiSwapPool", () => {
   let uGOV: UbiquityGovernance;
   let sushiMultiSig: string;
   beforeEach(async () => {
+    await resetFork(12592661);
     ({ sushiMultiSig } = await getNamedAccounts());
 
     [admin, secondAccount] = await ethers.getSigners();
