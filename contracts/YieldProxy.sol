@@ -12,21 +12,6 @@ import "./interfaces/IERC20Ubiquity.sol";
 contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
     using SafeERC20 for ERC20;
     using SafeERC20 for IERC20Ubiquity;
-    ERC20 public token;
-    IJar public jar;
-    uint256 public constant bonusYieldMax = 10000; // 1000 = 10% 100 = 1% 10 = 0.1% 1 = 0.01%
-    uint256 public bonusYield; //  5000 = 50% 100 = 1% 10 = 0.1% 1 = 0.01%
-    uint256 public constant feesMax = 100000; // 1000 = 1% 100 = 0.1% 10 = 0.01% 1 = 0.001%
-    uint256 public constant UBQRateMax = 10000e18; // 100000e18 Amount of UBQ to be stake to reduce the deposit fees by 100%
-
-    uint256 public fees; // 10000  = 10%, 1000 = 1% 100 = 0.1% 10= 0.01% 1=0.001%
-    /*     uint256 public constant UADPercentMax = 10000;
-    uint256 public UADPercent; // 50% means that you can deposit uAD up to 50% of the deposited token */
-    uint256 public UBQRate; // 100e18, if the UBQRate is 100 and UBQRateMax=10000  then 100/10000  = 0.01  1UBQ gives you 0.01% of fee reduction so 10000 UBQ gives you 100%
-
-    uint256 public UBQMaxAmount; // UBQ amount to stake to have 100%
-
-    // struct to store deposit details
     struct UserInfo {
         uint256 amount; // token amount deposited by the user with same decimals as underlying token
         uint256 shares; // pickle jar shares
@@ -36,6 +21,23 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         uint256 ratio; // used to calculate yield
         uint256 bonusYield; // used to calculate bonusYield on yield in uAR
     }
+
+    ERC20 public token;
+    IJar public jar;
+    uint256 public constant BONUS_YIELD_MAX = 10000; // 1000 = 10% 100 = 1% 10 = 0.1% 1 = 0.01%
+    uint256 public bonusYield; //  5000 = 50% 100 = 1% 10 = 0.1% 1 = 0.01%
+    uint256 public constant FEES_MAX = 100000; // 1000 = 1% 100 = 0.1% 10 = 0.01% 1 = 0.001%
+    uint256 public constant UBQ_RATE_MAX = 10000e18; // 100000e18 Amount of UBQ to be stake to reduce the deposit fees by 100%
+
+    uint256 public fees; // 10000  = 10%, 1000 = 1% 100 = 0.1% 10= 0.01% 1=0.001%
+    // 100e18, if the ubqRate is 100 and UBQ_RATE_MAX=10000  then 100/10000  = 0.01
+    // 1UBQ gives you 0.01% of fee reduction so 10000 UBQ gives you 100%
+    uint256 public ubqRate;
+
+    uint256 public ubqMaxAmount; // UBQ amount to stake to have 100%
+
+    // struct to store deposit details
+
     mapping(address => UserInfo) private _balances;
     UbiquityAlgorithmicDollarManager public manager;
 
@@ -74,7 +76,7 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         address _manager,
         address _jar,
         uint256 _fees,
-        uint256 _UBQRate,
+        uint256 _ubqRate,
         uint256 _bonusYield
     ) CollectableDust() Pausable() {
         manager = UbiquityAlgorithmicDollarManager(_manager);
@@ -83,9 +85,9 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         token = ERC20(jar.token());
         // dont accept weird token
         assert(token.decimals() < 19);
-        UBQRate = _UBQRate;
+        ubqRate = _ubqRate;
         bonusYield = _bonusYield;
-        UBQMaxAmount = (100e18 * UBQRateMax) / UBQRate;
+        ubqMaxAmount = (100e18 * UBQ_RATE_MAX) / ubqRate;
     }
 
     /// @dev deposit tokens needed by the pickle jar to receive an extra yield in form of ubiquity debts
@@ -108,13 +110,13 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
             upatedAmount = _amount * 10**(18 - token.decimals());
         }
         if (
-            _ubqAmount < UBQMaxAmount
+            _ubqAmount < ubqMaxAmount
         ) // calculate fee based on ubqAmount if it is not the max
         {
             // calculate discount
-            uint256 discountPercentage = (UBQRate * _ubqAmount) / UBQRateMax; // we need to divide by 100e18 to get the percentage
+            uint256 discountPercentage = (ubqRate * _ubqAmount) / UBQ_RATE_MAX; // we need to divide by 100e18 to get the percentage
             // calculate regular fee
-            curFee = ((_amount * fees) / feesMax);
+            curFee = ((_amount * fees) / FEES_MAX);
 
             // calculate the discount for this fee
             uint256 discount = (curFee * discountPercentage) / 100e18;
@@ -122,7 +124,7 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
             curFee = curFee - discount;
         }
         // if we don't provide enough UAD the bonusYield will be lowered
-        uint256 calculatedBonusYield = bonusYieldMax;
+        uint256 calculatedBonusYield = BONUS_YIELD_MAX;
 
         uint256 maxUadAmount = upatedAmount / 2;
         if (_uadAmount < maxUadAmount) {
@@ -132,7 +134,7 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
             // increase the bonus yield with that percentage
             calculatedBonusYield = (bonusYield * percentage) / 100e18;
             // should not be possible to have a higher yield than the max yield
-            assert(calculatedBonusYield <= bonusYieldMax);
+            assert(calculatedBonusYield <= BONUS_YIELD_MAX);
         }
 
         dep.fee = curFee; // with 18 decimals
@@ -148,21 +150,21 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         uint256 curBalance = jar.balanceOf(address(this));
         // allowing token to be deposited into the jar
         token.safeIncreaseAllowance(address(jar), _amount);
-        uint256 allthis = ERC20(jar.token()).allowance(
+        /*    uint256 allthis = ERC20(jar.token()).allowance(
             address(this),
             address(jar)
         );
         uint256 allsender = ERC20(jar.token()).allowance(
             msg.sender,
             address(jar)
-        );
+        ); */
 
         jar.deposit(_amount);
         dep.shares = jar.balanceOf(address(this)) - curBalance;
-        allthis = ERC20(manager.dollarTokenAddress()).allowance(
+        /*   allthis = ERC20(manager.dollarTokenAddress()).allowance(
             msg.sender,
             address(this)
-        );
+        ); */
         if (_uadAmount > 0) {
             ERC20(manager.dollarTokenAddress()).safeTransferFrom(
                 msg.sender,
@@ -232,7 +234,7 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         // we need to have a positive yield
         if (amountWithYield > upatedAmount) {
             extraYieldBonus = (((amountWithYield - upatedAmount) *
-                dep.bonusYield) / bonusYieldMax);
+                dep.bonusYield) / BONUS_YIELD_MAX);
             uARYield =
                 extraYieldBonus +
                 (amountWithYield - upatedAmount) +
@@ -297,23 +299,6 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         return true;
     }
 
-    function getInfo(address _address)
-        external
-        view
-        returns (uint256[7] memory)
-    {
-        UserInfo memory dep = _balances[_address];
-        return [
-            dep.amount,
-            dep.shares,
-            dep.uadAmount,
-            dep.ubqAmount,
-            dep.fee,
-            dep.ratio,
-            dep.bonusYield
-        ];
-    }
-
     /// Collectable Dust
     function addProtocolToken(address _token) external override onlyAdmin {
         _addProtocolToken(_token);
@@ -336,11 +321,11 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         fees = _fees;
     }
 
-    function setUBQRate(uint256 _UBQRate) external onlyAdmin {
-        require(_UBQRate != UBQRate, "YieldProxy::===UBQRate");
-        require(_UBQRate <= UBQRateMax, "YieldProxy::>UBQRateMAX");
-        UBQRate = _UBQRate;
-        UBQMaxAmount = 100 * (UBQRateMax / UBQRate) * 1e18; // equivalent to 100 / (UBQRate/ UBQRateMax)
+    function setUBQRate(uint256 _ubqRate) external onlyAdmin {
+        require(_ubqRate != ubqRate, "YieldProxy::===ubqRate");
+        require(_ubqRate <= UBQ_RATE_MAX, "YieldProxy::>ubqRateMAX");
+        ubqRate = _ubqRate;
+        ubqMaxAmount = 100 * (UBQ_RATE_MAX / ubqRate) * 1e18; // equivalent to 100 / (ubqRate/ UBQ_RATE_MAX)
     }
 
     /*     function setMaxUAD(uint256 _maxUADPercent) external onlyAdmin {
@@ -353,5 +338,22 @@ contract YieldProxy is ReentrancyGuard, CollectableDust, Pausable {
         require(_jar != address(0), "YieldProxy::!Jar");
         jar = IJar(_jar);
         token = ERC20(jar.token());
+    }
+
+    function getInfo(address _address)
+        external
+        view
+        returns (uint256[7] memory)
+    {
+        UserInfo memory dep = _balances[_address];
+        return [
+            dep.amount,
+            dep.shares,
+            dep.uadAmount,
+            dep.ubqAmount,
+            dep.fee,
+            dep.ratio,
+            dep.bonusYield
+        ];
     }
 }

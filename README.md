@@ -117,8 +117,8 @@ npx hardhat --network mainnet getBondingTransactions
 
 Rename the `example.env` file to `.env` and fill:
 
-  - `ALCHEMY_API_KEY`: [get key at Alchemy API Dashboard](https://dashboard.alchemyapi.io/)
-  - `COINMARKETCAP_API_KEY`: [get key at CoinMarket](https://pro.coinmarketcap.com/login)
+- `ALCHEMY_API_KEY`: [get key at Alchemy API Dashboard](https://dashboard.alchemyapi.io/)
+- `COINMARKETCAP_API_KEY`: [get key at CoinMarket](https://pro.coinmarketcap.com/login)
 
 ### Launch all tests
 

@@ -1,12 +1,11 @@
 import { BigNumber, Signer } from "ethers";
-import { ethers, getNamedAccounts, network } from "hardhat";
+import { ethers } from "hardhat";
 import { expect } from "chai";
 import { YieldProxy } from "../artifacts/types/YieldProxy";
 import { ERC20 } from "../artifacts/types/ERC20";
 import { UbiquityAlgorithmicDollar } from "../artifacts/types/UbiquityAlgorithmicDollar";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { UbiquityAutoRedeem } from "../artifacts/types/UbiquityAutoRedeem";
-import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { UbiquityGovernance } from "../artifacts/types/UbiquityGovernance";
 import yieldProxySetup from "./YieldProxySetup";
 import { IJar } from "../artifacts/types/IJar";
@@ -788,12 +787,12 @@ describe("yield Proxy", () => {
   });
   it("setUBQRate should work", async () => {
     await yieldProxy.connect(admin).setUBQRate(500);
-    expect(await yieldProxy.UBQRate()).to.equal(500);
+    expect(await yieldProxy.ubqRate()).to.equal(500);
   });
   it("setUBQRate should revert if greater than max", async () => {
     await expect(
       yieldProxy.connect(admin).setUBQRate(ethers.utils.parseEther("10001"))
-    ).to.be.revertedWith("YieldProxy::>UBQRateMAX");
+    ).to.be.revertedWith("YieldProxy::>ubqRateMAX");
   });
   it("setUBQRate should revert if not admin", async () => {
     await expect(
