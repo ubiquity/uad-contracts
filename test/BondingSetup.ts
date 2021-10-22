@@ -12,6 +12,7 @@ import { ICurveFactory } from "../artifacts/types/ICurveFactory";
 import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { TWAPOracle } from "../artifacts/types/TWAPOracle";
 import { MasterChef } from "../artifacts/types/MasterChef";
+import { resetFork } from "./utils/hardhatNode";
 
 let twapOracle: TWAPOracle;
 let metaPool: IMetaPool;
@@ -127,6 +128,7 @@ async function bondingSetup(): Promise<{
   manager: UbiquityAlgorithmicDollarManager;
   blockCountInAWeek: BigNumber;
 }> {
+  await resetFork(12592661);
   // GET contracts adresses
   ({
     sablier,
