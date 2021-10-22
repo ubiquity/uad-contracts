@@ -21,7 +21,7 @@ if (fs.existsSync(path.join(__dirname, "artifacts/types"))) {
 dotenv.config();
 const {
   MNEMONIC,
-  PRIVATE_KEY,
+  UBQ,
   ALCHEMY_API_KEY,
   ETHERSCAN_API_KEY,
   REPORT_GAS,
@@ -128,18 +128,18 @@ const config: HardhatUserConfig = {
       url: `https://eth-mainnet.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : accounts,
-      gasPrice: 35000000000,
+      accounts: UBQ ? [UBQ] : accounts,
+      gasPrice: 60000000000,
     },
     ropsten: {
-      gasPrice: 35000000000,
+      gasPrice: 60000000000,
       url: `https://eth-ropsten.alchemyapi.io/v2/${
         process.env.ALCHEMY_API_KEY || ""
       }`,
       accounts,
     },
     rinkeby: {
-      gasPrice: 35000000000,
+      gasPrice: 60000000000,
       url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_API_KEY || ""}`,
       accounts,
     },
@@ -151,7 +151,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     enabled: REPORT_GAS === "true",
     currency: "USD",
-    gasPrice: 35,
+    gasPrice: 60,
     onlyCalledMethods: true,
     coinmarketcap: `${COINMARKETCAP_API_KEY || ""}`,
   },
