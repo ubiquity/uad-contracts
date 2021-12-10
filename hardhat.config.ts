@@ -9,6 +9,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
 import fs from "fs";
 import path from "path";
+import '@primitivefi/hardhat-dodoc';
 
 if (fs.existsSync(path.join(__dirname, "artifacts/types"))) {
   import("./tasks/index");
@@ -37,7 +38,19 @@ const accounts = {
   mnemonic,
 };
 
-const config: HardhatUserConfig = {
+interface WithDoDocConfig extends HardhatUserConfig {
+  dodoc: {
+    runOnCompile: boolean;
+    testMode: boolean;
+  }
+}
+
+const config: WithDoDocConfig = {
+  dodoc: {
+    runOnCompile: true,
+    testMode: true,
+    // More options...
+  },
   solidity: {
     compilers: [
       {
