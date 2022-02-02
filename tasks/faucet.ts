@@ -90,6 +90,12 @@ task("faucet", "Sends ETH and tokens to an address")
         usdcWhaleAccount
       )) as ERC20;
 
+      const gelatoUadUsdcLpToken = (await ethers.getContractAt(
+        "ERC20",
+        "0xA9514190cBBaD624c313Ea387a18Fd1dea576cbd",
+        treasuryAccount
+      )) as ERC20;
+
       // const crvToken = (await ethers.getContractAt(
       //   "ERC20",
       //   namedCurve3CrvAddress,
@@ -151,13 +157,18 @@ task("faucet", "Sends ETH and tokens to an address")
         );
       };
 
+      await transfer(
+        "G-UNI uAD/USDC LP",
+        gelatoUadUsdcLpToken,
+        ethers.utils.parseEther("2")
+      );
       await transfer("uAD", uADToken, ethers.utils.parseEther("1000"));
       await transfer("uAR", uARToken, ethers.utils.parseEther("1000"));
-      await transfer(
-        "uAD3CRV-f",
-        curveLPToken,
-        ethers.utils.parseEther("1000")
-      );
+      // await transfer(
+      //   "uAD3CRV-f",
+      //   curveLPToken,
+      //   ethers.utils.parseEther("1000")
+      // );
       // await transfer("3CRV", crvToken, 1000);
       await transfer("UBQ", ubqToken, ethers.utils.parseEther("1000"));
       await transfer("USDC", usdcToken, ethers.utils.parseUnits("1000", 6));
