@@ -3,8 +3,13 @@
 import "./accountsFromMnemonic";
 import "./accounts";
 import "./get-code";
+import "./getMasterChefTransactions";
+import "./getMasterChefV2Transactions";
+import "./getMasterChefV21Transactions";
 import "./getBondingTransactions";
+import "./getBondingV2Transactions";
 import "./generateBondingMigrationData";
+import "./generateBondingV2MigrationData";
 import "./blockNumber";
 import "./chainId";
 import "./tx";
