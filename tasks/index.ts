@@ -2,6 +2,8 @@
 // not with 'import * as tasks from ...'
 import "./accountsFromMnemonic";
 import "./accounts";
+import "./compensateLumpSum";
+import "./compensateFromLastGetReward";
 import "./get-code";
 import "./getMasterChefTransactions";
 import "./getMasterChefV2Transactions";
@@ -23,5 +25,6 @@ import "./adminRemoveLiquidity";
 import "./excessDollarDistribution";
 import "./revoke";
 import "./simulateMigrate";
+import "./simulateStakingMultiplierFix";
 import "./priceReset";
 import "./deployYieldProxyLocally";
