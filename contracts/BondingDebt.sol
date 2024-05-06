@@ -17,7 +17,7 @@ contract BondingDebt {
     modifier onlyTokenManager() {
         require(
             manager.hasRole(manager.UBQ_TOKEN_MANAGER_ROLE(), msg.sender),
-            "MasterChef: not UBQ manager"
+            "BondingDebt: not UBQ manager"
         );
         _;
     }
