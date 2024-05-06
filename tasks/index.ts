@@ -24,6 +24,7 @@ import "./manager";
 import "./adminRemoveLiquidity";
 import "./excessDollarDistribution";
 import "./revoke";
+import "./simulateBondingDebt";
 import "./simulateMigrate";
 import "./simulateStakingMultiplierFix";
 import "./priceReset";

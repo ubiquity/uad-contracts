@@ -7,7 +7,7 @@ import "./interfaces/IERC20Ubiquity.sol";
 // Full explanation https://github.com/ubiquity/ubiquity-dollar/issues/752#issuecomment-2095837822
 
 contract BondingDebt {
-    mapping(address user => bool isClaimed) public isUserClaimed;
+    mapping(address => bool) public isUserClaimed;
 
     function claim() public {
         require(!isUserClaimed[msg.sender], "Already claimed");
