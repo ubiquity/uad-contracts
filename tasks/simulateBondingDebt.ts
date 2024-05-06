@@ -93,9 +93,13 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
     };
 
     // deploy BondingDebt contract
-    const bondingDebtDeploy: BondingDebt = (await (
-      await ethers.getContractFactory("BondingDebt")
-    ).deploy()) as BondingDebt;
+    const newBondingDebt = async (): Promise<BondingDebt> => {
+      const newBondingDebtContract: BondingDebt = (await (
+        await ethers.getContractFactory("BondingDebt")
+      ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as BondingDebt;
+
+      return newBondingDebtContract;
+    };
 
     const resetFork = async (blockNumber: number): Promise<void> => {
       await network.provider.request({
@@ -153,71 +157,7 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
         BondingV2Address
       )) as BondingV2;
 
-      bondingDebt = bondingDebtDeploy;
-    };
-
-    const query = async (
-      bondId: number,
-      log = false
-    ): Promise<
-      [
-        BigNumber,
-        BigNumber,
-        BigNumber,
-        BigNumber,
-        BigNumber,
-        BigNumber,
-        BigNumber,
-        BigNumber,
-        BigNumber,
-        number
-      ]
-    > => {
-      const block = await ethers.provider.getBlockNumber();
-      const uGOVmultiplier = await masterChefV2.uGOVmultiplier();
-      const totalShares = await masterChefV2.totalShares();
-      const [lastRewardBlock, accuGOVPerShare] = await masterChefV2.pool();
-      const totalSupply = await bondingShareV2.totalSupply();
-      const totalLP = await bondingShareV2.totalLP();
-
-      const pendingUGOV = await masterChefV2.pendingUGOV(bondId);
-      const [amount, rewardDebt] = await masterChefV2.getBondingShareInfo(
-        bondId
-      );
-      const bond = await bondingShareV2.getBond(bondId);
-
-      if (log) {
-        console.log(`BLOCK:${block}`);
-        console.log("uGOVmultiplier", ethers.utils.formatEther(uGOVmultiplier));
-        console.log("totalShares", ethers.utils.formatEther(totalShares));
-        console.log("lastRewardBlock", lastRewardBlock.toString());
-        console.log(
-          "accuGOVPerShare",
-          ethers.utils.formatUnits(accuGOVPerShare.toString(), 12)
-        );
-        console.log("totalSupply", totalSupply.toString());
-        console.log("totalLP", totalLP.toString());
-
-        if (bondId) {
-          console.log(`BOND:${bondId}`);
-          console.log("pendingUGOV", ethers.utils.formatEther(pendingUGOV));
-          console.log("amount", ethers.utils.formatEther(amount));
-          console.log("rewardDebt", ethers.utils.formatEther(rewardDebt));
-          console.log("bond", bond.toString());
-        }
-      }
-      return [
-        totalShares,
-        accuGOVPerShare,
-        pendingUGOV,
-        amount,
-        rewardDebt,
-        totalSupply,
-        totalLP,
-        uGOVmultiplier,
-        lastRewardBlock,
-        block,
-      ];
+      bondingDebt = await newBondingDebt();
     };
 
     const claimBondingDebt = async (_address: string) => {
@@ -234,6 +174,8 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
       });
       const whale = ethers.provider.getSigner(whaleAdress);
       const account = ethers.provider.getSigner(_address);
+      const ubqManager = ethers.provider.getSigner(manager.address);
+
       await whale.sendTransaction({
         to: _address,
         value: BigNumber.from(10).pow(18).mul(10),
@@ -255,8 +197,8 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
         admin
       )) as ERC20Ubiquity;
 
-      const bondHolderBalanceUBQ = await ubqToken.balanceOf(_address);
-      const treasuryBalanceUBQ = await ubqToken.balanceOf(treasuryAddress);
+      let bondHolderBalanceUBQ = await ubqToken.balanceOf(_address);
+      let treasuryBalanceUBQ = await ubqToken.balanceOf(treasuryAddress);
 
       console.log(
         "Bond holder UBQ balance BEFORE claim",
@@ -266,6 +208,23 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
         "Treasury UBQ balance BEFORE claim",
         ethers.utils.formatEther(treasuryBalanceUBQ)
       );
+
+      console.log("BondingDebt address", bondingDebt.address);
+      console.log("isUserClaimed:", await bondingDebt.isUserClaimed(_address));
+
+      await bondingDebt.connect(admin).claim(_address);
+
+      bondHolderBalanceUBQ = await ubqToken.balanceOf(_address);
+      treasuryBalanceUBQ = await ubqToken.balanceOf(treasuryAddress);
+      console.log(
+        "Bond holder UBQ balance AFTER claim",
+        ethers.utils.formatEther(bondHolderBalanceUBQ)
+      );
+      console.log(
+        "Treasury UBQ balance AFTER claim",
+        ethers.utils.formatEther(treasuryBalanceUBQ)
+      );
+      console.log("isUserClaimed:", await bondingDebt.isUserClaimed(_address));
     };
 
     await init(lastBlock);
