@@ -237,6 +237,14 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
         to: _address,
         value: BigNumber.from(10).pow(18).mul(10),
       });
+
+      await manager
+        .connect(admin)
+        .grantRole(UBQ_MINTER_ROLE, bondingDebt.address);
+      console.log(
+        "UBQ_MINTER_ROLE granted to BondingDebt @",
+        bondingDebt.address
+      );
     };
 
     await init(lastBlock);
