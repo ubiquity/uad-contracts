@@ -153,40 +153,14 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
         UbiquityAlgorithmicDollarManagerAddress
       )) as UbiquityAlgorithmicDollarManager;
 
-      bondingShareV2 = (await ethers.getContractAt(
-        "BondingShareV2",
-        BondingShareV2Address
-      )) as BondingShareV2;
-
-      masterChefV2 = await newMasterChefV2();
-
-      bondingV2 = (await ethers.getContractAt(
-        "BondingV2",
-        BondingV2Address
-      )) as BondingV2;
-
       bondingDebt = await newBondingDebt();
     };
 
     const claimBondingDebt = async (_address: string) => {
       console.log(`\n>> Processing claim for address ${_address}`);
-
-      const whaleAdress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
       await network.provider.request({
         method: "hardhat_impersonateAccount",
         params: [_address],
-      });
-      await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [whaleAdress],
-      });
-      const whale = ethers.provider.getSigner(whaleAdress);
-      const account = ethers.provider.getSigner(_address);
-      const ubqManager = ethers.provider.getSigner(manager.address);
-
-      await whale.sendTransaction({
-        to: _address,
-        value: BigNumber.from(10).pow(18).mul(10),
       });
 
       const treasuryAddress = await manager.treasuryAddress();
