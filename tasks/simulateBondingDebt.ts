@@ -13,6 +13,7 @@ import { BondingShareV2 } from "../artifacts/types/BondingShareV2";
 import { MasterChefV2 } from "../artifacts/types/MasterChefV2";
 import { BondingDebt } from "../artifacts/types/BondingDebt";
 import { BondingV2 } from "../artifacts/types/BondingV2";
+import { ERC20Ubiquity } from "../artifacts/types/ERC20Ubiquity";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
 const lastBlock = 19810615;
@@ -220,7 +221,7 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
     };
 
     const claimBondingDebt = async (_address: string) => {
-      console.log(`\n>> Address ${_address}`);
+      console.log(`\n>> Processing claim for address ${_address}`);
 
       const whaleAdress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
       await network.provider.request({
@@ -244,6 +245,26 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
       console.log(
         "UBQ_MINTER_ROLE granted to BondingDebt @",
         bondingDebt.address
+      );
+
+      const treasuryAddress = await manager.treasuryAddress();
+      console.log("Treasury address", treasuryAddress);
+      const ubqToken = (await ethers.getContractAt(
+        "ERC20Ubiquity",
+        await manager.governanceTokenAddress(),
+        admin
+      )) as ERC20Ubiquity;
+
+      const bondHolderBalanceUBQ = await ubqToken.balanceOf(_address);
+      const treasuryBalanceUBQ = await ubqToken.balanceOf(treasuryAddress);
+
+      console.log(
+        "Bond holder UBQ balance BEFORE claim",
+        ethers.utils.formatEther(bondHolderBalanceUBQ)
+      );
+      console.log(
+        "Treasury UBQ balance BEFORE claim",
+        ethers.utils.formatEther(treasuryBalanceUBQ)
       );
     };
 
