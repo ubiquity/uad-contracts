@@ -98,6 +98,14 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
         await ethers.getContractFactory("BondingDebt")
       ).deploy(UbiquityAlgorithmicDollarManagerAddress)) as BondingDebt;
 
+      await manager
+        .connect(admin)
+        .grantRole(UBQ_MINTER_ROLE, newBondingDebtContract.address);
+      console.log(
+        "UBQ_MINTER_ROLE granted to BondingDebt @",
+        newBondingDebtContract.address
+      );
+
       return newBondingDebtContract;
     };
 
@@ -180,14 +188,6 @@ task("simulateBondingDebt", "bonding debt contract deployment and claim")
         to: _address,
         value: BigNumber.from(10).pow(18).mul(10),
       });
-
-      await manager
-        .connect(admin)
-        .grantRole(UBQ_MINTER_ROLE, bondingDebt.address);
-      console.log(
-        "UBQ_MINTER_ROLE granted to BondingDebt @",
-        bondingDebt.address
-      );
 
       const treasuryAddress = await manager.treasuryAddress();
       console.log("Treasury address", treasuryAddress);
