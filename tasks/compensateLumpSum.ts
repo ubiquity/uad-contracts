@@ -16,7 +16,7 @@ import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 import { ERC20Ubiquity } from "../artifacts/types/ERC20Ubiquity";
 
-let lastBlock = 19390055;
+const lastBlock = 19810615;
 
 // First six bond holders
 const bondHolders = [
@@ -451,8 +451,6 @@ task("compensateLumpSum", "compensate incorrect staking bond lump sum")
         }
       };
 
-      // lastBlock = 13011873;
-      lastBlock = 19443546;
       await init(lastBlock);
 
       if (paramAddress && paramId) {

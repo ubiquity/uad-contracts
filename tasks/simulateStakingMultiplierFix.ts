@@ -16,7 +16,7 @@ import { BondingV2 } from "../artifacts/types/BondingV2";
 import { UbiquityFormulas } from "../artifacts/types/UbiquityFormulas";
 import { UbiquityAlgorithmicDollarManager } from "../artifacts/types/UbiquityAlgorithmicDollarManager";
 
-let lastBlock = 19390055;
+const lastBlock = 19810615;
 
 // First six bond holders
 const bondHolders = [
@@ -412,25 +412,21 @@ task("simulateStakingMultiplierFix", "simulate migration of one address")
         }
       };
 
-      // 12936522
-      // await init(lastBlock);
-      // lastBlock = 12932141;
-      lastBlock = 13011873;
-      await init(13011873);
+      await init(lastBlock);
 
-      for (let j = lastBlock + 1; j < lastBlock + 5000000; j += 10000) {
-        if (paramAddress && paramId) {
-          // eslint-disable-next-line no-await-in-loop
-          await applyMultiplier(paramAddress, paramId);
-        } else {
-          for (let i = 0; i < bondHolders.length; i += 1) {
-            // eslint-disable-next-line no-await-in-loop
-            await applyMultiplier(bondHolders[i], ids[i]);
-          }
-        }
+      // for (let j = lastBlock + 1; j < lastBlock + 5000000; j += 10000) {
+      if (paramAddress && paramId) {
         // eslint-disable-next-line no-await-in-loop
-        await resetFork(j);
+        await applyMultiplier(paramAddress, paramId);
+      } else {
+        for (let i = 0; i < bondHolders.length; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          await applyMultiplier(bondHolders[i], ids[i]);
+        }
       }
+      // eslint-disable-next-line no-await-in-loop
+      //  await resetFork(j);
+      // }
 
       console.log(JSON.stringify(allResults));
 
