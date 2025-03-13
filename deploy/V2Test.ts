@@ -200,7 +200,15 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const ubiquityGovernance: UbiquityGovernance = ubqFactory.attach(
     ubqGovAdr
   ) as UbiquityGovernance;
-
+  deployments.log("idsAfter:", idsAfter[0].toNumber());
+  let bond = await bondingShareV2.getBond(idsAfter[0]);
+  deployments.log(`bond id:${idsAfter[0].toNumber()}
+           minter:${bond.minter}
+           lpAmount:${ethers.utils.formatEther(bond.lpAmount)}
+           lpFirstDeposited:${ethers.utils.formatEther(bond.lpFirstDeposited)}
+           endBlock:${bond.endBlock.toNumber()}
+           tx:${tx.blockNumber ? tx.blockNumber.toString() : ""}
+  `);
   deployments.log(
     `UbiquityAlgorithmicDollarManager deployed at:`,
     manager.address
