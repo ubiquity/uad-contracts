@@ -2,9 +2,16 @@
 // not with 'import * as tasks from ...'
 import "./accountsFromMnemonic";
 import "./accounts";
+import "./compensateLumpSum";
+import "./compensateFromLastGetReward";
 import "./get-code";
+import "./getMasterChefTransactions";
+import "./getMasterChefV2Transactions";
+import "./getMasterChefV21Transactions";
 import "./getBondingTransactions";
+import "./getBondingV2Transactions";
 import "./generateBondingMigrationData";
+import "./generateBondingV2MigrationData";
 import "./blockNumber";
 import "./chainId";
 import "./tx";
@@ -17,6 +24,8 @@ import "./manager";
 import "./adminRemoveLiquidity";
 import "./excessDollarDistribution";
 import "./revoke";
+import "./simulateBondingDebt";
 import "./simulateMigrate";
+import "./simulateStakingMultiplierFix";
 import "./priceReset";
 import "./deployYieldProxyLocally";
