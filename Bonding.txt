@@ -1,0 +1,3240 @@
+commit 552695c33894275c430d9e5faee0a619b5359b25
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Tue Jul 20 16:18:39 2021 +0200
+
+    chore(deploy) update deps and deploy scripts
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 8e2ebcc..670411d 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -65,8 +65,8 @@ contract Bonding is CollectableDust {
+             amount
+         );
+         // remove one coin
+-        uint256 expected =
+-            (metaPool.calc_withdraw_one_coin(amount, 0) * 99) / 100;
++        uint256 expected = (metaPool.calc_withdraw_one_coin(amount, 0) * 99) /
++            100;
+         // update twap
+         metaPool.remove_liquidity_one_coin(amount, 0, expected);
+         ITWAPOracle(manager.twapOracleAddress()).update();
+@@ -89,8 +89,8 @@ contract Bonding is CollectableDust {
+             amount
+         );
+         // remove one coin
+-        uint256 expected =
+-            (metaPool.calc_withdraw_one_coin(amount, 1) * 99) / 100;
++        uint256 expected = (metaPool.calc_withdraw_one_coin(amount, 1) * 99) /
++            100;
+         // update twap
+         metaPool.remove_liquidity_one_coin(amount, 1, expected);
+         ITWAPOracle(manager.twapOracleAddress()).update();
+@@ -190,12 +190,8 @@ contract Bonding is CollectableDust {
+             _lpsAmount
+         );
+ 
+-        uint256 _sharesAmount =
+-            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
+-                _lpsAmount,
+-                _weeks,
+-                bondingDiscountMultiplier
+-            );
++        uint256 _sharesAmount = IUbiquityFormulas(manager.formulasAddress())
++            .durationMultiply(_lpsAmount, _weeks, bondingDiscountMultiplier);
+ 
+         // 1 week = 45361 blocks = 2371753*7/366
+         // n = (block + duration * 45361)
+@@ -257,13 +253,12 @@ contract Bonding is CollectableDust {
+     }
+ 
+     function currentShareValue() public view returns (uint256 priceShare) {
+-        uint256 totalLP =
+-            IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
+-                address(this)
+-            );
++        uint256 totalLP = IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
++            address(this)
++        );
+ 
+-        uint256 totalShares =
+-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
++        uint256 totalShares = IERC1155Ubiquity(manager.bondingShareAddress())
++            .totalSupply();
+ 
+         priceShare = IUbiquityFormulas(manager.formulasAddress()).bondPrice(
+             totalLP,
+
+commit d59a14bd2ecab4b3d2e98eea5f36be00ab843716
+Author: アレクサンダー U B I Q U I T Y <gpg@pavlovcik.com>
+Date:   Fri Jun 4 15:03:01 2021 -0400
+
+    because travis made me rush this commit
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index f480f0f..8e2ebcc 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -70,9 +70,9 @@ contract Bonding is CollectableDust {
+         // update twap
+         metaPool.remove_liquidity_one_coin(amount, 0, expected);
+         ITWAPOracle(manager.twapOracleAddress()).update();
+-        IERC20(manager.uADTokenAddress()).safeTransfer(
++        IERC20(manager.dollarTokenAddress()).safeTransfer(
+             manager.treasuryAddress(),
+-            IERC20(manager.uADTokenAddress()).balanceOf(address(this))
++            IERC20(manager.dollarTokenAddress()).balanceOf(address(this))
+         );
+     }
+ 
+@@ -226,7 +226,7 @@ contract Bonding is CollectableDust {
+                 msg.sender,
+                 _id
+             ) >= _sharesAmount,
+-            "Bonding: Caller does not have enough shares"
++            "Bonding: caller does not have enough shares"
+         );
+ 
+         _updateOracle();
+@@ -275,7 +275,7 @@ contract Bonding is CollectableDust {
+     function currentTokenPrice() public view returns (uint256) {
+         return
+             ITWAPOracle(manager.twapOracleAddress()).consult(
+-                manager.uADTokenAddress()
++                manager.dollarTokenAddress()
+             );
+     }
+ 
+@@ -283,7 +283,7 @@ contract Bonding is CollectableDust {
+         uint256 _currentShareValue = currentShareValue();
+         require(
+             _currentShareValue != 0,
+-            "Bonding: Share Value should not be nul"
++            "Bonding: share value should not be null"
+         );
+ 
+         IERC1155Ubiquity(manager.bondingShareAddress()).mint(
+
+commit 8c43f95f6c227ee64413ece02a7033200396b5dc
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Fri Jun 4 19:38:27 2021 +0200
+
+    fix(naming) cleaning
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index f556a9b..f480f0f 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -14,8 +14,6 @@ import "./interfaces/ITWAPOracle.sol";
+ import "./interfaces/IERC1155Ubiquity.sol";
+ import "./utils/CollectableDust.sol";
+ 
+-import "hardhat/console.sol";
+-
+ contract Bonding is CollectableDust {
+     using SafeERC20 for IERC20;
+ 
+
+commit 9dbc3b4c1bbe60eac622481a726ef4813c08493c
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Mon May 31 18:51:23 2021 +0200
+
+    feat(price reset) for uad and 32crv with transfer to treasury
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index d81c0dc..f556a9b 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -54,11 +54,12 @@ contract Bonding is CollectableDust {
+     // solhint-disable-next-line no-empty-blocks
+     receive() external payable {}
+ 
+-    /// @dev priceReset remove uAD unilateraly from the curve LP share sitting inside
+-    ///      the bonding contract and burn the uAD received
++    /// @dev uADPriceReset remove uAD unilateraly from the curve LP share sitting inside
++    ///      the bonding contract and send the uAD received to the treasury.
++    ///      This will have the immediate effect of pushing the uAD price HIGHER
+     /// @param amount of LP token to be removed for uAD
+     /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
+-    function priceReset(uint256 amount) external onlyBondingManager {
++    function uADPriceReset(uint256 amount) external onlyBondingManager {
+         IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
+         // safe approve
+         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
+@@ -71,12 +72,36 @@ contract Bonding is CollectableDust {
+         // update twap
+         metaPool.remove_liquidity_one_coin(amount, 0, expected);
+         ITWAPOracle(manager.twapOracleAddress()).update();
+-        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
+-            address(this),
++        IERC20(manager.uADTokenAddress()).safeTransfer(
++            manager.treasuryAddress(),
+             IERC20(manager.uADTokenAddress()).balanceOf(address(this))
+         );
+     }
+ 
++    /// @dev crvPriceReset remove 3CRV unilateraly from the curve LP share sitting inside
++    ///      the bonding contract and send the 3CRV received to the treasury
++    ///      This will have the immediate effect of pushing the uAD price LOWER
++    /// @param amount of LP token to be removed for 3CRV tokens
++    /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
++    function crvPriceReset(uint256 amount) external onlyBondingManager {
++        IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
++        // safe approve
++        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
++            address(this),
++            amount
++        );
++        // remove one coin
++        uint256 expected =
++            (metaPool.calc_withdraw_one_coin(amount, 1) * 99) / 100;
++        // update twap
++        metaPool.remove_liquidity_one_coin(amount, 1, expected);
++        ITWAPOracle(manager.twapOracleAddress()).update();
++        IERC20(manager.curve3PoolTokenAddress()).safeTransfer(
++            manager.treasuryAddress(),
++            IERC20(manager.curve3PoolTokenAddress()).balanceOf(address(this))
++        );
++    }
++
+     /// Collectable Dust
+     function addProtocolToken(address _token)
+         external
+
+commit 231bba312c8214fb3c40ebf1e4a8d65c21b2ea26
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Mon May 17 23:38:03 2021 +0200
+
+    feat(bonding): price reset
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 291cd8e..d81c0dc 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -4,9 +4,9 @@ pragma solidity ^0.8.3;
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+ import "./interfaces/IERC1155Ubiquity.sol";
+-
++import "./interfaces/IMetaPool.sol";
+ import "./interfaces/IUbiquityFormulas.sol";
+-
++import "./UbiquityAlgorithmicDollar.sol";
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+ import "./interfaces/IMasterChef.sol";
+@@ -54,6 +54,29 @@ contract Bonding is CollectableDust {
+     // solhint-disable-next-line no-empty-blocks
+     receive() external payable {}
+ 
++    /// @dev priceReset remove uAD unilateraly from the curve LP share sitting inside
++    ///      the bonding contract and burn the uAD received
++    /// @param amount of LP token to be removed for uAD
++    /// @notice it will remove one coin only from the curve LP share sitting in the bonding contract
++    function priceReset(uint256 amount) external onlyBondingManager {
++        IMetaPool metaPool = IMetaPool(manager.stableSwapMetaPoolAddress());
++        // safe approve
++        IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
++            address(this),
++            amount
++        );
++        // remove one coin
++        uint256 expected =
++            (metaPool.calc_withdraw_one_coin(amount, 0) * 99) / 100;
++        // update twap
++        metaPool.remove_liquidity_one_coin(amount, 0, expected);
++        ITWAPOracle(manager.twapOracleAddress()).update();
++        UbiquityAlgorithmicDollar(manager.uADTokenAddress()).burnFrom(
++            address(this),
++            IERC20(manager.uADTokenAddress()).balanceOf(address(this))
++        );
++    }
++
+     /// Collectable Dust
+     function addProtocolToken(address _token)
+         external
+@@ -124,9 +147,10 @@ contract Bonding is CollectableDust {
+         emit UGOVPerBlockUpdated(_uGOVPerBlock);
+     }
+ 
+-    /*
+-        Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
+-     */
++    /// @dev deposit uAD-3CRV LP tokens for a duration to receive bonding shares
++    /// @param _lpsAmount of LP token to send
++    /// @param _weeks during lp token will be held
++    /// @notice weeks act as a multiplier for the amount of bonding shares to be received
+     function deposit(uint256 _lpsAmount, uint256 _weeks)
+         public
+         returns (uint256 _id)
+@@ -164,6 +188,10 @@ contract Bonding is CollectableDust {
+         );
+     }
+ 
++    /// @dev withdraw an amount of uAD-3CRV LP tokens
++    /// @param _sharesAmount of bonding shares of type _id to be withdrawn
++    /// @param _id bonding shares id
++    /// @notice bonding shares are ERC1155 (aka NFT) because they have an expiration date
+     function withdraw(uint256 _sharesAmount, uint256 _id) public {
+         require(
+             block.number > _id,
+
+commit a4f3a291ac26f9c4104398ac2ff33139c7c1c6a1
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Fri May 7 16:18:30 2021 +0200
+
+    feat(ugov): add ugov incetive for bonding participants
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 7a78ade..291cd8e 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -79,7 +79,6 @@ contract Bonding is CollectableDust {
+         _sendDust(_to, _token, _amount);
+     }
+ 
+-
+     function setSablier(address _sablier) external onlyBondingManager {
+         sablier = ISablier(_sablier);
+         emit SablierUpdated(_sablier);
+@@ -136,7 +135,6 @@ contract Bonding is CollectableDust {
+             1 <= _weeks && _weeks <= 208,
+             "Bonding: duration must be between 1 and 208 weeks"
+         );
+-
+         _updateOracle();
+ 
+         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
+@@ -152,19 +150,18 @@ contract Bonding is CollectableDust {
+                 bondingDiscountMultiplier
+             );
+ 
+-        // First block 2020 = 9193266 https://etherscan.io/block/9193266
+-        // First block 2021 = 11565019 https://etherscan.io/block/11565019
+-        // 2020 = 2371753 blocks = 366 days
+         // 1 week = 45361 blocks = 2371753*7/366
+         // n = (block + duration * 45361)
+         // id = n - n % blockRonding
+         // blockRonding = 100 => 2 ending zeros
+         uint256 n = block.number + _weeks * blockCountInAWeek;
+         _id = n - (n % blockRonding);
+-
+         _mint(_sharesAmount, _id);
+         // set masterchef for uGOV rewards
+-        IMasterChef(manager.masterChefAddress()).deposit(_sharesAmount, msg.sender);
++        IMasterChef(manager.masterChefAddress()).deposit(
++            _sharesAmount,
++            msg.sender
++        );
+     }
+ 
+     function withdraw(uint256 _sharesAmount, uint256 _id) public {
+@@ -182,6 +179,13 @@ contract Bonding is CollectableDust {
+         );
+ 
+         _updateOracle();
++        // get masterchef for uGOV rewards To ensure correct computation
++        // it needs to be done BEFORE burning the shares
++        IMasterChef(manager.masterChefAddress()).withdraw(
++            _sharesAmount,
++            msg.sender
++        );
++
+         uint256 _currentShareValue = currentShareValue();
+ 
+         IERC1155Ubiquity(manager.bondingShareAddress()).burn(
+@@ -199,37 +203,6 @@ contract Bonding is CollectableDust {
+                 ONE
+             )
+         );
+-        // get masterchef for uGOV rewards
+-        IMasterChef(manager.masterChefAddress()).withdraw(_sharesAmount, msg.sender);
+-
+-        //     } else {
+-        //         // The transaction must be processed by the Ethereum blockchain before
+-        //         // the start time of the stream, or otherwise the sablier contract
+-        //         // reverts with a "start time before block.timestamp" message.
+-        //         uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
+-        //         uint256 streamStop = streamStart + redeemStreamTime;
+-        //         // The deposit must be a multiple of the difference between the stop
+-        //         // time and the start time
+-
+-        //         uint256 streamDuration = streamStop - streamStart;
+-        //         tokenAmount = (tokenAmount / streamDuration) * streamDuration;
+-
+-        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
+-        //             address(sablier),
+-        //             0
+-        //         );
+-        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
+-        //             address(sablier),
+-        //             tokenAmount
+-        //         );
+-        //         sablier.createStream(
+-        //             msg.sender,
+-        //             tokenAmount,
+-        //             manager.stableSwapMetaPoolAddress(),
+-        //             streamStart,
+-        //             streamStop
+-        //         );
+-        //     }
+     }
+ 
+     function currentShareValue() public view returns (uint256 priceShare) {
+
+commit 647ef3fd5d44f3da527426bf1c57286f3d94de80
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Wed May 5 23:09:18 2021 +0200
+
+    feat(masterchef): refacto
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 4401e55..7a78ade 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -9,8 +9,9 @@ import "./interfaces/IUbiquityFormulas.sol";
+ 
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
++import "./interfaces/IMasterChef.sol";
+ import "./interfaces/ITWAPOracle.sol";
+-import "./interfaces/IBondingShare.sol";
++import "./interfaces/IERC1155Ubiquity.sol";
+ import "./utils/CollectableDust.sol";
+ 
+ import "hardhat/console.sol";
+@@ -78,6 +79,7 @@ contract Bonding is CollectableDust {
+         _sendDust(_to, _token, _amount);
+     }
+ 
++
+     function setSablier(address _sablier) external onlyBondingManager {
+         sablier = ISablier(_sablier);
+         emit SablierUpdated(_sablier);
+@@ -161,6 +163,8 @@ contract Bonding is CollectableDust {
+         _id = n - (n % blockRonding);
+ 
+         _mint(_sharesAmount, _id);
++        // set masterchef for uGOV rewards
++        IMasterChef(manager.masterChefAddress()).deposit(_sharesAmount, msg.sender);
+     }
+ 
+     function withdraw(uint256 _sharesAmount, uint256 _id) public {
+@@ -180,7 +184,7 @@ contract Bonding is CollectableDust {
+         _updateOracle();
+         uint256 _currentShareValue = currentShareValue();
+ 
+-        IBondingShare(manager.bondingShareAddress()).burn(
++        IERC1155Ubiquity(manager.bondingShareAddress()).burn(
+             msg.sender,
+             _id,
+             _sharesAmount
+@@ -195,6 +199,9 @@ contract Bonding is CollectableDust {
+                 ONE
+             )
+         );
++        // get masterchef for uGOV rewards
++        IMasterChef(manager.masterChefAddress()).withdraw(_sharesAmount, msg.sender);
++
+         //     } else {
+         //         // The transaction must be processed by the Ethereum blockchain before
+         //         // the start time of the stream, or otherwise the sablier contract
+@@ -255,7 +262,7 @@ contract Bonding is CollectableDust {
+             "Bonding: Share Value should not be nul"
+         );
+ 
+-        IBondingShare(manager.bondingShareAddress()).mint(
++        IERC1155Ubiquity(manager.bondingShareAddress()).mint(
+             msg.sender,
+             _id,
+             _sharesAmount,
+
+commit 1c7a843bc7da6d8c8c5ab6809ec73f1ddf3de543
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Tue May 4 09:40:15 2021 +0200
+
+    feat(bonding): update and improve tests
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index f9a941f..4401e55 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -25,6 +25,7 @@ contract Bonding is CollectableDust {
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
++    uint256 public blockCountInAWeek = 45361;
+     uint256 public blockRonding = 100;
+     uint256 public uGOVPerBlock = 1;
+ 
+@@ -33,6 +34,7 @@ contract Bonding is CollectableDust {
+     event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
+     event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
+     event BlockRondingUpdated(uint256 _blockRonding);
++    event BlockCountInAWeekUpdated(uint256 _blockCountInAWeek);
+     event UGOVPerBlockUpdated(uint256 _uGOVPerBlock);
+ 
+     modifier onlyBondingManager() {
+@@ -105,6 +107,14 @@ contract Bonding is CollectableDust {
+         emit BlockRondingUpdated(_blockRonding);
+     }
+ 
++    function setBlockCountInAWeek(uint256 _blockCountInAWeek)
++        external
++        onlyBondingManager
++    {
++        blockCountInAWeek = _blockCountInAWeek;
++        emit BlockCountInAWeekUpdated(_blockCountInAWeek);
++    }
++
+     function setUGOVPerBlock(uint256 _uGOVPerBlock)
+         external
+         onlyBondingManager
+@@ -121,8 +131,8 @@ contract Bonding is CollectableDust {
+         returns (uint256 _id)
+     {
+         require(
+-            1 <= _weeks && _weeks <= 520,
+-            "Bonding: duration must be between 1 and 520 weeks"
++            1 <= _weeks && _weeks <= 208,
++            "Bonding: duration must be between 1 and 208 weeks"
+         );
+ 
+         _updateOracle();
+@@ -147,7 +157,7 @@ contract Bonding is CollectableDust {
+         // n = (block + duration * 45361)
+         // id = n - n % blockRonding
+         // blockRonding = 100 => 2 ending zeros
+-        uint256 n = block.number + _weeks * 45361;
++        uint256 n = block.number + _weeks * blockCountInAWeek;
+         _id = n - (n % blockRonding);
+ 
+         _mint(_sharesAmount, _id);
+
+commit ebea4a2d7a516ddde56dc5901971f9288dd5dd78
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Sat May 1 18:31:09 2021 +0200
+
+    fix(lint): fix lint pbs
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 670f16b..f9a941f 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -238,8 +238,6 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
+-    function currentPendingUGovReward() public view returns (uint256) {}
+-
+     function _mint(uint256 _sharesAmount, uint256 _id) internal {
+         uint256 _currentShareValue = currentShareValue();
+         require(
+
+commit 58c88a47b6464c474731c02e15b7d351923b1a3c
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Sat May 1 13:28:19 2021 +0200
+
+    feat(formulas): change formula library to a contract
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 8a0322e..670f16b 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -5,7 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+ import "./interfaces/IERC1155Ubiquity.sol";
+ 
+-import "./libs/UbiquityFormulas.sol";
++import "./interfaces/IUbiquityFormulas.sol";
++
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+ import "./interfaces/ITWAPOracle.sol";
+@@ -16,7 +17,6 @@ import "hardhat/console.sol";
+ 
+ contract Bonding is CollectableDust {
+     using SafeERC20 for IERC20;
+-    using UbiquityFormulas for uint256;
+ 
+     bytes public data = "";
+     UbiquityAlgorithmicDollarManager public manager;
+@@ -134,7 +134,11 @@ contract Bonding is CollectableDust {
+         );
+ 
+         uint256 _sharesAmount =
+-            _lpsAmount.durationMultiply(_weeks, bondingDiscountMultiplier);
++            IUbiquityFormulas(manager.formulasAddress()).durationMultiply(
++                _lpsAmount,
++                _weeks,
++                bondingDiscountMultiplier
++            );
+ 
+         // First block 2020 = 9193266 https://etherscan.io/block/9193266
+         // First block 2021 = 11565019 https://etherscan.io/block/11565019
+@@ -175,7 +179,11 @@ contract Bonding is CollectableDust {
+         // if (redeemStreamTime == 0) {
+         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
+             msg.sender,
+-            _sharesAmount.redeemBonds(_currentShareValue, ONE)
++            IUbiquityFormulas(manager.formulasAddress()).redeemBonds(
++                _sharesAmount,
++                _currentShareValue,
++                ONE
++            )
+         );
+         //     } else {
+         //         // The transaction must be processed by the Ethereum blockchain before
+@@ -216,7 +224,11 @@ contract Bonding is CollectableDust {
+         uint256 totalShares =
+             IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+ 
+-        priceShare = totalLP.bondPrice(totalShares, ONE);
++        priceShare = IUbiquityFormulas(manager.formulasAddress()).bondPrice(
++            totalLP,
++            totalShares,
++            ONE
++        );
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+
+commit 3e666463b9bb2aba3dd7b27de957433e0977517b
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Thu Apr 29 08:21:26 2021 +0200
+
+    feat(ugov): add ugovperblock
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 204864b..8a0322e 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -26,11 +26,14 @@ contract Bonding is CollectableDust {
+     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+     uint256 public blockRonding = 100;
++    uint256 public uGOVPerBlock = 1;
+ 
+     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
+     event SablierUpdated(address _sablier);
+     event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
+     event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
++    event BlockRondingUpdated(uint256 _blockRonding);
++    event UGOVPerBlockUpdated(uint256 _uGOVPerBlock);
+ 
+     modifier onlyBondingManager() {
+         require(
+@@ -99,6 +102,15 @@ contract Bonding is CollectableDust {
+         onlyBondingManager
+     {
+         blockRonding = _blockRonding;
++        emit BlockRondingUpdated(_blockRonding);
++    }
++
++    function setUGOVPerBlock(uint256 _uGOVPerBlock)
++        external
++        onlyBondingManager
++    {
++        uGOVPerBlock = _uGOVPerBlock;
++        emit UGOVPerBlockUpdated(_uGOVPerBlock);
+     }
+ 
+     /*
+@@ -214,6 +226,8 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
++    function currentPendingUGovReward() public view returns (uint256) {}
++
+     function _mint(uint256 _sharesAmount, uint256 _id) internal {
+         uint256 _currentShareValue = currentShareValue();
+         require(
+
+commit 1ac9bfa14eeaacebde981e5f813c74d4a715efd4
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Fri Apr 30 18:58:17 2021 +0200
+
+    feat(bonding): renmae bondTokens end redeemShares to deposit and withdrax + some fix
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 406388f..204864b 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -18,12 +18,10 @@ contract Bonding is CollectableDust {
+     using SafeERC20 for IERC20;
+     using UbiquityFormulas for uint256;
+ 
+-    uint16 public id = 42;
+     bytes public data = "";
+-
+     UbiquityAlgorithmicDollarManager public manager;
+ 
+-    uint256 public constant TARGET_PRICE = uint256(1 ether); // 3Crv has 18 decimals
++    uint256 public constant ONE = uint256(1 ether); // 3Crv has 18 decimals
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+@@ -106,7 +104,7 @@ contract Bonding is CollectableDust {
+     /*
+         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
+      */
+-    function bondTokens(uint256 _lpsAmount, uint256 _weeks)
++    function deposit(uint256 _lpsAmount, uint256 _weeks)
+         public
+         returns (uint256 _id)
+     {
+@@ -136,10 +134,10 @@ contract Bonding is CollectableDust {
+         uint256 n = block.number + _weeks * 45361;
+         _id = n - (n % blockRonding);
+ 
+-        _bond(_sharesAmount, _id);
++        _mint(_sharesAmount, _id);
+     }
+ 
+-    function redeemShares(uint256 _sharesAmount, uint256 _id) public {
++    function withdraw(uint256 _sharesAmount, uint256 _id) public {
+         require(
+             block.number > _id,
+             "Bonding: Redeem not allowed before bonding time"
+@@ -165,7 +163,7 @@ contract Bonding is CollectableDust {
+         // if (redeemStreamTime == 0) {
+         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
+             msg.sender,
+-            _sharesAmount.redeemBonds(_currentShareValue, TARGET_PRICE)
++            _sharesAmount.redeemBonds(_currentShareValue, ONE)
+         );
+         //     } else {
+         //         // The transaction must be processed by the Ethereum blockchain before
+@@ -197,15 +195,6 @@ contract Bonding is CollectableDust {
+         //     }
+     }
+ 
+-    // solhint-disable-next-line no-empty-blocks
+-    function redeemAllShares() public {
+-        // for each id of msg.sender
+-        // redeemShares(
+-        //     IERC20(manager.bondingShareAddress()).balanceOf(msg.sender),
+-        //     id
+-        // );
+-    }
+-
+     function currentShareValue() public view returns (uint256 priceShare) {
+         uint256 totalLP =
+             IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
+@@ -215,7 +204,7 @@ contract Bonding is CollectableDust {
+         uint256 totalShares =
+             IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+ 
+-        priceShare = totalLP.bondPrice(totalShares, TARGET_PRICE);
++        priceShare = totalLP.bondPrice(totalShares, ONE);
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+@@ -225,7 +214,7 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
+-    function _bond(uint256 _sharesAmount, uint256 _id) internal {
++    function _mint(uint256 _sharesAmount, uint256 _id) internal {
+         uint256 _currentShareValue = currentShareValue();
+         require(
+             _currentShareValue != 0,
+@@ -235,7 +224,7 @@ contract Bonding is CollectableDust {
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+             _id,
+-            _sharesAmount.bonding(_currentShareValue, TARGET_PRICE),
++            _sharesAmount,
+             data
+         );
+     }
+
+commit dfe96cfcd872d2a2ab3ba64e91f152c3a5a47d14
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Fri Apr 30 16:50:42 2021 +0200
+
+    fix(lint): fix lint + PR remarks
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 984ce80..406388f 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -24,8 +24,6 @@ contract Bonding is CollectableDust {
+     UbiquityAlgorithmicDollarManager public manager;
+ 
+     uint256 public constant TARGET_PRICE = uint256(1 ether); // 3Crv has 18 decimals
+-    // Initially set at $1,000,000 to avoid interference with growth.
+-    uint256 public maxBondingPrice = uint256(1000000 ether);
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+@@ -77,14 +75,6 @@ contract Bonding is CollectableDust {
+         _sendDust(_to, _token, _amount);
+     }
+ 
+-    function setMaxBondingPrice(uint256 _maxBondingPrice)
+-        external
+-        onlyBondingManager
+-    {
+-        maxBondingPrice = _maxBondingPrice;
+-        emit MaxBondingPriceUpdated(_maxBondingPrice);
+-    }
+-
+     function setSablier(address _sablier) external onlyBondingManager {
+         sablier = ISablier(_sablier);
+         emit SablierUpdated(_sablier);
+@@ -122,15 +112,11 @@ contract Bonding is CollectableDust {
+     {
+         require(
+             1 <= _weeks && _weeks <= 520,
+-            "Bonding: duration must be between 1 and 250 weeks"
++            "Bonding: duration must be between 1 and 520 weeks"
+         );
+ 
+         _updateOracle();
+-        uint256 currentPrice = currentTokenPrice();
+-        require(
+-            currentPrice < maxBondingPrice,
+-            "Bonding: Current price is too high"
+-        );
++
+         IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
+             msg.sender,
+             address(this),
+@@ -176,10 +162,6 @@ contract Bonding is CollectableDust {
+             _sharesAmount
+         );
+ 
+-        // uint256 tokenAmount = formulaRedeemBonds(_sharesAmount, _currentShareValue);
+-
+-        // console.log("_sharesAmount", _sharesAmount);
+-        // console.log("tokenAmount", tokenAmount);
+         // if (redeemStreamTime == 0) {
+         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
+             msg.sender,
+@@ -224,10 +206,6 @@ contract Bonding is CollectableDust {
+         // );
+     }
+ 
+-    // SI totalShares = 0  priceShare = TARGET_PRICE
+-    // SINON               priceShare = totalLP / totalShares * TARGET_PRICE
+-    // R = T == 0 ? 1 : LP / S
+-    // P = R * T
+     function currentShareValue() public view returns (uint256 priceShare) {
+         uint256 totalLP =
+             IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
+@@ -241,17 +219,13 @@ contract Bonding is CollectableDust {
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+-        /* uint256[2] memory prices =
+-            IMetaPool(manager.stableSwapMetaPoolAddress())
+-                .get_price_cumulative_last();
+-        return prices[0]; */
+         return
+             ITWAPOracle(manager.twapOracleAddress()).consult(
+                 manager.uADTokenAddress()
+             );
+     }
+ 
+-    function _bond(uint256 _amount, uint256 _id) internal {
++    function _bond(uint256 _sharesAmount, uint256 _id) internal {
+         uint256 _currentShareValue = currentShareValue();
+         require(
+             _currentShareValue != 0,
+@@ -261,7 +235,7 @@ contract Bonding is CollectableDust {
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+             _id,
+-            _amount.bonding(_currentShareValue, TARGET_PRICE),
++            _sharesAmount.bonding(_currentShareValue, TARGET_PRICE),
+             data
+         );
+     }
+
+commit 748ee04334c0b2b4e2fa038429d0c8ac4089ad1c
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Thu Apr 29 15:28:46 2021 +0200
+
+    fix(lint): fix lint errors
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index d253016..984ce80 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -215,11 +215,12 @@ contract Bonding is CollectableDust {
+         //     }
+     }
+ 
++    // solhint-disable-next-line no-empty-blocks
+     function redeemAllShares() public {
+-        // for each id in chained list
++        // for each id of msg.sender
+         // redeemShares(
+         //     IERC20(manager.bondingShareAddress()).balanceOf(msg.sender),
+-        //     _id
++        //     id
+         // );
+     }
+ 
+
+commit 89cc3aa27e4a748d8857bc1c3fbd7efb2736437f
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Mon Apr 26 18:43:27 2021 +0200
+
+    feat(bonding): use rounded block number as id and totalSupply() for ERC115 bonding shares
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 0da1466..d253016 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+ import "./interfaces/IERC1155Ubiquity.sol";
+ 
+-import "./UbiquityFormulas.sol";
++import "./libs/UbiquityFormulas.sol";
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+ import "./interfaces/ITWAPOracle.sol";
+@@ -16,6 +16,7 @@ import "hardhat/console.sol";
+ 
+ contract Bonding is CollectableDust {
+     using SafeERC20 for IERC20;
++    using UbiquityFormulas for uint256;
+ 
+     uint16 public id = 42;
+     bytes public data = "";
+@@ -28,6 +29,7 @@ contract Bonding is CollectableDust {
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
++    uint256 public blockRonding = 100;
+ 
+     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
+     event SablierUpdated(address _sablier);
+@@ -104,6 +106,13 @@ contract Bonding is CollectableDust {
+         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+     }
+ 
++    function setBlockRonding(uint256 _blockRonding)
++        external
++        onlyBondingManager
++    {
++        blockRonding = _blockRonding;
++    }
++
+     /*
+         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
+      */
+@@ -129,21 +138,24 @@ contract Bonding is CollectableDust {
+         );
+ 
+         uint256 _sharesAmount =
+-            UbiquityFormulas.durationMultiply(
+-                _lpsAmount,
+-                _weeks,
+-                bondingDiscountMultiplier
+-            );
+-
+-        // 1 WEEK =  7 * 24 * 60 * 60  = 604800
+-        _id = block.timestamp + _weeks * 604800;
++            _lpsAmount.durationMultiply(_weeks, bondingDiscountMultiplier);
++
++        // First block 2020 = 9193266 https://etherscan.io/block/9193266
++        // First block 2021 = 11565019 https://etherscan.io/block/11565019
++        // 2020 = 2371753 blocks = 366 days
++        // 1 week = 45361 blocks = 2371753*7/366
++        // n = (block + duration * 45361)
++        // id = n - n % blockRonding
++        // blockRonding = 100 => 2 ending zeros
++        uint256 n = block.number + _weeks * 45361;
++        _id = n - (n % blockRonding);
+ 
+         _bond(_sharesAmount, _id);
+     }
+ 
+     function redeemShares(uint256 _sharesAmount, uint256 _id) public {
+         require(
+-            block.timestamp > _id,
++            block.number > _id,
+             "Bonding: Redeem not allowed before bonding time"
+         );
+ 
+@@ -171,11 +183,7 @@ contract Bonding is CollectableDust {
+         // if (redeemStreamTime == 0) {
+         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
+             msg.sender,
+-            UbiquityFormulas.redeemBonds(
+-                _sharesAmount,
+-                _currentShareValue,
+-                TARGET_PRICE
+-            )
++            _sharesAmount.redeemBonds(_currentShareValue, TARGET_PRICE)
+         );
+         //     } else {
+         //         // The transaction must be processed by the Ethereum blockchain before
+@@ -226,13 +234,9 @@ contract Bonding is CollectableDust {
+             );
+ 
+         uint256 totalShares =
+-            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply(id);
++            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply();
+ 
+-        priceShare = UbiquityFormulas.bondPrice(
+-            totalLP,
+-            totalShares,
+-            TARGET_PRICE
+-        );
++        priceShare = totalLP.bondPrice(totalShares, TARGET_PRICE);
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+@@ -256,7 +260,7 @@ contract Bonding is CollectableDust {
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+             _id,
+-            UbiquityFormulas.bonding(_amount, _currentShareValue, TARGET_PRICE),
++            _amount.bonding(_currentShareValue, TARGET_PRICE),
+             data
+         );
+     }
+
+commit 38327a260c8d38cedf3423da9251edda3beda7bd
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Sat Apr 24 23:19:23 2021 +0200
+
+    feat(bonding): block redeem before bonding time
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index a4bde5d..0da1466 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -107,11 +107,15 @@ contract Bonding is CollectableDust {
+     /*
+         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
+      */
+-    function bondTokens(
+-        uint256 _lpsAmount,
+-        uint256 _weeks,
+-        uint256 _block
+-    ) public {
++    function bondTokens(uint256 _lpsAmount, uint256 _weeks)
++        public
++        returns (uint256 _id)
++    {
++        require(
++            1 <= _weeks && _weeks <= 520,
++            "Bonding: duration must be between 1 and 250 weeks"
++        );
++
+         _updateOracle();
+         uint256 currentPrice = currentTokenPrice();
+         require(
+@@ -130,22 +134,33 @@ contract Bonding is CollectableDust {
+                 _weeks,
+                 bondingDiscountMultiplier
+             );
+-        _bond(_sharesAmount, _block);
++
++        // 1 WEEK =  7 * 24 * 60 * 60  = 604800
++        _id = block.timestamp + _weeks * 604800;
++
++        _bond(_sharesAmount, _id);
+     }
+ 
+-    function redeemShares(uint256 _sharesAmount) public {
++    function redeemShares(uint256 _sharesAmount, uint256 _id) public {
++        require(
++            block.timestamp > _id,
++            "Bonding: Redeem not allowed before bonding time"
++        );
++
+         require(
+             IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
+                 msg.sender,
+-                id
++                _id
+             ) >= _sharesAmount,
+             "Bonding: Caller does not have enough shares"
+         );
++
+         _updateOracle();
+         uint256 _currentShareValue = currentShareValue();
++
+         IBondingShare(manager.bondingShareAddress()).burn(
+             msg.sender,
+-            id,
++            _id,
+             _sharesAmount
+         );
+ 
+@@ -193,9 +208,11 @@ contract Bonding is CollectableDust {
+     }
+ 
+     function redeemAllShares() public {
+-        redeemShares(
+-            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender)
+-        );
++        // for each id in chained list
++        // redeemShares(
++        //     IERC20(manager.bondingShareAddress()).balanceOf(msg.sender),
++        //     _id
++        // );
+     }
+ 
+     // SI totalShares = 0  priceShare = TARGET_PRICE
+@@ -229,16 +246,16 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
+-    function _bond(uint256 _amount, uint256 _block) internal {
++    function _bond(uint256 _amount, uint256 _id) internal {
+         uint256 _currentShareValue = currentShareValue();
+         require(
+             _currentShareValue != 0,
+-            "Current Share Value should not be nul"
++            "Bonding: Share Value should not be nul"
+         );
+ 
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+-            _block,
++            _id,
+             UbiquityFormulas.bonding(_amount, _currentShareValue, TARGET_PRICE),
+             data
+         );
+
+commit 862cc7b59849090e018a75bcb052f5b55e97b23d
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Sat Apr 24 15:31:14 2021 +0200
+
+    feat(bonding): add UbiquityFormulas library
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 63fb91f..a4bde5d 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -5,17 +5,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+ import "./interfaces/IERC1155Ubiquity.sol";
+ 
++import "./UbiquityFormulas.sol";
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+ import "./interfaces/ITWAPOracle.sol";
+ import "./interfaces/IBondingShare.sol";
+ import "./utils/CollectableDust.sol";
+-import "./libs/ABDKMathQuad.sol";
++
+ import "hardhat/console.sol";
+ 
+ contract Bonding is CollectableDust {
+-    using ABDKMathQuad for uint256;
+-    using ABDKMathQuad for bytes16;
+     using SafeERC20 for IERC20;
+ 
+     uint16 public id = 42;
+@@ -108,7 +107,11 @@ contract Bonding is CollectableDust {
+     /*
+         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
+      */
+-    function bondTokens(uint256 _lpsAmount, uint256 _weeks) public {
++    function bondTokens(
++        uint256 _lpsAmount,
++        uint256 _weeks,
++        uint256 _block
++    ) public {
+         _updateOracle();
+         uint256 currentPrice = currentTokenPrice();
+         require(
+@@ -121,31 +124,15 @@ contract Bonding is CollectableDust {
+             _lpsAmount
+         );
+ 
+-        uint256 _sharesAmount = durationMultiply(_lpsAmount, _weeks);
+-        _bond(_sharesAmount);
+-    }
+-
+-    // staking duration multiplier
+-    // _sharesAmount = (1 + 0.001 * _weeks^3/2) * _lpsAmount
+-    // D32 = D^3/2
+-    // S = m * D32 * A + A
+-    function durationMultiply(uint256 _lpsAmount, uint256 _weeks)
+-        public
+-        view
+-        returns (uint256 _sharesAmount)
+-    {
+-        bytes16 unit = uint256(1 ether).fromUInt();
+-        bytes16 D = _weeks.fromUInt();
+-        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
+-        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
+-        bytes16 A = _lpsAmount.fromUInt();
+-
+-        _sharesAmount = m.mul(D32).mul(A).add(A).toUInt();
++        uint256 _sharesAmount =
++            UbiquityFormulas.durationMultiply(
++                _lpsAmount,
++                _weeks,
++                bondingDiscountMultiplier
++            );
++        _bond(_sharesAmount, _block);
+     }
+ 
+-    // redeemShares
+-    // tokenAmount = (_sharesAmount * currentShareValue()) / TARGET_PRICE;
+-    // tokenAmount = A * V / T
+     function redeemShares(uint256 _sharesAmount) public {
+         require(
+             IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
+@@ -156,24 +143,24 @@ contract Bonding is CollectableDust {
+         );
+         _updateOracle();
+         uint256 _currentShareValue = currentShareValue();
+-
+         IBondingShare(manager.bondingShareAddress()).burn(
+             msg.sender,
+             id,
+             _sharesAmount
+         );
+ 
+-        bytes16 A = _sharesAmount.fromUInt();
+-        bytes16 V = _currentShareValue.fromUInt();
+-        bytes16 T = TARGET_PRICE.fromUInt();
+-        uint256 tokenAmount = A.mul(V).div(T).toUInt();
++        // uint256 tokenAmount = formulaRedeemBonds(_sharesAmount, _currentShareValue);
+ 
+         // console.log("_sharesAmount", _sharesAmount);
+         // console.log("tokenAmount", tokenAmount);
+         // if (redeemStreamTime == 0) {
+         IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
+             msg.sender,
+-            tokenAmount
++            UbiquityFormulas.redeemBonds(
++                _sharesAmount,
++                _currentShareValue,
++                TARGET_PRICE
++            )
+         );
+         //     } else {
+         //         // The transaction must be processed by the Ethereum blockchain before
+@@ -216,19 +203,19 @@ contract Bonding is CollectableDust {
+     // R = T == 0 ? 1 : LP / S
+     // P = R * T
+     function currentShareValue() public view returns (uint256 priceShare) {
++        uint256 totalLP =
++            IERC20(manager.stableSwapMetaPoolAddress()).balanceOf(
++                address(this)
++            );
++
+         uint256 totalShares =
+             IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply(id);
+ 
+-        bytes16 LP =
+-            IERC20(manager.stableSwapMetaPoolAddress())
+-                .balanceOf(address(this))
+-                .fromUInt();
+-
+-        bytes16 S = totalShares.fromUInt();
+-        bytes16 R = totalShares == 0 ? uint256(1).fromUInt() : LP.div(S);
+-        bytes16 T = TARGET_PRICE.fromUInt();
+-
+-        priceShare = R.mul(T).toUInt();
++        priceShare = UbiquityFormulas.bondPrice(
++            totalLP,
++            totalShares,
++            TARGET_PRICE
++        );
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+@@ -242,27 +229,17 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
+-    // newShares = LP / currentShareValue * TARGET_PRICE
+-    // newShares = A / V * T
+-    function _bond(uint256 _amount) internal {
++    function _bond(uint256 _amount, uint256 _block) internal {
+         uint256 _currentShareValue = currentShareValue();
+         require(
+             _currentShareValue != 0,
+             "Current Share Value should not be nul"
+         );
+-        // console.log(_currentShareValue);
+-
+-        // console.log(_amount);
+-        bytes16 A = _amount.fromUInt();
+-        bytes16 V = _currentShareValue.fromUInt();
+-        bytes16 T = TARGET_PRICE.fromUInt();
+-        uint256 newShares = A.div(V).mul(T).toUInt();
+-        // console.log(newShares);
+ 
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+-            id,
+-            newShares,
++            _block,
++            UbiquityFormulas.bonding(_amount, _currentShareValue, TARGET_PRICE),
+             data
+         );
+     }
+
+commit bd39c1d30c398b26834489e5e3bad69b0324a7b8
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Fri Apr 23 21:10:51 2021 +0200
+
+    feat(bondingshare): bonding and redeem simple tests (wip , no uGOV)
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 346c300..63fb91f 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -27,7 +27,7 @@ contract Bonding is CollectableDust {
+     // Initially set at $1,000,000 to avoid interference with growth.
+     uint256 public maxBondingPrice = uint256(1000000 ether);
+     ISablier public sablier;
+-    uint256 public bondingDiscountMultiplier = uint256(1000000 gwei);
++    uint256 public bondingDiscountMultiplier = uint256(1000000 gwei); // 0.001
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+ 
+     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
+@@ -143,8 +143,10 @@ contract Bonding is CollectableDust {
+         _sharesAmount = m.mul(D32).mul(A).add(A).toUInt();
+     }
+ 
++    // redeemShares
++    // tokenAmount = (_sharesAmount * currentShareValue()) / TARGET_PRICE;
++    // tokenAmount = A * V / T
+     function redeemShares(uint256 _sharesAmount) public {
+-        _updateOracle();
+         require(
+             IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
+                 msg.sender,
+@@ -152,41 +154,55 @@ contract Bonding is CollectableDust {
+             ) >= _sharesAmount,
+             "Bonding: Caller does not have enough shares"
+         );
++        _updateOracle();
++        uint256 _currentShareValue = currentShareValue();
++
+         IBondingShare(manager.bondingShareAddress()).burn(
+             msg.sender,
+             id,
+             _sharesAmount
+         );
+-        // uint256 tokenAmount =
+-        //     (_sharesAmount * currentShareValue()) / TARGET_PRICE;
++
++        bytes16 A = _sharesAmount.fromUInt();
++        bytes16 V = _currentShareValue.fromUInt();
++        bytes16 T = TARGET_PRICE.fromUInt();
++        uint256 tokenAmount = A.mul(V).div(T).toUInt();
++
++        // console.log("_sharesAmount", _sharesAmount);
++        // console.log("tokenAmount", tokenAmount);
+         // if (redeemStreamTime == 0) {
+-        //     IERC20(manager.uADTokenAddress()).safeTransfer(
+-        //         msg.sender,
+-        //         tokenAmount
+-        //     );
+-        // } else {
+-        //     // The transaction must be processed by the Ethereum blockchain before
+-        //     // the start time of the stream, or otherwise the sablier contract
+-        //     // reverts with a "start time before block.timestamp" message.
+-        //     uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
+-        //     uint256 streamStop = streamStart + redeemStreamTime;
+-        //     // The deposit must be a multiple of the difference between the stop
+-        //     // time and the start time
+-        //     uint256 streamDuration = streamStop - streamStart;
+-        //     tokenAmount = (tokenAmount / streamDuration) * streamDuration;
+-        //     IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
+-        //     IERC20(manager.uADTokenAddress()).safeApprove(
+-        //         address(sablier),
+-        //         tokenAmount
+-        //     );
+-        //     sablier.createStream(
+-        //         msg.sender,
+-        //         tokenAmount,
+-        //         manager.uADTokenAddress(),
+-        //         streamStart,
+-        //         streamStop
+-        //     );
+-        // }
++        IERC20(manager.stableSwapMetaPoolAddress()).safeTransfer(
++            msg.sender,
++            tokenAmount
++        );
++        //     } else {
++        //         // The transaction must be processed by the Ethereum blockchain before
++        //         // the start time of the stream, or otherwise the sablier contract
++        //         // reverts with a "start time before block.timestamp" message.
++        //         uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
++        //         uint256 streamStop = streamStart + redeemStreamTime;
++        //         // The deposit must be a multiple of the difference between the stop
++        //         // time and the start time
++
++        //         uint256 streamDuration = streamStop - streamStart;
++        //         tokenAmount = (tokenAmount / streamDuration) * streamDuration;
++
++        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
++        //             address(sablier),
++        //             0
++        //         );
++        //         IERC20(manager.stableSwapMetaPoolAddress()).safeApprove(
++        //             address(sablier),
++        //             tokenAmount
++        //         );
++        //         sablier.createStream(
++        //             msg.sender,
++        //             tokenAmount,
++        //             manager.stableSwapMetaPoolAddress(),
++        //             streamStart,
++        //             streamStop
++        //         );
++        //     }
+     }
+ 
+     function redeemAllShares() public {
+@@ -195,14 +211,24 @@ contract Bonding is CollectableDust {
+         );
+     }
+ 
+-    function currentShareValue() public view returns (uint256 pricePerShare) {
++    // SI totalShares = 0  priceShare = TARGET_PRICE
++    // SINON               priceShare = totalLP / totalShares * TARGET_PRICE
++    // R = T == 0 ? 1 : LP / S
++    // P = R * T
++    function currentShareValue() public view returns (uint256 priceShare) {
+         uint256 totalShares =
+             IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply(id);
+ 
+-        pricePerShare = totalShares == 0
+-            ? TARGET_PRICE
+-            : (IERC20(manager.uADTokenAddress()).balanceOf(address(this)) *
+-                TARGET_PRICE) / totalShares;
++        bytes16 LP =
++            IERC20(manager.stableSwapMetaPoolAddress())
++                .balanceOf(address(this))
++                .fromUInt();
++
++        bytes16 S = totalShares.fromUInt();
++        bytes16 R = totalShares == 0 ? uint256(1).fromUInt() : LP.div(S);
++        bytes16 T = TARGET_PRICE.fromUInt();
++
++        priceShare = R.mul(T).toUInt();
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+@@ -216,20 +242,27 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
+-    // numberOfShares = (amount / shareValue) * TARGET_PRICE
+-    // numberOfShares = A / V * T
++    // newShares = LP / currentShareValue * TARGET_PRICE
++    // newShares = A / V * T
+     function _bond(uint256 _amount) internal {
++        uint256 _currentShareValue = currentShareValue();
++        require(
++            _currentShareValue != 0,
++            "Current Share Value should not be nul"
++        );
++        // console.log(_currentShareValue);
++
+         // console.log(_amount);
+         bytes16 A = _amount.fromUInt();
+-        bytes16 V = currentShareValue().fromUInt();
++        bytes16 V = _currentShareValue.fromUInt();
+         bytes16 T = TARGET_PRICE.fromUInt();
+-        uint256 numberOfShares = A.div(V).mul(T).toUInt();
+-        // console.log(numberOfShares);
++        uint256 newShares = A.div(V).mul(T).toUInt();
++        // console.log(newShares);
+ 
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+             id,
+-            numberOfShares,
++            newShares,
+             data
+         );
+     }
+
+commit 1509a0f93f3acf77430d3bac4770905d8edec477
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Thu Apr 22 21:38:21 2021 +0200
+
+    feat(bonding): new ERC115Ubiquity and more tests (wip)
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index bf83513..346c300 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -3,7 +3,7 @@ pragma solidity ^0.8.3;
+ 
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+-import "./interfaces/IERC1155Supply.sol";
++import "./interfaces/IERC1155Ubiquity.sol";
+ 
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+@@ -11,6 +11,7 @@ import "./interfaces/ITWAPOracle.sol";
+ import "./interfaces/IBondingShare.sol";
+ import "./utils/CollectableDust.sol";
+ import "./libs/ABDKMathQuad.sol";
++import "hardhat/console.sol";
+ 
+ contract Bonding is CollectableDust {
+     using ABDKMathQuad for uint256;
+@@ -107,7 +108,7 @@ contract Bonding is CollectableDust {
+     /*
+         Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
+      */
+-    function deposit(uint256 _lpsAmount, uint8 _weeks) public {
++    function bondTokens(uint256 _lpsAmount, uint256 _weeks) public {
+         _updateOracle();
+         uint256 currentPrice = currentTokenPrice();
+         require(
+@@ -120,31 +121,32 @@ contract Bonding is CollectableDust {
+             _lpsAmount
+         );
+ 
+-        uint256 _sharesAmount = durationMultiplier(_lpsAmount, _weeks);
++        uint256 _sharesAmount = durationMultiply(_lpsAmount, _weeks);
+         _bond(_sharesAmount);
+     }
+ 
+     // staking duration multiplier
+-    // sharesAmount = M * lpsAmount
+-    // M = 0.001 * D3/2
+-    function durationMultiplier(uint256 _lpsAmount, uint256 _weeks)
++    // _sharesAmount = (1 + 0.001 * _weeks^3/2) * _lpsAmount
++    // D32 = D^3/2
++    // S = m * D32 * A + A
++    function durationMultiply(uint256 _lpsAmount, uint256 _weeks)
+         public
+         view
+         returns (uint256 _sharesAmount)
+     {
+         bytes16 unit = uint256(1 ether).fromUInt();
+-        bytes16 A = _lpsAmount.fromUInt();
+-        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
+         bytes16 D = _weeks.fromUInt();
+-        bytes16 D32 = (D.mul(D).mul(D)).sqrt().mul(A);
++        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
++        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
++        bytes16 A = _lpsAmount.fromUInt();
+ 
+-        _sharesAmount = A.mul(m).mul(D32).toUInt();
++        _sharesAmount = m.mul(D32).mul(A).add(A).toUInt();
+     }
+ 
+     function redeemShares(uint256 _sharesAmount) public {
+         _updateOracle();
+         require(
+-            IERC1155Supply(manager.bondingShareAddress()).balanceOf(
++            IERC1155Ubiquity(manager.bondingShareAddress()).balanceOf(
+                 msg.sender,
+                 id
+             ) >= _sharesAmount,
+@@ -155,36 +157,36 @@ contract Bonding is CollectableDust {
+             id,
+             _sharesAmount
+         );
+-        uint256 tokenAmount =
+-            (_sharesAmount * currentShareValue()) / TARGET_PRICE;
+-        if (redeemStreamTime == 0) {
+-            IERC20(manager.uADTokenAddress()).safeTransfer(
+-                msg.sender,
+-                tokenAmount
+-            );
+-        } else {
+-            // The transaction must be processed by the Ethereum blockchain before
+-            // the start time of the stream, or otherwise the sablier contract
+-            // reverts with a "start time before block.timestamp" message.
+-            uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
+-            uint256 streamStop = streamStart + redeemStreamTime;
+-            // The deposit must be a multiple of the difference between the stop
+-            // time and the start time
+-            uint256 streamDuration = streamStop - streamStart;
+-            tokenAmount = (tokenAmount / streamDuration) * streamDuration;
+-            IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
+-            IERC20(manager.uADTokenAddress()).safeApprove(
+-                address(sablier),
+-                tokenAmount
+-            );
+-            sablier.createStream(
+-                msg.sender,
+-                tokenAmount,
+-                manager.uADTokenAddress(),
+-                streamStart,
+-                streamStop
+-            );
+-        }
++        // uint256 tokenAmount =
++        //     (_sharesAmount * currentShareValue()) / TARGET_PRICE;
++        // if (redeemStreamTime == 0) {
++        //     IERC20(manager.uADTokenAddress()).safeTransfer(
++        //         msg.sender,
++        //         tokenAmount
++        //     );
++        // } else {
++        //     // The transaction must be processed by the Ethereum blockchain before
++        //     // the start time of the stream, or otherwise the sablier contract
++        //     // reverts with a "start time before block.timestamp" message.
++        //     uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
++        //     uint256 streamStop = streamStart + redeemStreamTime;
++        //     // The deposit must be a multiple of the difference between the stop
++        //     // time and the start time
++        //     uint256 streamDuration = streamStop - streamStart;
++        //     tokenAmount = (tokenAmount / streamDuration) * streamDuration;
++        //     IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
++        //     IERC20(manager.uADTokenAddress()).safeApprove(
++        //         address(sablier),
++        //         tokenAmount
++        //     );
++        //     sablier.createStream(
++        //         msg.sender,
++        //         tokenAmount,
++        //         manager.uADTokenAddress(),
++        //         streamStart,
++        //         streamStop
++        //     );
++        // }
+     }
+ 
+     function redeemAllShares() public {
+@@ -195,7 +197,7 @@ contract Bonding is CollectableDust {
+ 
+     function currentShareValue() public view returns (uint256 pricePerShare) {
+         uint256 totalShares =
+-            IERC1155Supply(manager.bondingShareAddress()).totalSupply(id);
++            IERC1155Ubiquity(manager.bondingShareAddress()).totalSupply(id);
+ 
+         pricePerShare = totalShares == 0
+             ? TARGET_PRICE
+@@ -214,9 +216,15 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
++    // numberOfShares = (amount / shareValue) * TARGET_PRICE
++    // numberOfShares = A / V * T
+     function _bond(uint256 _amount) internal {
+-        uint256 shareValue = currentShareValue();
+-        uint256 numberOfShares = (_amount / shareValue) * TARGET_PRICE;
++        // console.log(_amount);
++        bytes16 A = _amount.fromUInt();
++        bytes16 V = currentShareValue().fromUInt();
++        bytes16 T = TARGET_PRICE.fromUInt();
++        uint256 numberOfShares = A.div(V).mul(T).toUInt();
++        // console.log(numberOfShares);
+ 
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+
+commit c77294bc8c24f2c014b70c607f04c7f7ccbb21bd
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Wed Apr 21 22:07:46 2021 +0200
+
+    test(bondingshares): add UseCase1
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index d92ae02..bf83513 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -105,52 +105,40 @@ contract Bonding is CollectableDust {
+     }
+ 
+     /*
+-        Desposit function (new version of bondTokens)
+-        use uAD-3CRV LP tokens (not uAD tokens)
++        Desposit function with uAD-3CRV LP tokens (stableSwapMetaPoolAddress)
+      */
+-    function deposit(uint256 _amount) public {
+-        // _updateOracle();
+-        // uint256 currentPrice = currentTokenPrice();
+-        // require(
+-        //     currentPrice < maxBondingPrice,
+-        //     "Bonding: Current price is too high"
+-        // );
+-        // IERC20(manager.uADTokenAddress()).safeTransferFrom(
+-        //     msg.sender,
+-        //     address(this),
+-        //     _amount
+-        // );
+-        // _bond(_amount, currentPrice);
++    function deposit(uint256 _lpsAmount, uint8 _weeks) public {
++        _updateOracle();
++        uint256 currentPrice = currentTokenPrice();
++        require(
++            currentPrice < maxBondingPrice,
++            "Bonding: Current price is too high"
++        );
++        IERC20(manager.stableSwapMetaPoolAddress()).safeTransferFrom(
++            msg.sender,
++            address(this),
++            _lpsAmount
++        );
++
++        uint256 _sharesAmount = durationMultiplier(_lpsAmount, _weeks);
++        _bond(_sharesAmount);
+     }
+ 
+     // staking duration multiplier
++    // sharesAmount = M * lpsAmount
+     // M = 0.001 * D3/2
+-    function durationMultiplier(uint256 _weeks)
++    function durationMultiplier(uint256 _lpsAmount, uint256 _weeks)
+         public
+         view
+-        returns (uint256 M)
++        returns (uint256 _sharesAmount)
+     {
+         bytes16 unit = uint256(1 ether).fromUInt();
++        bytes16 A = _lpsAmount.fromUInt();
+         bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
+         bytes16 D = _weeks.fromUInt();
+-        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
++        bytes16 D32 = (D.mul(D).mul(D)).sqrt().mul(A);
+ 
+-        M = m.mul(D32).mul(unit).toUInt();
+-    }
+-
+-    function bondTokens(uint256 _amount) public {
+-        _updateOracle();
+-        uint256 currentPrice = currentTokenPrice();
+-        require(
+-            currentPrice < maxBondingPrice,
+-            "Bonding: Current price is too high"
+-        );
+-        IERC20(manager.uADTokenAddress()).safeTransferFrom(
+-            msg.sender,
+-            address(this),
+-            _amount
+-        );
+-        _bond(_amount, currentPrice);
++        _sharesAmount = A.mul(m).mul(D32).toUInt();
+     }
+ 
+     function redeemShares(uint256 _sharesAmount) public {
+@@ -226,18 +214,10 @@ contract Bonding is CollectableDust {
+             );
+     }
+ 
+-    function _bond(uint256 _amount, uint256 currentPrice) internal {
++    function _bond(uint256 _amount) internal {
+         uint256 shareValue = currentShareValue();
+         uint256 numberOfShares = (_amount / shareValue) * TARGET_PRICE;
+ 
+-        if (bondingDiscountMultiplier != 0) {
+-            uint256 bonus =
+-                ((TARGET_PRICE - currentPrice) *
+-                    numberOfShares *
+-                    bondingDiscountMultiplier) / (TARGET_PRICE * TARGET_PRICE);
+-            numberOfShares = numberOfShares + bonus;
+-        }
+-
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+             id,
+
+commit 33f563948226fd1c39ffd148251eba5fc8ebf62d
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Wed Apr 14 17:39:09 2021 +0200
+
+    feat(bondingshare): durationMultiplier function and tests
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index d8af781..d92ae02 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -10,8 +10,11 @@ import "./interfaces/ISablier.sol";
+ import "./interfaces/ITWAPOracle.sol";
+ import "./interfaces/IBondingShare.sol";
+ import "./utils/CollectableDust.sol";
++import "./libs/ABDKMathQuad.sol";
+ 
+ contract Bonding is CollectableDust {
++    using ABDKMathQuad for uint256;
++    using ABDKMathQuad for bytes16;
+     using SafeERC20 for IERC20;
+ 
+     uint16 public id = 42;
+@@ -19,11 +22,11 @@ contract Bonding is CollectableDust {
+ 
+     UbiquityAlgorithmicDollarManager public manager;
+ 
+-    uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
++    uint256 public constant TARGET_PRICE = uint256(1 ether); // 3Crv has 18 decimals
+     // Initially set at $1,000,000 to avoid interference with growth.
+-    uint256 public maxBondingPrice = uint256(1 ether) * 1000000;
++    uint256 public maxBondingPrice = uint256(1000000 ether);
+     ISablier public sablier;
+-    uint256 public bondingDiscountMultiplier = 0;
++    uint256 public bondingDiscountMultiplier = uint256(1000000 gwei);
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+ 
+     event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
+@@ -101,6 +104,40 @@ contract Bonding is CollectableDust {
+         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+     }
+ 
++    /*
++        Desposit function (new version of bondTokens)
++        use uAD-3CRV LP tokens (not uAD tokens)
++     */
++    function deposit(uint256 _amount) public {
++        // _updateOracle();
++        // uint256 currentPrice = currentTokenPrice();
++        // require(
++        //     currentPrice < maxBondingPrice,
++        //     "Bonding: Current price is too high"
++        // );
++        // IERC20(manager.uADTokenAddress()).safeTransferFrom(
++        //     msg.sender,
++        //     address(this),
++        //     _amount
++        // );
++        // _bond(_amount, currentPrice);
++    }
++
++    // staking duration multiplier
++    // M = 0.001 * D3/2
++    function durationMultiplier(uint256 _weeks)
++        public
++        view
++        returns (uint256 M)
++    {
++        bytes16 unit = uint256(1 ether).fromUInt();
++        bytes16 m = bondingDiscountMultiplier.fromUInt().div(unit); // 0.0001
++        bytes16 D = _weeks.fromUInt();
++        bytes16 D32 = (D.mul(D).mul(D)).sqrt();
++
++        M = m.mul(D32).mul(unit).toUInt();
++    }
++
+     function bondTokens(uint256 _amount) public {
+         _updateOracle();
+         uint256 currentPrice = currentTokenPrice();
+
+commit 216da82d2fc42c4dcc9290e31651d703e6ccb77d
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Tue Apr 13 18:27:13 2021 +0200
+
+    fix(test): contract not initialized in 2nd test, must redo
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index c6d0ea4..d8af781 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -118,22 +118,20 @@ contract Bonding is CollectableDust {
+ 
+     function redeemShares(uint256 _sharesAmount) public {
+         _updateOracle();
+-
+         require(
+-            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender) >=
+-                _sharesAmount,
++            IERC1155Supply(manager.bondingShareAddress()).balanceOf(
++                msg.sender,
++                id
++            ) >= _sharesAmount,
+             "Bonding: Caller does not have enough shares"
+         );
+-
+         IBondingShare(manager.bondingShareAddress()).burn(
+             msg.sender,
+             id,
+             _sharesAmount
+         );
+-
+         uint256 tokenAmount =
+             (_sharesAmount * currentShareValue()) / TARGET_PRICE;
+-
+         if (redeemStreamTime == 0) {
+             IERC20(manager.uADTokenAddress()).safeTransfer(
+                 msg.sender,
+@@ -144,19 +142,16 @@ contract Bonding is CollectableDust {
+             // the start time of the stream, or otherwise the sablier contract
+             // reverts with a "start time before block.timestamp" message.
+             uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
+-
+             uint256 streamStop = streamStart + redeemStreamTime;
+             // The deposit must be a multiple of the difference between the stop
+             // time and the start time
+             uint256 streamDuration = streamStop - streamStart;
+             tokenAmount = (tokenAmount / streamDuration) * streamDuration;
+-
+             IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
+             IERC20(manager.uADTokenAddress()).safeApprove(
+                 address(sablier),
+                 tokenAmount
+             );
+-
+             sablier.createStream(
+                 msg.sender,
+                 tokenAmount,
+
+commit 5e977c93926c3db1b3391a04ced69a44bb22ecb2
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Tue Apr 13 13:07:05 2021 +0200
+
+    fix(lint): corrections
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 7fa4c99..c6d0ea4 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -14,8 +14,8 @@ import "./utils/CollectableDust.sol";
+ contract Bonding is CollectableDust {
+     using SafeERC20 for IERC20;
+ 
+-    uint16 id = 42;
+-    bytes data = "";
++    uint16 public id = 42;
++    bytes public data = "";
+ 
+     UbiquityAlgorithmicDollarManager public manager;
+ 
+
+commit a87ef331c951ceda49615507773879a3fb2e0c38
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Mon Apr 12 21:26:55 2021 +0200
+
+    feat(bondingshare): test bondingShare pass with new ERC1155Supply
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 8e78fd3..7fa4c99 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -3,6 +3,7 @@ pragma solidity ^0.8.3;
+ 
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
++import "./interfaces/IERC1155Supply.sol";
+ 
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+@@ -174,7 +175,7 @@ contract Bonding is CollectableDust {
+ 
+     function currentShareValue() public view returns (uint256 pricePerShare) {
+         uint256 totalShares =
+-            IERC20(manager.bondingShareAddress()).totalSupply();
++            IERC1155Supply(manager.bondingShareAddress()).totalSupply(id);
+ 
+         pricePerShare = totalShares == 0
+             ? TARGET_PRICE
+
+commit 9189c3410b7552a3cc76ff5f38cdea8eb7feeb7c
+Author: Alain Papazoglou <alain@kredeum.com>
+Date:   Fri Apr 9 21:41:39 2021 +0200
+
+    feat(bondingshare): change bondingShare from ERC20 to ERC1155 WIP
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 4833cc0..8e78fd3 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -13,6 +13,9 @@ import "./utils/CollectableDust.sol";
+ contract Bonding is CollectableDust {
+     using SafeERC20 for IERC20;
+ 
++    uint16 id = 42;
++    bytes data = "";
++
+     UbiquityAlgorithmicDollarManager public manager;
+ 
+     uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
+@@ -121,8 +124,9 @@ contract Bonding is CollectableDust {
+             "Bonding: Caller does not have enough shares"
+         );
+ 
+-        IBondingShare(manager.bondingShareAddress()).burnFrom(
++        IBondingShare(manager.bondingShareAddress()).burn(
+             msg.sender,
++            id,
+             _sharesAmount
+         );
+ 
+@@ -203,7 +207,9 @@ contract Bonding is CollectableDust {
+ 
+         IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+-            numberOfShares
++            id,
++            numberOfShares,
++            data
+         );
+     }
+ 
+
+commit bbb3c6e2c26105a43af5e539916db1788c4c50d0
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Mon Apr 12 19:07:17 2021 +0200
+
+    feat(debtManager): add tests
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 4020b35..4833cc0 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -1,4 +1,4 @@
+-// SPDX-License-Identifier: Apache-2.0
++// SPDX-License-Identifier: MIT
+ pragma solidity ^0.8.3;
+ 
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+commit 0374c88e8f2feb68d274a4cd779abb945f8834ae
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Tue Mar 30 11:32:10 2021 +0200
+
+    chore(dep): upgrade
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 69c2446..4020b35 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -1,9 +1,8 @@
+ // SPDX-License-Identifier: Apache-2.0
+-pragma solidity ^0.7.0;
++pragma solidity ^0.8.3;
+ 
+-import "@openzeppelin/contracts/math/SafeMath.sol";
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
++import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+ 
+ import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+@@ -12,14 +11,13 @@ import "./interfaces/IBondingShare.sol";
+ import "./utils/CollectableDust.sol";
+ 
+ contract Bonding is CollectableDust {
+-    using SafeMath for uint256;
+     using SafeERC20 for IERC20;
+ 
+     UbiquityAlgorithmicDollarManager public manager;
+ 
+     uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
+     // Initially set at $1,000,000 to avoid interference with growth.
+-    uint256 public maxBondingPrice = uint256(1 ether).mul(1000000);
++    uint256 public maxBondingPrice = uint256(1 ether) * 1000000;
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = 0;
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+@@ -129,7 +127,7 @@ contract Bonding is CollectableDust {
+         );
+ 
+         uint256 tokenAmount =
+-            _sharesAmount.mul(currentShareValue()).div(TARGET_PRICE);
++            (_sharesAmount * currentShareValue()) / TARGET_PRICE;
+ 
+         if (redeemStreamTime == 0) {
+             IERC20(manager.uADTokenAddress()).safeTransfer(
+@@ -140,13 +138,13 @@ contract Bonding is CollectableDust {
+             // The transaction must be processed by the Ethereum blockchain before
+             // the start time of the stream, or otherwise the sablier contract
+             // reverts with a "start time before block.timestamp" message.
+-            uint256 streamStart = block.timestamp.add(60); // tx mining + 60 seconds
++            uint256 streamStart = block.timestamp + 60; // tx mining + 60 seconds
+ 
+-            uint256 streamStop = streamStart.add(redeemStreamTime);
++            uint256 streamStop = streamStart + redeemStreamTime;
+             // The deposit must be a multiple of the difference between the stop
+             // time and the start time
+-            uint256 streamDuration = streamStop.sub(streamStart);
+-            tokenAmount = tokenAmount.div(streamDuration).mul(streamDuration);
++            uint256 streamDuration = streamStop - streamStart;
++            tokenAmount = (tokenAmount / streamDuration) * streamDuration;
+ 
+             IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
+             IERC20(manager.uADTokenAddress()).safeApprove(
+@@ -176,10 +174,8 @@ contract Bonding is CollectableDust {
+ 
+         pricePerShare = totalShares == 0
+             ? TARGET_PRICE
+-            : IERC20(manager.uADTokenAddress())
+-                .balanceOf(address(this))
+-                .mul(TARGET_PRICE)
+-                .div(totalShares);
++            : (IERC20(manager.uADTokenAddress()).balanceOf(address(this)) *
++                TARGET_PRICE) / totalShares;
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+@@ -195,15 +191,14 @@ contract Bonding is CollectableDust {
+ 
+     function _bond(uint256 _amount, uint256 currentPrice) internal {
+         uint256 shareValue = currentShareValue();
+-        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
++        uint256 numberOfShares = (_amount / shareValue) * TARGET_PRICE;
+ 
+         if (bondingDiscountMultiplier != 0) {
+             uint256 bonus =
+-                (TARGET_PRICE.sub(currentPrice))
+-                    .mul(numberOfShares)
+-                    .mul(bondingDiscountMultiplier)
+-                    .div(TARGET_PRICE.mul(TARGET_PRICE));
+-            numberOfShares = numberOfShares.add(bonus);
++                ((TARGET_PRICE - currentPrice) *
++                    numberOfShares *
++                    bondingDiscountMultiplier) / (TARGET_PRICE * TARGET_PRICE);
++            numberOfShares = numberOfShares + bonus;
+         }
+ 
+         IBondingShare(manager.bondingShareAddress()).mint(
+
+commit 954c31ea19e7f6ac14ae4b5c4f66b9ee95ffd6fd
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Fri Apr 2 19:59:10 2021 +0200
+
+    feat(tests): add numerous test
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 8b8eb26..69c2446 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -183,10 +183,13 @@ contract Bonding is CollectableDust {
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
++        /* uint256[2] memory prices =
++            IMetaPool(manager.stableSwapMetaPoolAddress())
++                .get_price_cumulative_last();
++        return prices[0]; */
+         return
+             ITWAPOracle(manager.twapOracleAddress()).consult(
+-                manager.uADTokenAddress(),
+-                TARGET_PRICE
++                manager.uADTokenAddress()
+             );
+     }
+ 
+
+commit 7027ba1fcc8ead2f8755b60de601acdc0cfc6774
+Author: Benjamin <benjamin.mateo@protonmail.com>
+Date:   Fri Mar 26 19:30:23 2021 +0100
+
+    chore(lint): improve linting
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index dd94ba2..8b8eb26 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -24,6 +24,11 @@ contract Bonding is CollectableDust {
+     uint256 public bondingDiscountMultiplier = 0;
+     uint256 public redeemStreamTime = 86400; // 1 day in seconds
+ 
++    event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
++    event SablierUpdated(address _sablier);
++    event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
++    event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
++
+     modifier onlyBondingManager() {
+         require(
+             manager.hasRole(manager.BONDING_MANAGER_ROLE(), msg.sender),
+@@ -32,16 +37,14 @@ contract Bonding is CollectableDust {
+         _;
+     }
+ 
+-    event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
+-    event SablierUpdated(address _sablier);
+-    event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
+-    event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
+-
+     constructor(address _manager, address _sablier) CollectableDust() {
+         manager = UbiquityAlgorithmicDollarManager(_manager);
+         sablier = ISablier(_sablier);
+     }
+ 
++    // solhint-disable-next-line no-empty-blocks
++    receive() external payable {}
++
+     /// Collectable Dust
+     function addProtocolToken(address _token)
+         external
+@@ -67,9 +70,6 @@ contract Bonding is CollectableDust {
+         _sendDust(_to, _token, _amount);
+     }
+ 
+-    // solhint-disable-next-line no-empty-blocks
+-    receive() external payable {}
+-
+     function setMaxBondingPrice(uint256 _maxBondingPrice)
+         external
+         onlyBondingManager
+@@ -99,25 +99,6 @@ contract Bonding is CollectableDust {
+         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+     }
+ 
+-    function _bond(uint256 _amount, uint256 currentPrice) internal {
+-        uint256 shareValue = currentShareValue();
+-        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
+-
+-        if (bondingDiscountMultiplier != 0) {
+-            uint256 bonus =
+-                (TARGET_PRICE.sub(currentPrice))
+-                    .mul(numberOfShares)
+-                    .mul(bondingDiscountMultiplier)
+-                    .div(TARGET_PRICE.mul(TARGET_PRICE));
+-            numberOfShares = numberOfShares.add(bonus);
+-        }
+-
+-        IBondingShare(manager.bondingShareAddress()).mint(
+-            msg.sender,
+-            numberOfShares
+-        );
+-    }
+-
+     function bondTokens(uint256 _amount) public {
+         _updateOracle();
+         uint256 currentPrice = currentTokenPrice();
+@@ -189,10 +170,6 @@ contract Bonding is CollectableDust {
+         );
+     }
+ 
+-    function _updateOracle() internal {
+-        ITWAPOracle(manager.twapOracleAddress()).update();
+-    }
+-
+     function currentShareValue() public view returns (uint256 pricePerShare) {
+         uint256 totalShares =
+             IERC20(manager.bondingShareAddress()).totalSupply();
+@@ -212,4 +189,27 @@ contract Bonding is CollectableDust {
+                 TARGET_PRICE
+             );
+     }
++
++    function _bond(uint256 _amount, uint256 currentPrice) internal {
++        uint256 shareValue = currentShareValue();
++        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
++
++        if (bondingDiscountMultiplier != 0) {
++            uint256 bonus =
++                (TARGET_PRICE.sub(currentPrice))
++                    .mul(numberOfShares)
++                    .mul(bondingDiscountMultiplier)
++                    .div(TARGET_PRICE.mul(TARGET_PRICE));
++            numberOfShares = numberOfShares.add(bonus);
++        }
++
++        IBondingShare(manager.bondingShareAddress()).mint(
++            msg.sender,
++            numberOfShares
++        );
++    }
++
++    function _updateOracle() internal {
++        ITWAPOracle(manager.twapOracleAddress()).update();
++    }
+ }
+
+commit 737cb0c2e181722edb0b9d2bdc2e80160e67825b
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Tue Feb 2 20:55:29 2021 -0300
+
+    Change the initial redeemStreamTime to one day
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 9a16df3..dd94ba2 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -22,7 +22,7 @@ contract Bonding is CollectableDust {
+     uint256 public maxBondingPrice = uint256(1 ether).mul(1000000);
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = 0;
+-    uint256 public redeemStreamTime = 604800; // 1 week in seconds
++    uint256 public redeemStreamTime = 86400; // 1 day in seconds
+ 
+     modifier onlyBondingManager() {
+         require(
+
+commit de06778ef7dd48880bd56862892b55585826b98c
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Tue Feb 2 19:00:35 2021 -0300
+
+    Fix calculation of the amount of tokens to be streamed
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index e9b9a79..9a16df3 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -164,9 +164,8 @@ contract Bonding is CollectableDust {
+             uint256 streamStop = streamStart.add(redeemStreamTime);
+             // The deposit must be a multiple of the difference between the stop
+             // time and the start time
+-            streamStop = streamStop.add(
+-                tokenAmount % (streamStop.sub(streamStart))
+-            );
++            uint256 streamDuration = streamStop.sub(streamStart);
++            tokenAmount = tokenAmount.div(streamDuration).mul(streamDuration);
+ 
+             IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
+             IERC20(manager.uADTokenAddress()).safeApprove(
+
+commit 6240dd9398f80d0d8277a7b9e4065f03ddd79e63
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Tue Feb 2 02:09:42 2021 -0300
+
+    Approve the Sablier contract to spend Bonding's funds
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 56e37b2..e9b9a79 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -168,6 +168,12 @@ contract Bonding is CollectableDust {
+                 tokenAmount % (streamStop.sub(streamStart))
+             );
+ 
++            IERC20(manager.uADTokenAddress()).safeApprove(address(sablier), 0);
++            IERC20(manager.uADTokenAddress()).safeApprove(
++                address(sablier),
++                tokenAmount
++            );
++
+             sablier.createStream(
+                 msg.sender,
+                 tokenAmount,
+
+commit 5486c0f9e07061cf93b0ab0d17b57845b56ccc58
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Tue Feb 2 02:06:55 2021 -0300
+
+    Fix how the oracle is consulted
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 356cb95..56e37b2 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -201,6 +201,10 @@ contract Bonding is CollectableDust {
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+-        return ITWAPOracle(manager.twapOracleAddress()).consult(TARGET_PRICE);
++        return
++            ITWAPOracle(manager.twapOracleAddress()).consult(
++                manager.uADTokenAddress(),
++                TARGET_PRICE
++            );
+     }
+ }
+
+commit 2e96eb9784b21e90102d8cbd950f49985b7c74fb
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Thu Jan 28 18:11:01 2021 -0300
+
+    Rename from Stabilitas to Ubiquity Algorithmic Dollar (uAD)
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 9e94307..356cb95 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+ 
+-import "./StabilitasConfig.sol";
++import "./UbiquityAlgorithmicDollarManager.sol";
+ import "./interfaces/ISablier.sol";
+-import "./interfaces/IUniswapOracle.sol";
++import "./interfaces/ITWAPOracle.sol";
+ import "./interfaces/IBondingShare.sol";
+ import "./utils/CollectableDust.sol";
+ 
+@@ -15,18 +15,18 @@ contract Bonding is CollectableDust {
+     using SafeMath for uint256;
+     using SafeERC20 for IERC20;
+ 
+-    StabilitasConfig public config;
++    UbiquityAlgorithmicDollarManager public manager;
+ 
+-    uint256 public constant TARGET_PRICE = 1000000; // USDC has 6 decimals
++    uint256 public constant TARGET_PRICE = 1 ether; // 3Crv has 18 decimals
+     // Initially set at $1,000,000 to avoid interference with growth.
+-    uint256 public maxBondingPrice = 1000000000000000000000000;
++    uint256 public maxBondingPrice = uint256(1 ether).mul(1000000);
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = 0;
+     uint256 public redeemStreamTime = 604800; // 1 week in seconds
+ 
+     modifier onlyBondingManager() {
+         require(
+-            config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
++            manager.hasRole(manager.BONDING_MANAGER_ROLE(), msg.sender),
+             "Caller is not a bonding manager"
+         );
+         _;
+@@ -37,8 +37,8 @@ contract Bonding is CollectableDust {
+     event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
+     event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
+ 
+-    constructor(address _config, address _sablier) CollectableDust() {
+-        config = StabilitasConfig(_config);
++    constructor(address _manager, address _sablier) CollectableDust() {
++        manager = UbiquityAlgorithmicDollarManager(_manager);
+         sablier = ISablier(_sablier);
+     }
+ 
+@@ -112,7 +112,7 @@ contract Bonding is CollectableDust {
+             numberOfShares = numberOfShares.add(bonus);
+         }
+ 
+-        IBondingShare(config.bondingShareAddress()).mint(
++        IBondingShare(manager.bondingShareAddress()).mint(
+             msg.sender,
+             numberOfShares
+         );
+@@ -125,7 +125,7 @@ contract Bonding is CollectableDust {
+             currentPrice < maxBondingPrice,
+             "Bonding: Current price is too high"
+         );
+-        IERC20(config.stabilitasTokenAddress()).safeTransferFrom(
++        IERC20(manager.uADTokenAddress()).safeTransferFrom(
+             msg.sender,
+             address(this),
+             _amount
+@@ -137,12 +137,12 @@ contract Bonding is CollectableDust {
+         _updateOracle();
+ 
+         require(
+-            IERC20(config.bondingShareAddress()).balanceOf(msg.sender) >=
++            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender) >=
+                 _sharesAmount,
+             "Bonding: Caller does not have enough shares"
+         );
+ 
+-        IBondingShare(config.bondingShareAddress()).burnFrom(
++        IBondingShare(manager.bondingShareAddress()).burnFrom(
+             msg.sender,
+             _sharesAmount
+         );
+@@ -151,7 +151,7 @@ contract Bonding is CollectableDust {
+             _sharesAmount.mul(currentShareValue()).div(TARGET_PRICE);
+ 
+         if (redeemStreamTime == 0) {
+-            IERC20(config.stabilitasTokenAddress()).safeTransfer(
++            IERC20(manager.uADTokenAddress()).safeTransfer(
+                 msg.sender,
+                 tokenAmount
+             );
+@@ -171,7 +171,7 @@ contract Bonding is CollectableDust {
+             sablier.createStream(
+                 msg.sender,
+                 tokenAmount,
+-                config.stabilitasTokenAddress(),
++                manager.uADTokenAddress(),
+                 streamStart,
+                 streamStop
+             );
+@@ -180,35 +180,27 @@ contract Bonding is CollectableDust {
+ 
+     function redeemAllShares() public {
+         redeemShares(
+-            IERC20(config.bondingShareAddress()).balanceOf(msg.sender)
++            IERC20(manager.bondingShareAddress()).balanceOf(msg.sender)
+         );
+     }
+ 
+     function _updateOracle() internal {
+-        IUniswapOracle(config.twapOracleAddress()).update(
+-            config.stabilitasTokenAddress(),
+-            config.comparisonTokenAddress()
+-        );
++        ITWAPOracle(manager.twapOracleAddress()).update();
+     }
+ 
+     function currentShareValue() public view returns (uint256 pricePerShare) {
+         uint256 totalShares =
+-            IERC20(config.bondingShareAddress()).totalSupply();
++            IERC20(manager.bondingShareAddress()).totalSupply();
+ 
+         pricePerShare = totalShares == 0
+             ? TARGET_PRICE
+-            : IERC20(config.stabilitasTokenAddress())
++            : IERC20(manager.uADTokenAddress())
+                 .balanceOf(address(this))
+                 .mul(TARGET_PRICE)
+                 .div(totalShares);
+     }
+ 
+     function currentTokenPrice() public view returns (uint256) {
+-        return
+-            IUniswapOracle(config.twapOracleAddress()).consult(
+-                config.stabilitasTokenAddress(),
+-                TARGET_PRICE,
+-                config.comparisonTokenAddress()
+-            );
++        return ITWAPOracle(manager.twapOracleAddress()).consult(TARGET_PRICE);
+     }
+ }
+
+commit 4a39ca467584577fb178081b5c6f419c6a82648c
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Thu Jan 28 14:03:45 2021 -0300
+
+    Implement a TWAP oracle for StableSwap meta pools
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 58930ba..9e94307 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -159,7 +159,6 @@ contract Bonding is CollectableDust {
+             // The transaction must be processed by the Ethereum blockchain before
+             // the start time of the stream, or otherwise the sablier contract
+             // reverts with a "start time before block.timestamp" message.
+-            // solhint-disable-next-line not-rely-on-time
+             uint256 streamStart = block.timestamp.add(60); // tx mining + 60 seconds
+ 
+             uint256 streamStop = streamStart.add(redeemStreamTime);
+
+commit 1b0d19416c67272d1379cc80b4bec3f3f6ee0327
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sun Jan 24 01:25:09 2021 -0300
+
+    Implement the functionality to redeem bonding shares
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index f4848f3..58930ba 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -133,8 +133,56 @@ contract Bonding is CollectableDust {
+         _bond(_amount, currentPrice);
+     }
+ 
+-    function redeemShares() public {
++    function redeemShares(uint256 _sharesAmount) public {
+         _updateOracle();
++
++        require(
++            IERC20(config.bondingShareAddress()).balanceOf(msg.sender) >=
++                _sharesAmount,
++            "Bonding: Caller does not have enough shares"
++        );
++
++        IBondingShare(config.bondingShareAddress()).burnFrom(
++            msg.sender,
++            _sharesAmount
++        );
++
++        uint256 tokenAmount =
++            _sharesAmount.mul(currentShareValue()).div(TARGET_PRICE);
++
++        if (redeemStreamTime == 0) {
++            IERC20(config.stabilitasTokenAddress()).safeTransfer(
++                msg.sender,
++                tokenAmount
++            );
++        } else {
++            // The transaction must be processed by the Ethereum blockchain before
++            // the start time of the stream, or otherwise the sablier contract
++            // reverts with a "start time before block.timestamp" message.
++            // solhint-disable-next-line not-rely-on-time
++            uint256 streamStart = block.timestamp.add(60); // tx mining + 60 seconds
++
++            uint256 streamStop = streamStart.add(redeemStreamTime);
++            // The deposit must be a multiple of the difference between the stop
++            // time and the start time
++            streamStop = streamStop.add(
++                tokenAmount % (streamStop.sub(streamStart))
++            );
++
++            sablier.createStream(
++                msg.sender,
++                tokenAmount,
++                config.stabilitasTokenAddress(),
++                streamStart,
++                streamStop
++            );
++        }
++    }
++
++    function redeemAllShares() public {
++        redeemShares(
++            IERC20(config.bondingShareAddress()).balanceOf(msg.sender)
++        );
+     }
+ 
+     function _updateOracle() internal {
+
+commit 1a165fe4f889d5e2f3ca54c107393498a6659c36
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sun Jan 24 00:23:11 2021 -0300
+
+    Abstract updating the oracle, following the DRY principle
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index effabcd..f4848f3 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -119,10 +119,7 @@ contract Bonding is CollectableDust {
+     }
+ 
+     function bondTokens(uint256 _amount) public {
+-        IUniswapOracle(config.twapOracleAddress()).update(
+-            config.stabilitasTokenAddress(),
+-            config.comparisonTokenAddress()
+-        );
++        _updateOracle();
+         uint256 currentPrice = currentTokenPrice();
+         require(
+             currentPrice < maxBondingPrice,
+@@ -136,6 +133,17 @@ contract Bonding is CollectableDust {
+         _bond(_amount, currentPrice);
+     }
+ 
++    function redeemShares() public {
++        _updateOracle();
++    }
++
++    function _updateOracle() internal {
++        IUniswapOracle(config.twapOracleAddress()).update(
++            config.stabilitasTokenAddress(),
++            config.comparisonTokenAddress()
++        );
++    }
++
+     function currentShareValue() public view returns (uint256 pricePerShare) {
+         uint256 totalShares =
+             IERC20(config.bondingShareAddress()).totalSupply();
+
+commit 09aa1272ad13ad53adbea428f5219c3e86b9def9
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sun Jan 24 00:08:35 2021 -0300
+
+    Add oracle consulting abstraction and gas optimization
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index a8f197f..effabcd 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -99,17 +99,11 @@ contract Bonding is CollectableDust {
+         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+     }
+ 
+-    function _bond(uint256 _amount) internal {
++    function _bond(uint256 _amount, uint256 currentPrice) internal {
+         uint256 shareValue = currentShareValue();
+         uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
+ 
+         if (bondingDiscountMultiplier != 0) {
+-            uint256 currentPrice =
+-                IUniswapOracle(config.twapOracleAddress()).consult(
+-                    config.stabilitasTokenAddress(),
+-                    TARGET_PRICE,
+-                    config.comparisonTokenAddress()
+-                );
+             uint256 bonus =
+                 (TARGET_PRICE.sub(currentPrice))
+                     .mul(numberOfShares)
+@@ -129,12 +123,7 @@ contract Bonding is CollectableDust {
+             config.stabilitasTokenAddress(),
+             config.comparisonTokenAddress()
+         );
+-        uint256 currentPrice =
+-            IUniswapOracle(config.twapOracleAddress()).consult(
+-                config.stabilitasTokenAddress(),
+-                TARGET_PRICE,
+-                config.comparisonTokenAddress()
+-            );
++        uint256 currentPrice = currentTokenPrice();
+         require(
+             currentPrice < maxBondingPrice,
+             "Bonding: Current price is too high"
+@@ -144,7 +133,7 @@ contract Bonding is CollectableDust {
+             address(this),
+             _amount
+         );
+-        _bond(_amount);
++        _bond(_amount, currentPrice);
+     }
+ 
+     function currentShareValue() public view returns (uint256 pricePerShare) {
+@@ -158,4 +147,13 @@ contract Bonding is CollectableDust {
+                 .mul(TARGET_PRICE)
+                 .div(totalShares);
+     }
++
++    function currentTokenPrice() public view returns (uint256) {
++        return
++            IUniswapOracle(config.twapOracleAddress()).consult(
++                config.stabilitasTokenAddress(),
++                TARGET_PRICE,
++                config.comparisonTokenAddress()
++            );
++    }
+ }
+
+commit ce8c722b4d4ef8a55cf656ab03174ac6adb9004e
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sun Jan 24 00:04:10 2021 -0300
+
+    Rename function
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 5932858..a8f197f 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -100,7 +100,7 @@ contract Bonding is CollectableDust {
+     }
+ 
+     function _bond(uint256 _amount) internal {
+-        uint256 shareValue = getCurrentShareValue();
++        uint256 shareValue = currentShareValue();
+         uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
+ 
+         if (bondingDiscountMultiplier != 0) {
+@@ -147,11 +147,7 @@ contract Bonding is CollectableDust {
+         _bond(_amount);
+     }
+ 
+-    function getCurrentShareValue()
+-        public
+-        view
+-        returns (uint256 pricePerShare)
+-    {
++    function currentShareValue() public view returns (uint256 pricePerShare) {
+         uint256 totalShares =
+             IERC20(config.bondingShareAddress()).totalSupply();
+ 
+
+commit 72da1b2bc82cab61f2371135e89e7d56a4a9f9f4
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sat Jan 23 23:32:39 2021 -0300
+
+    Implement the bUDD ERC20 token and finish 'bondTokens'
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 7a945cf..5932858 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -2,13 +2,13 @@
+ pragma solidity ^0.7.0;
+ 
+ import "@openzeppelin/contracts/math/SafeMath.sol";
+-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+ 
+ import "./StabilitasConfig.sol";
+ import "./interfaces/ISablier.sol";
+ import "./interfaces/IUniswapOracle.sol";
++import "./interfaces/IBondingShare.sol";
+ import "./utils/CollectableDust.sol";
+ 
+ contract Bonding is CollectableDust {
+@@ -22,7 +22,6 @@ contract Bonding is CollectableDust {
+     uint256 public maxBondingPrice = 1000000000000000000000000;
+     ISablier public sablier;
+     uint256 public bondingDiscountMultiplier = 0;
+-    uint256 public rewardsBalance;
+     uint256 public redeemStreamTime = 604800; // 1 week in seconds
+ 
+     modifier onlyBondingManager() {
+@@ -100,6 +99,31 @@ contract Bonding is CollectableDust {
+         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+     }
+ 
++    function _bond(uint256 _amount) internal {
++        uint256 shareValue = getCurrentShareValue();
++        uint256 numberOfShares = _amount.div(shareValue).mul(TARGET_PRICE);
++
++        if (bondingDiscountMultiplier != 0) {
++            uint256 currentPrice =
++                IUniswapOracle(config.twapOracleAddress()).consult(
++                    config.stabilitasTokenAddress(),
++                    TARGET_PRICE,
++                    config.comparisonTokenAddress()
++                );
++            uint256 bonus =
++                (TARGET_PRICE.sub(currentPrice))
++                    .mul(numberOfShares)
++                    .mul(bondingDiscountMultiplier)
++                    .div(TARGET_PRICE.mul(TARGET_PRICE));
++            numberOfShares = numberOfShares.add(bonus);
++        }
++
++        IBondingShare(config.bondingShareAddress()).mint(
++            msg.sender,
++            numberOfShares
++        );
++    }
++
+     function bondTokens(uint256 _amount) public {
+         IUniswapOracle(config.twapOracleAddress()).update(
+             config.stabilitasTokenAddress(),
+@@ -120,5 +144,22 @@ contract Bonding is CollectableDust {
+             address(this),
+             _amount
+         );
++        _bond(_amount);
++    }
++
++    function getCurrentShareValue()
++        public
++        view
++        returns (uint256 pricePerShare)
++    {
++        uint256 totalShares =
++            IERC20(config.bondingShareAddress()).totalSupply();
++
++        pricePerShare = totalShares == 0
++            ? TARGET_PRICE
++            : IERC20(config.stabilitasTokenAddress())
++                .balanceOf(address(this))
++                .mul(TARGET_PRICE)
++                .div(totalShares);
+     }
+ }
+
+commit 29950033a857eeb5488244716c152417410c047f
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sat Jan 23 19:30:13 2021 -0300
+
+    Add a BondingShare ERC20 token
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index fd6bcb0..7a945cf 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -2,6 +2,7 @@
+ pragma solidity ^0.7.0;
+ 
+ import "@openzeppelin/contracts/math/SafeMath.sol";
++import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+ 
+@@ -119,6 +120,5 @@ contract Bonding is CollectableDust {
+             address(this),
+             _amount
+         );
+-        // _bond(_amount);
+     }
+ }
+
+commit 944247d9e6b1b50ed12ffd503a2242196781a1bd
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sat Jan 23 05:04:31 2021 -0300
+
+    Implement the bondTokens function
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 8714c02..fd6bcb0 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -7,10 +7,12 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+ 
+ import "./StabilitasConfig.sol";
+ import "./interfaces/ISablier.sol";
++import "./interfaces/IUniswapOracle.sol";
+ import "./utils/CollectableDust.sol";
+ 
+ contract Bonding is CollectableDust {
+     using SafeMath for uint256;
++    using SafeERC20 for IERC20;
+ 
+     StabilitasConfig public config;
+ 
+@@ -96,4 +98,27 @@ contract Bonding is CollectableDust {
+         redeemStreamTime = _redeemStreamTime;
+         emit RedeemStreamTimeUpdated(_redeemStreamTime);
+     }
++
++    function bondTokens(uint256 _amount) public {
++        IUniswapOracle(config.twapOracleAddress()).update(
++            config.stabilitasTokenAddress(),
++            config.comparisonTokenAddress()
++        );
++        uint256 currentPrice =
++            IUniswapOracle(config.twapOracleAddress()).consult(
++                config.stabilitasTokenAddress(),
++                TARGET_PRICE,
++                config.comparisonTokenAddress()
++            );
++        require(
++            currentPrice < maxBondingPrice,
++            "Bonding: Current price is too high"
++        );
++        IERC20(config.stabilitasTokenAddress()).safeTransferFrom(
++            msg.sender,
++            address(this),
++            _amount
++        );
++        // _bond(_amount);
++    }
+ }
+
+commit c5e8e53f9bde2a27c15cb67bc39775c216db31f3
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sat Jan 23 02:02:20 2021 -0300
+
+    Implement and test new setters
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 2d37ed7..8714c02 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -17,8 +17,8 @@ contract Bonding is CollectableDust {
+     uint256 public constant TARGET_PRICE = 1000000; // USDC has 6 decimals
+     // Initially set at $1,000,000 to avoid interference with growth.
+     uint256 public maxBondingPrice = 1000000000000000000000000;
+-    uint256 public bondingDiscountMultiplier = 0;
+     ISablier public sablier;
++    uint256 public bondingDiscountMultiplier = 0;
+     uint256 public rewardsBalance;
+     uint256 public redeemStreamTime = 604800; // 1 week in seconds
+ 
+@@ -30,6 +30,11 @@ contract Bonding is CollectableDust {
+         _;
+     }
+ 
++    event MaxBondingPriceUpdated(uint256 _maxBondingPrice);
++    event SablierUpdated(address _sablier);
++    event BondingDiscountMultiplierUpdated(uint256 _bondingDiscountMultiplier);
++    event RedeemStreamTimeUpdated(uint256 _redeemStreamTime);
++
+     constructor(address _config, address _sablier) CollectableDust() {
+         config = StabilitasConfig(_config);
+         sablier = ISablier(_sablier);
+@@ -63,8 +68,17 @@ contract Bonding is CollectableDust {
+     // solhint-disable-next-line no-empty-blocks
+     receive() external payable {}
+ 
++    function setMaxBondingPrice(uint256 _maxBondingPrice)
++        external
++        onlyBondingManager
++    {
++        maxBondingPrice = _maxBondingPrice;
++        emit MaxBondingPriceUpdated(_maxBondingPrice);
++    }
++
+     function setSablier(address _sablier) external onlyBondingManager {
+         sablier = ISablier(_sablier);
++        emit SablierUpdated(_sablier);
+     }
+ 
+     function setBondingDiscountMultiplier(uint256 _bondingDiscountMultiplier)
+@@ -72,5 +86,14 @@ contract Bonding is CollectableDust {
+         onlyBondingManager
+     {
+         bondingDiscountMultiplier = _bondingDiscountMultiplier;
++        emit BondingDiscountMultiplierUpdated(_bondingDiscountMultiplier);
++    }
++
++    function setRedeemStreamTime(uint256 _redeemStreamTime)
++        external
++        onlyBondingManager
++    {
++        redeemStreamTime = _redeemStreamTime;
++        emit RedeemStreamTimeUpdated(_redeemStreamTime);
+     }
+ }
+
+commit 0fdd43774b59556ed6f4a97b80dc83a43d2ede8a
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Sat Jan 23 00:49:07 2021 -0300
+
+    Simplify access control with modifiers and move state
+    
+    Move bonding-related state variables back to the Bonding
+    contract
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index b1a8f51..2d37ed7 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -4,11 +4,10 @@ pragma solidity ^0.7.0;
+ import "@openzeppelin/contracts/math/SafeMath.sol";
+ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+-import "@openzeppelin/contracts/access/AccessControl.sol";
+ 
+-import "./utils/CollectableDust.sol";
+-import "./interfaces/ISablier.sol";
+ import "./StabilitasConfig.sol";
++import "./interfaces/ISablier.sol";
++import "./utils/CollectableDust.sol";
+ 
+ contract Bonding is CollectableDust {
+     using SafeMath for uint256;
+@@ -16,31 +15,40 @@ contract Bonding is CollectableDust {
+     StabilitasConfig public config;
+ 
+     uint256 public constant TARGET_PRICE = 1000000; // USDC has 6 decimals
+-    ISablier public sablier;
+     // Initially set at $1,000,000 to avoid interference with growth.
+     uint256 public maxBondingPrice = 1000000000000000000000000;
+     uint256 public bondingDiscountMultiplier = 0;
++    ISablier public sablier;
+     uint256 public rewardsBalance;
+     uint256 public redeemStreamTime = 604800; // 1 week in seconds
+ 
+-    constructor(address _config) CollectableDust() {
+-        config = StabilitasConfig(_config);
+-    }
+-
+-    /// Collectable Dust
+-    function addProtocolToken(address _token) external override {
++    modifier onlyBondingManager() {
+         require(
+             config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
+             "Caller is not a bonding manager"
+         );
++        _;
++    }
++
++    constructor(address _config, address _sablier) CollectableDust() {
++        config = StabilitasConfig(_config);
++        sablier = ISablier(_sablier);
++    }
++
++    /// Collectable Dust
++    function addProtocolToken(address _token)
++        external
++        override
++        onlyBondingManager
++    {
+         _addProtocolToken(_token);
+     }
+ 
+-    function removeProtocolToken(address _token) external override {
+-        require(
+-            config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
+-            "Caller is not a bonding manager"
+-        );
++    function removeProtocolToken(address _token)
++        external
++        override
++        onlyBondingManager
++    {
+         _removeProtocolToken(_token);
+     }
+ 
+@@ -48,14 +56,21 @@ contract Bonding is CollectableDust {
+         address _to,
+         address _token,
+         uint256 _amount
+-    ) external override {
+-        require(
+-            config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
+-            "Caller is not a bonding manager"
+-        );
++    ) external override onlyBondingManager {
+         _sendDust(_to, _token, _amount);
+     }
+ 
+     // solhint-disable-next-line no-empty-blocks
+     receive() external payable {}
++
++    function setSablier(address _sablier) external onlyBondingManager {
++        sablier = ISablier(_sablier);
++    }
++
++    function setBondingDiscountMultiplier(uint256 _bondingDiscountMultiplier)
++        external
++        onlyBondingManager
++    {
++        bondingDiscountMultiplier = _bondingDiscountMultiplier;
++    }
+ }
+
+commit 8ad7aa778e3e724dc4a0553fdd6597954a13cde3
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Fri Jan 22 22:20:46 2021 -0300
+
+    Store protocol-wide paramaters and handle access control
+    
+    Use the StabilitasConfig contract and OpenZeppelin Contracts'
+    AccessControl to do that
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 3b670eb..b1a8f51 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -1,32 +1,46 @@
+ // SPDX-License-Identifier: Apache-2.0
+ pragma solidity ^0.7.0;
+ 
+-import "@openzeppelin/contracts/access/Ownable.sol";
+ import "@openzeppelin/contracts/math/SafeMath.sol";
++import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
++import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
++import "@openzeppelin/contracts/access/AccessControl.sol";
+ 
+ import "./utils/CollectableDust.sol";
+ import "./interfaces/ISablier.sol";
++import "./StabilitasConfig.sol";
+ 
+-contract Bonding is Ownable, CollectableDust {
++contract Bonding is CollectableDust {
+     using SafeMath for uint256;
+ 
+-    ISablier public sablier;
+-
+-    constructor(address _sablier) CollectableDust() {
+-        sablier = ISablier(_sablier);
+-    }
++    StabilitasConfig public config;
+ 
+-    /// Setters
+-    function setSablier(address _sablier) public onlyOwner {
+-        sablier = ISablier(_sablier);
++    uint256 public constant TARGET_PRICE = 1000000; // USDC has 6 decimals
++    ISablier public sablier;
++    // Initially set at $1,000,000 to avoid interference with growth.
++    uint256 public maxBondingPrice = 1000000000000000000000000;
++    uint256 public bondingDiscountMultiplier = 0;
++    uint256 public rewardsBalance;
++    uint256 public redeemStreamTime = 604800; // 1 week in seconds
++
++    constructor(address _config) CollectableDust() {
++        config = StabilitasConfig(_config);
+     }
+ 
+     /// Collectable Dust
+-    function addProtocolToken(address _token) external override onlyOwner {
++    function addProtocolToken(address _token) external override {
++        require(
++            config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
++            "Caller is not a bonding manager"
++        );
+         _addProtocolToken(_token);
+     }
+ 
+-    function removeProtocolToken(address _token) external override onlyOwner {
++    function removeProtocolToken(address _token) external override {
++        require(
++            config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
++            "Caller is not a bonding manager"
++        );
+         _removeProtocolToken(_token);
+     }
+ 
+@@ -34,7 +48,11 @@ contract Bonding is Ownable, CollectableDust {
+         address _to,
+         address _token,
+         uint256 _amount
+-    ) external override onlyOwner {
++    ) external override {
++        require(
++            config.hasRole(config.BONDING_MANAGER_ROLE(), msg.sender),
++            "Caller is not a bonding manager"
++        );
+         _sendDust(_to, _token, _amount);
+     }
+ 
+
+commit 1d43fc172500055060b342a2e24c060ce5f09062
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Fri Jan 22 15:59:11 2021 -0300
+
+    Finish implementing and testing the CollectableDust utility
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 1ad0103..3b670eb 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -22,6 +22,14 @@ contract Bonding is Ownable, CollectableDust {
+     }
+ 
+     /// Collectable Dust
++    function addProtocolToken(address _token) external override onlyOwner {
++        _addProtocolToken(_token);
++    }
++
++    function removeProtocolToken(address _token) external override onlyOwner {
++        _removeProtocolToken(_token);
++    }
++
+     function sendDust(
+         address _to,
+         address _token,
+@@ -29,4 +37,7 @@ contract Bonding is Ownable, CollectableDust {
+     ) external override onlyOwner {
+         _sendDust(_to, _token, _amount);
+     }
++
++    // solhint-disable-next-line no-empty-blocks
++    receive() external payable {}
+ }
+
+commit 440876a9a7acdf027631c784acf2bf2c2ab6acb3
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Fri Jan 22 14:59:51 2021 -0300
+
+    Add CollectableDust functionality
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+index 947aaa2..1ad0103 100644
+--- a/contracts/Bonding.sol
++++ b/contracts/Bonding.sol
+@@ -4,14 +4,15 @@ pragma solidity ^0.7.0;
+ import "@openzeppelin/contracts/access/Ownable.sol";
+ import "@openzeppelin/contracts/math/SafeMath.sol";
+ 
++import "./utils/CollectableDust.sol";
+ import "./interfaces/ISablier.sol";
+ 
+-contract Bonding is Ownable {
++contract Bonding is Ownable, CollectableDust {
+     using SafeMath for uint256;
+ 
+     ISablier public sablier;
+ 
+-    constructor(address _sablier) {
++    constructor(address _sablier) CollectableDust() {
+         sablier = ISablier(_sablier);
+     }
+ 
+@@ -19,4 +20,13 @@ contract Bonding is Ownable {
+     function setSablier(address _sablier) public onlyOwner {
+         sablier = ISablier(_sablier);
+     }
++
++    /// Collectable Dust
++    function sendDust(
++        address _to,
++        address _token,
++        uint256 _amount
++    ) external override onlyOwner {
++        _sendDust(_to, _token, _amount);
++    }
+ }
+
+commit 9e2acf0ce2a1e8e1f9a44829a357e9b8b2a4dff4
+Author: kamiebisu <kamiebisu@protonmail.com>
+Date:   Wed Jan 20 21:06:24 2021 -0300
+
+    Add initial Bonding contract
+
+diff --git a/contracts/Bonding.sol b/contracts/Bonding.sol
+new file mode 100644
+index 0000000..947aaa2
+--- /dev/null
++++ b/contracts/Bonding.sol
+@@ -0,0 +1,22 @@
++// SPDX-License-Identifier: Apache-2.0
++pragma solidity ^0.7.0;
++
++import "@openzeppelin/contracts/access/Ownable.sol";
++import "@openzeppelin/contracts/math/SafeMath.sol";
++
++import "./interfaces/ISablier.sol";
++
++contract Bonding is Ownable {
++    using SafeMath for uint256;
++
++    ISablier public sablier;
++
++    constructor(address _sablier) {
++        sablier = ISablier(_sablier);
++    }
++
++    /// Setters
++    function setSablier(address _sablier) public onlyOwner {
++        sablier = ISablier(_sablier);
++    }
++}
